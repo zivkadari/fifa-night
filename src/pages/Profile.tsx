@@ -157,22 +157,84 @@ const Profile = () => {
   const winRate = activeTeamStats && activeTeamStats.games_played > 0
     ? Math.round((activeTeamStats.games_won / activeTeamStats.games_played) * 100) : 0;
 
-  // Filter evenings for active team + linked player context.
-  // Show an evening if:
-  //   (a) it is explicitly tagged with the active team_id, OR
-  //   (b) the active linked player participated in it (player-aware history,
-  //       covers historical evenings that pre-date team_id tagging)
+  // Player-aware history filter.
+  //
+  // Priority:
+  //   1. If a player is linked to the active team → show ONLY evenings where
+  //      that exact linked player participated (true player-aware history).
+  //      Match by player.id OR by slugified-name fallback (legacy data where
+  //      historical entries used a different id but the same display name).
+  //   2. Otherwise → fall back to team-tagged evenings for the active team.
+  //   3. If neither team nor player is selected → show all.
+  const slugify = (s: string) =>
+    s.toLowerCase().trim().replace(/[^a-z0-9\u0590-\u05ff]+/g, "-").replace(/^-+|-+$/g, "");
+
   const teamEvenings = (() => {
     if (!activeTeamId) return evenings;
     const linkedPlayerId = activePlayer?.player_id ?? null;
-    return evenings.filter((e) => {
-      const taggedTeamId = (e as any)._team_id as string | undefined;
-      if (taggedTeamId === activeTeamId) return true;
-      if (linkedPlayerId && Array.isArray(e.players)) {
-        return e.players.some((p) => p.id === linkedPlayerId);
-      }
-      return false;
-    });
+    const linkedPlayerName = activePlayer?.player_name ?? null;
+    const linkedSlug = linkedPlayerName ? slugify(linkedPlayerName) : null;
+
+    if (linkedPlayerId) {
+      return evenings.filter((e) => {
+        if (!Array.isArray(e.players)) return false;
+        return e.players.some(
+          (p) =>
+            p.id === linkedPlayerId ||
+            (linkedSlug && slugify(p.name) === linkedSlug)
+        );
+      });
+    }
+    // No linked player: fall back to team-tagged evenings only
+    return evenings.filter(
+      (e) => ((e as any)._team_id as string | undefined) === activeTeamId
+    );
+  })();
+
+  // Derive Alpha/Beta/Gamma/Delta counts from the filtered (player-aware)
+  // history. This is a robust client-side computation that always reflects the
+  // linked player's true historical participation, even when the aggregate
+  // stats table hasn't been synced yet.
+  const derivedTiers = (() => {
+    if (!activePlayer) return null;
+    const linkedSlug = slugify(activePlayer.player_name);
+    let alpha = 0, beta = 0, gamma = 0, delta = 0;
+    for (const e of teamEvenings) {
+      const r = e.rankings;
+      if (!r) continue;
+      const inTier = (group?: { id: string; name: string }[]) =>
+        Array.isArray(group) &&
+        group.some(
+          (p) =>
+            p.id === activePlayer.player_id || slugify(p.name) === linkedSlug
+        );
+      if (inTier(r.alpha)) alpha++;
+      else if (inTier(r.beta)) beta++;
+      else if (inTier(r.gamma)) gamma++;
+      else if (inTier(r.delta)) delta++;
+    }
+    return { alpha, beta, gamma, delta };
+  })();
+
+  // Merge: prefer aggregate table for game/goal counts, but always overlay
+  // derived tiers so the Alpha-Delta cards are never blank when history exists.
+  const mergedStats = (() => {
+    if (!activePlayer) return null;
+    const base = activeTeamStats || {
+      team_id: activeTeamId!,
+      team_name: activeTeam?.team_name || "",
+      games_played: 0, games_won: 0, games_lost: 0, games_drawn: 0,
+      goals_for: 0, goals_against: 0,
+      alpha_count: 0, beta_count: 0, gamma_count: 0, delta_count: 0,
+    };
+    if (!derivedTiers) return base;
+    return {
+      ...base,
+      alpha_count: Math.max(base.alpha_count, derivedTiers.alpha),
+      beta_count: Math.max(base.beta_count, derivedTiers.beta),
+      gamma_count: Math.max(base.gamma_count, derivedTiers.gamma),
+      delta_count: Math.max(base.delta_count, derivedTiers.delta),
+    };
   })();
 
   // Players already claimed (exclude from selection)
@@ -309,11 +371,11 @@ const Profile = () => {
                 
                 {statsLoading ? (
                   <p className="text-sm text-muted-foreground">טוען סטטיסטיקות...</p>
-                ) : activeTeamStats ? (
+                ) : mergedStats && (mergedStats.games_played > 0 || teamEvenings.length > 0) ? (
                   <div className="space-y-4">
                     <div className="grid grid-cols-3 gap-3">
                       <div className="text-center p-3 bg-gaming-surface rounded-lg">
-                        <div className="text-2xl font-bold text-neon-green">{activeTeamStats.games_played}</div>
+                        <div className="text-2xl font-bold text-neon-green">{mergedStats.games_played}</div>
                         <div className="text-xs text-muted-foreground">משחקים</div>
                       </div>
                       <div className="text-center p-3 bg-gaming-surface rounded-lg">
