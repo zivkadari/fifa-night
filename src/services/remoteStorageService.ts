@@ -907,6 +907,35 @@ export class RemoteStorageService {
     return data;
   }
 
+  /**
+   * Resolve a code without consuming it — tells whether it belongs to a team
+   * or an evening, so callers can route to the correct flow.
+   */
+  static async resolveInviteCode(code: string): Promise<
+    | { kind: 'team'; team_id: string; team_name: string | null }
+    | { kind: 'evening'; evening_id: string; team_id: string | null }
+    | null
+  > {
+    if (!supabase) return null;
+    const cleaned = code.trim().toUpperCase();
+    if (!cleaned || cleaned.length > 20 || !/^[A-Z0-9-]+$/.test(cleaned)) return null;
+    try {
+      const { data, error } = await supabase.rpc('resolve_invite_code', { _code: cleaned });
+      if (error || !data || data.length === 0) return null;
+      const row: any = data[0];
+      if (row.kind === 'team') {
+        return { kind: 'team', team_id: row.team_id, team_name: row.team_name };
+      }
+      if (row.kind === 'evening') {
+        return { kind: 'evening', evening_id: row.evening_id, team_id: row.team_id };
+      }
+      return null;
+    } catch (e) {
+      console.error('resolveInviteCode error:', e);
+      return null;
+    }
+  }
+
   static async joinTeamByCode(code: string): Promise<{ team_id: string; team_name: string } | null> {
     if (!supabase) return null;
     const cleaned = code.trim().toUpperCase();

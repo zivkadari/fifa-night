@@ -157,22 +157,84 @@ const Profile = () => {
   const winRate = activeTeamStats && activeTeamStats.games_played > 0
     ? Math.round((activeTeamStats.games_won / activeTeamStats.games_played) * 100) : 0;
 
-  // Filter evenings for active team + linked player context.
-  // Show an evening if:
-  //   (a) it is explicitly tagged with the active team_id, OR
-  //   (b) the active linked player participated in it (player-aware history,
-  //       covers historical evenings that pre-date team_id tagging)
+  // Player-aware history filter.
+  //
+  // Priority:
+  //   1. If a player is linked to the active team → show ONLY evenings where
+  //      that exact linked player participated (true player-aware history).
+  //      Match by player.id OR by slugified-name fallback (legacy data where
+  //      historical entries used a different id but the same display name).
+  //   2. Otherwise → fall back to team-tagged evenings for the active team.
+  //   3. If neither team nor player is selected → show all.
+  const slugify = (s: string) =>
+    s.toLowerCase().trim().replace(/[^a-z0-9\u0590-\u05ff]+/g, "-").replace(/^-+|-+$/g, "");
+
   const teamEvenings = (() => {
     if (!activeTeamId) return evenings;
     const linkedPlayerId = activePlayer?.player_id ?? null;
-    return evenings.filter((e) => {
-      const taggedTeamId = (e as any)._team_id as string | undefined;
-      if (taggedTeamId === activeTeamId) return true;
-      if (linkedPlayerId && Array.isArray(e.players)) {
-        return e.players.some((p) => p.id === linkedPlayerId);
-      }
-      return false;
-    });
+    const linkedPlayerName = activePlayer?.player_name ?? null;
+    const linkedSlug = linkedPlayerName ? slugify(linkedPlayerName) : null;
+
+    if (linkedPlayerId) {
+      return evenings.filter((e) => {
+        if (!Array.isArray(e.players)) return false;
+        return e.players.some(
+          (p) =>
+            p.id === linkedPlayerId ||
+            (linkedSlug && slugify(p.name) === linkedSlug)
+        );
+      });
+    }
+    // No linked player: fall back to team-tagged evenings only
+    return evenings.filter(
+      (e) => ((e as any)._team_id as string | undefined) === activeTeamId
+    );
+  })();
+
+  // Derive Alpha/Beta/Gamma/Delta counts from the filtered (player-aware)
+  // history. This is a robust client-side computation that always reflects the
+  // linked player's true historical participation, even when the aggregate
+  // stats table hasn't been synced yet.
+  const derivedTiers = (() => {
+    if (!activePlayer) return null;
+    const linkedSlug = slugify(activePlayer.player_name);
+    let alpha = 0, beta = 0, gamma = 0, delta = 0;
+    for (const e of teamEvenings) {
+      const r = e.rankings;
+      if (!r) continue;
+      const inTier = (group?: { id: string; name: string }[]) =>
+        Array.isArray(group) &&
+        group.some(
+          (p) =>
+            p.id === activePlayer.player_id || slugify(p.name) === linkedSlug
+        );
+      if (inTier(r.alpha)) alpha++;
+      else if (inTier(r.beta)) beta++;
+      else if (inTier(r.gamma)) gamma++;
+      else if (inTier(r.delta)) delta++;
+    }
+    return { alpha, beta, gamma, delta };
+  })();
+
+  // Merge: prefer aggregate table for game/goal counts, but always overlay
+  // derived tiers so the Alpha-Delta cards are never blank when history exists.
+  const mergedStats = (() => {
+    if (!activePlayer) return null;
+    const base = activeTeamStats || {
+      team_id: activeTeamId!,
+      team_name: activeTeam?.team_name || "",
+      games_played: 0, games_won: 0, games_lost: 0, games_drawn: 0,
+      goals_for: 0, goals_against: 0,
+      alpha_count: 0, beta_count: 0, gamma_count: 0, delta_count: 0,
+    };
+    if (!derivedTiers) return base;
+    return {
+      ...base,
+      alpha_count: Math.max(base.alpha_count, derivedTiers.alpha),
+      beta_count: Math.max(base.beta_count, derivedTiers.beta),
+      gamma_count: Math.max(base.gamma_count, derivedTiers.gamma),
+      delta_count: Math.max(base.delta_count, derivedTiers.delta),
+    };
   })();
 
   // Players already claimed (exclude from selection)
@@ -309,47 +371,47 @@ const Profile = () => {
                 
                 {statsLoading ? (
                   <p className="text-sm text-muted-foreground">טוען סטטיסטיקות...</p>
-                ) : activeTeamStats ? (
+                ) : mergedStats && (mergedStats.games_played > 0 || teamEvenings.length > 0) ? (
                   <div className="space-y-4">
                     <div className="grid grid-cols-3 gap-3">
                       <div className="text-center p-3 bg-gaming-surface rounded-lg">
-                        <div className="text-2xl font-bold text-neon-green">{activeTeamStats.games_played}</div>
+                        <div className="text-2xl font-bold text-neon-green">{mergedStats.games_played}</div>
                         <div className="text-xs text-muted-foreground">משחקים</div>
                       </div>
                       <div className="text-center p-3 bg-gaming-surface rounded-lg">
-                        <div className="text-2xl font-bold text-green-400">{activeTeamStats.games_won}</div>
+                        <div className="text-2xl font-bold text-green-400">{mergedStats.games_won}</div>
                         <div className="text-xs text-muted-foreground">נצחונות</div>
                       </div>
                       <div className="text-center p-3 bg-gaming-surface rounded-lg">
-                        <div className="text-2xl font-bold text-foreground">{winRate}%</div>
+                        <div className="text-2xl font-bold text-foreground">{mergedStats.games_played > 0 ? Math.round((mergedStats.games_won / mergedStats.games_played) * 100) : 0}%</div>
                         <div className="text-xs text-muted-foreground">אחוז נצחון</div>
                       </div>
                     </div>
 
                     <div className="flex items-center justify-between p-3 bg-gaming-surface rounded-lg">
                       <span className="text-sm text-muted-foreground">שערים</span>
-                      <span className="font-bold text-foreground">{activeTeamStats.goals_for} : {activeTeamStats.goals_against}</span>
+                      <span className="font-bold text-foreground">{mergedStats.goals_for} : {mergedStats.goals_against}</span>
                     </div>
 
                     <div className="grid grid-cols-4 gap-2">
                       <div className="flex flex-col items-center p-2 bg-yellow-400/10 rounded-lg border border-yellow-400/30">
                         <Trophy className="h-4 w-4 text-yellow-400 mb-1" />
-                        <span className="text-lg font-bold text-yellow-400">{activeTeamStats.alpha_count}</span>
+                        <span className="text-lg font-bold text-yellow-400">{mergedStats.alpha_count}</span>
                         <span className="text-xs text-muted-foreground">אלפא</span>
                       </div>
                       <div className="flex flex-col items-center p-2 bg-gray-400/10 rounded-lg border border-gray-400/30">
                         <Medal className="h-4 w-4 text-gray-400 mb-1" />
-                        <span className="text-lg font-bold text-gray-400">{activeTeamStats.beta_count}</span>
+                        <span className="text-lg font-bold text-gray-400">{mergedStats.beta_count}</span>
                         <span className="text-xs text-muted-foreground">בטא</span>
                       </div>
                       <div className="flex flex-col items-center p-2 bg-amber-600/10 rounded-lg border border-amber-600/30">
                         <Award className="h-4 w-4 text-amber-500 mb-1" />
-                        <span className="text-lg font-bold text-amber-500">{activeTeamStats.gamma_count}</span>
+                        <span className="text-lg font-bold text-amber-500">{mergedStats.gamma_count}</span>
                         <span className="text-xs text-muted-foreground">גמא</span>
                       </div>
                       <div className="flex flex-col items-center p-2 bg-sky-400/10 rounded-lg border border-sky-400/30">
                         <Target className="h-4 w-4 text-sky-400 mb-1" />
-                        <span className="text-lg font-bold text-sky-400">{activeTeamStats.delta_count}</span>
+                        <span className="text-lg font-bold text-sky-400">{mergedStats.delta_count}</span>
                         <span className="text-xs text-muted-foreground">דלתא</span>
                       </div>
                     </div>

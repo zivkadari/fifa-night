@@ -34,9 +34,16 @@ const JoinTournament = () => {
         return;
       }
 
-      // User is logged in - attempt to join as evening first
+      // User is logged in - smart-resolve the code first
       setStatus('joining');
       try {
+        const resolved = await RemoteStorageService.resolveInviteCode(code);
+        if (resolved?.kind === 'team') {
+          // Wrong link format — this is a team invite. Route to team-join.
+          navigate(`/join-team/${code}`, { replace: true });
+          return;
+        }
+
         const eveningId = await RemoteStorageService.joinEveningByCode(code);
         if (eveningId) {
           toast({
@@ -47,8 +54,7 @@ const JoinTournament = () => {
           return;
         }
 
-        // Fallback: maybe this is actually a TEAM invite code shared via the
-        // wrong link format. Redirect to the team-join flow as a safety net.
+        // Final fallback (race condition / older code path)
         try {
           const teamResult = await RemoteStorageService.joinTeamByCode(code);
           if (teamResult) {
