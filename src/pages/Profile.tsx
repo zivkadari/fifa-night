@@ -379,39 +379,39 @@ const Profile = () => {
                         <div className="text-xs text-muted-foreground">משחקים</div>
                       </div>
                       <div className="text-center p-3 bg-gaming-surface rounded-lg">
-                        <div className="text-2xl font-bold text-green-400">{activeTeamStats.games_won}</div>
+                        <div className="text-2xl font-bold text-green-400">{mergedStats.games_won}</div>
                         <div className="text-xs text-muted-foreground">נצחונות</div>
                       </div>
                       <div className="text-center p-3 bg-gaming-surface rounded-lg">
-                        <div className="text-2xl font-bold text-foreground">{winRate}%</div>
+                        <div className="text-2xl font-bold text-foreground">{mergedStats.games_played > 0 ? Math.round((mergedStats.games_won / mergedStats.games_played) * 100) : 0}%</div>
                         <div className="text-xs text-muted-foreground">אחוז נצחון</div>
                       </div>
                     </div>
 
                     <div className="flex items-center justify-between p-3 bg-gaming-surface rounded-lg">
                       <span className="text-sm text-muted-foreground">שערים</span>
-                      <span className="font-bold text-foreground">{activeTeamStats.goals_for} : {activeTeamStats.goals_against}</span>
+                      <span className="font-bold text-foreground">{mergedStats.goals_for} : {mergedStats.goals_against}</span>
                     </div>
 
                     <div className="grid grid-cols-4 gap-2">
                       <div className="flex flex-col items-center p-2 bg-yellow-400/10 rounded-lg border border-yellow-400/30">
                         <Trophy className="h-4 w-4 text-yellow-400 mb-1" />
-                        <span className="text-lg font-bold text-yellow-400">{activeTeamStats.alpha_count}</span>
+                        <span className="text-lg font-bold text-yellow-400">{mergedStats.alpha_count}</span>
                         <span className="text-xs text-muted-foreground">אלפא</span>
                       </div>
                       <div className="flex flex-col items-center p-2 bg-gray-400/10 rounded-lg border border-gray-400/30">
                         <Medal className="h-4 w-4 text-gray-400 mb-1" />
-                        <span className="text-lg font-bold text-gray-400">{activeTeamStats.beta_count}</span>
+                        <span className="text-lg font-bold text-gray-400">{mergedStats.beta_count}</span>
                         <span className="text-xs text-muted-foreground">בטא</span>
                       </div>
                       <div className="flex flex-col items-center p-2 bg-amber-600/10 rounded-lg border border-amber-600/30">
                         <Award className="h-4 w-4 text-amber-500 mb-1" />
-                        <span className="text-lg font-bold text-amber-500">{activeTeamStats.gamma_count}</span>
+                        <span className="text-lg font-bold text-amber-500">{mergedStats.gamma_count}</span>
                         <span className="text-xs text-muted-foreground">גמא</span>
                       </div>
                       <div className="flex flex-col items-center p-2 bg-sky-400/10 rounded-lg border border-sky-400/30">
                         <Target className="h-4 w-4 text-sky-400 mb-1" />
-                        <span className="text-lg font-bold text-sky-400">{activeTeamStats.delta_count}</span>
+                        <span className="text-lg font-bold text-sky-400">{mergedStats.delta_count}</span>
                         <span className="text-xs text-muted-foreground">דלתא</span>
                       </div>
                     </div>

@@ -102,20 +102,35 @@ export const TeamDashboard = ({
       dir="rtl"
     >
       {/* ── 0. Auth strip ── */}
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between mb-3 gap-2">
         <div className="flex-1 min-w-0">
-          {isAuthed && greetingName && (
-            <p className="text-sm text-foreground truncate">
-              שלום, <span className="font-semibold">{greetingName}</span>
-            </p>
+          {isAuthed ? (
+            <div className="flex items-center gap-2">
+              {greetingName && (
+                <div className="h-8 w-8 rounded-full bg-neon-green/15 border border-neon-green/30 flex items-center justify-center text-neon-green text-sm font-bold shrink-0">
+                  {greetingName.charAt(0).toUpperCase()}
+                </div>
+              )}
+              <div className="min-w-0">
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground leading-none mb-0.5">מחובר כ</p>
+                <p className="text-sm text-foreground font-semibold truncate leading-tight">
+                  {greetingName || userEmail}
+                </p>
+                {greetingName && userEmail && (
+                  <p className="text-[10px] text-muted-foreground truncate leading-tight">{userEmail}</p>
+                )}
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">לא מחובר</p>
           )}
         </div>
         {isAuthed ? (
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1 shrink-0">
             <Button asChild variant="ghost" size="sm">
               <Link to="/profile">פרופיל</Link>
             </Button>
-            <Button variant="ghost" size="sm" onClick={onSignOut} className="text-muted-foreground" title="התנתק">
+            <Button variant="ghost" size="icon" onClick={onSignOut} className="text-muted-foreground h-8 w-8" title="התנתק">
               <LogOut className="h-4 w-4" />
             </Button>
           </div>

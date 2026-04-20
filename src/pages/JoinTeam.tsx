@@ -45,6 +45,14 @@ const JoinTeam = () => {
 
       setStatus('joining');
       try {
+        // Smart resolver: if this code is actually an evening code (not team),
+        // redirect to the evening-join flow instead of failing.
+        const resolved = await RemoteStorageService.resolveInviteCode(code);
+        if (resolved?.kind === 'evening') {
+          navigate(`/join/${code}`, { replace: true });
+          return;
+        }
+
         const result = await RemoteStorageService.joinTeamByCode(code);
         if (result) {
           setTeamInfo(result);
