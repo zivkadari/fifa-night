@@ -1,0 +1,1 @@
+ALTER TABLE public.player_accounts DROP CONSTRAINT IF EXISTS player_accounts_user_id_key;

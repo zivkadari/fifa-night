@@ -790,20 +790,49 @@ export class RemoteStorageService {
     return { player_id: data.player_id, player_name: player?.display_name || data.player_id };
   }
 
-  /** Team-scoped claim */
-  static async claimPlayerForTeam(playerId: string, teamId: string): Promise<boolean> {
-    if (!supabase) return false;
+  /** Team-scoped claim. Returns { ok, error } where error is a user-friendly Hebrew message. */
+  static async claimPlayerForTeam(
+    playerId: string,
+    teamId: string
+  ): Promise<{ ok: boolean; error?: string }> {
+    if (!supabase) return { ok: false, error: "אין חיבור לשרת" };
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return false;
+    if (!user) return { ok: false, error: "יש להתחבר כדי לקשר שחקן" };
 
     const { error } = await supabase
       .from(PLAYER_ACCOUNTS_TABLE)
       .insert({ player_id: playerId, user_id: user.id, team_id: teamId });
     if (error) {
-      console.error("claimPlayerForTeam error:", error.message);
-      return false;
+      console.error("claimPlayerForTeam error:", error);
+      const msg = (error.message || "").toLowerCase();
+      const code = (error as any).code as string | undefined;
+
+      // 23505 = unique_violation
+      if (code === "23505" || msg.includes("duplicate key")) {
+        if (msg.includes("team_user")) {
+          return { ok: false, error: "אתה כבר מקושר לשחקן בקבוצה הזו" };
+        }
+        if (msg.includes("team_player")) {
+          return { ok: false, error: "השחקן הזה כבר תפוס על ידי משתמש אחר בקבוצה" };
+        }
+        if (msg.includes("user_id_key")) {
+          return {
+            ok: false,
+            error: "מגבלת סכמה ישנה חוסמת קישור מרובה-קבוצות. יש להריץ את המיגרציה.",
+          };
+        }
+        return { ok: false, error: "השחקן או המשתמש כבר משויכים בקבוצה זו" };
+      }
+
+      // 23503 = foreign_key_violation, 42501 = insufficient_privilege (RLS)
+      if (code === "23503") return { ok: false, error: "קבוצה או שחקן לא תקינים" };
+      if (code === "42501" || msg.includes("row-level security")) {
+        return { ok: false, error: "אין הרשאה לקשר שחקן בקבוצה זו" };
+      }
+
+      return { ok: false, error: error.message || "שגיאה בקישור השחקן" };
     }
-    return true;
+    return { ok: true };
   }
 
   /** Legacy global claim (backward compat) */

@@ -128,13 +128,13 @@ const Profile = () => {
 
   const handleClaimPlayer = async (playerId: string) => {
     if (!activeTeamId) return;
-    const success = await RemoteStorageService.claimPlayerForTeam(playerId, activeTeamId);
-    if (success) {
+    const result = await RemoteStorageService.claimPlayerForTeam(playerId, activeTeamId);
+    if (result.ok) {
       await refreshTeamContext();
       setShowClaimDialog(false);
       toast.success("השחקן קושר בהצלחה!");
     } else {
-      toast.error("שגיאה בקישור השחקן");
+      toast.error(result.error || "שגיאה בקישור השחקן");
     }
   };
 
