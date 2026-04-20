@@ -170,25 +170,47 @@ const Profile = () => {
     s.toLowerCase().trim().replace(/[^a-z0-9\u0590-\u05ff]+/g, "-").replace(/^-+|-+$/g, "");
 
   const teamEvenings = (() => {
-    if (!activeTeamId) return evenings;
-    const linkedPlayerId = activePlayer?.player_id ?? null;
-    const linkedPlayerName = activePlayer?.player_name ?? null;
-    const linkedSlug = linkedPlayerName ? slugify(linkedPlayerName) : null;
+    let filtered: Evening[];
+    if (!activeTeamId) {
+      filtered = evenings;
+    } else {
+      const linkedPlayerId = activePlayer?.player_id ?? null;
+      const linkedPlayerName = activePlayer?.player_name ?? null;
+      const linkedSlug = linkedPlayerName ? slugify(linkedPlayerName) : null;
 
-    if (linkedPlayerId) {
-      return evenings.filter((e) => {
-        if (!Array.isArray(e.players)) return false;
-        return e.players.some(
-          (p) =>
-            p.id === linkedPlayerId ||
-            (linkedSlug && slugify(p.name) === linkedSlug)
+      if (linkedPlayerId) {
+        filtered = evenings.filter((e) => {
+          if (!Array.isArray(e.players)) return false;
+          return e.players.some(
+            (p) =>
+              p.id === linkedPlayerId ||
+              (linkedSlug && slugify(p.name) === linkedSlug)
+          );
+        });
+      } else {
+        // No linked player: fall back to team-tagged evenings only
+        filtered = evenings.filter(
+          (e) => ((e as any)._team_id as string | undefined) === activeTeamId
         );
-      });
+      }
     }
-    // No linked player: fall back to team-tagged evenings only
-    return evenings.filter(
-      (e) => ((e as any)._team_id as string | undefined) === activeTeamId
-    );
+
+    // Always sort newest → oldest, deterministically.
+    // Priority: tournament `date` → `updated_at` → `created_at`.
+    const tsOf = (e: Evening): number => {
+      const candidates = [
+        (e as any).date,
+        (e as any).updated_at,
+        (e as any).created_at,
+      ];
+      for (const c of candidates) {
+        if (!c) continue;
+        const t = new Date(c).getTime();
+        if (!Number.isNaN(t)) return t;
+      }
+      return 0;
+    };
+    return [...filtered].sort((a, b) => tsOf(b) - tsOf(a));
   })();
 
   // Derive Alpha/Beta/Gamma/Delta counts from the filtered (player-aware)
