@@ -23,6 +23,14 @@ interface SelectExistingPlayerDialogProps {
   currentTeamId: string;
   currentTeamPlayers: Array<{ id: string; name: string }>;
   onPlayerSelected: (playerId: string, playerName: string) => void;
+  /**
+   * When true (default), the picker is strictly limited to players that
+   * already belong to the current team (`currentTeamPlayers`). This prevents
+   * cross-team linking — a user must NOT be able to link to a player from a
+   * different team while operating in the current team's context.
+   * Set to false only for admin/global flows that intentionally need it.
+   */
+  teamScopedOnly?: boolean;
 }
 
 export const SelectExistingPlayerDialog = ({
@@ -31,6 +39,7 @@ export const SelectExistingPlayerDialog = ({
   currentTeamId,
   currentTeamPlayers,
   onPlayerSelected,
+  teamScopedOnly = true,
 }: SelectExistingPlayerDialogProps) => {
   const [players, setPlayers] = useState<PlayerWithTeams[]>([]);
   const [loading, setLoading] = useState(false);
@@ -40,13 +49,27 @@ export const SelectExistingPlayerDialog = ({
     if (open) {
       loadPlayers();
     }
-  }, [open]);
+  }, [open, teamScopedOnly, currentTeamId]);
 
   const loadPlayers = async () => {
     setLoading(true);
     try {
-      const allPlayers = await RemoteStorageService.listAllMyPlayers();
-      setPlayers(allPlayers);
+      if (teamScopedOnly) {
+        // Strictly team-scoped: only show players that belong to the active team.
+        // Use the already-loaded currentTeamPlayers as the candidate pool, so
+        // players from other teams (e.g. Epsilons) cannot leak into a different
+        // team's linking flow (e.g. Alphot B).
+        setPlayers(
+          currentTeamPlayers.map((p) => ({
+            id: p.id,
+            name: p.name,
+            teams: [{ id: currentTeamId, name: "" }],
+          }))
+        );
+      } else {
+        const allPlayers = await RemoteStorageService.listAllMyPlayers();
+        setPlayers(allPlayers);
+      }
     } finally {
       setLoading(false);
     }
