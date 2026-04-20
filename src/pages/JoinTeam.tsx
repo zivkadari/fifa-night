@@ -86,15 +86,15 @@ const JoinTeam = () => {
     if (!selectedPlayerId || !teamInfo) return;
     setLinking(true);
     try {
-      const success = await RemoteStorageService.claimPlayerForTeam(selectedPlayerId, teamInfo.team_id);
-      if (success) {
+      const result = await RemoteStorageService.claimPlayerForTeam(selectedPlayerId, teamInfo.team_id);
+      if (result.ok) {
         toast({ title: "שחקן קושר בהצלחה!", description: "החשבון שלך מקושר לשחקן בקבוצה" });
         navigate('/');
       } else {
-        toast({ title: "שגיאה בקישור", description: "ייתכן שהשחקן כבר מקושר למשתמש אחר", variant: "destructive" });
+        toast({ title: "שגיאה בקישור", description: result.error || "ייתכן שהשחקן כבר מקושר למשתמש אחר", variant: "destructive" });
       }
-    } catch {
-      toast({ title: "שגיאה בקישור", variant: "destructive" });
+    } catch (e: any) {
+      toast({ title: "שגיאה בקישור", description: e?.message, variant: "destructive" });
     } finally {
       setLinking(false);
     }
