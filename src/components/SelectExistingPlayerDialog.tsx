@@ -24,6 +24,12 @@ interface SelectExistingPlayerDialogProps {
   currentTeamPlayers: Array<{ id: string; name: string }>;
   onPlayerSelected: (playerId: string, playerName: string) => void;
   /**
+   * Optional explicit disable list. This lets the same dialog support both:
+   * - team-scoped player linking (show team players, selectable)
+   * - add-existing-player admin flows (team players shown but disabled)
+   */
+  disabledPlayerIds?: string[];
+  /**
    * When true (default), the picker is strictly limited to players that
    * already belong to the current team (`currentTeamPlayers`). This prevents
    * cross-team linking — a user must NOT be able to link to a player from a
@@ -39,6 +45,7 @@ export const SelectExistingPlayerDialog = ({
   currentTeamId,
   currentTeamPlayers,
   onPlayerSelected,
+  disabledPlayerIds,
   teamScopedOnly = true,
 }: SelectExistingPlayerDialogProps) => {
   const [players, setPlayers] = useState<PlayerWithTeams[]>([]);
@@ -49,16 +56,12 @@ export const SelectExistingPlayerDialog = ({
     if (open) {
       loadPlayers();
     }
-  }, [open, teamScopedOnly, currentTeamId]);
+  }, [open, teamScopedOnly, currentTeamId, currentTeamPlayers]);
 
   const loadPlayers = async () => {
     setLoading(true);
     try {
       if (teamScopedOnly) {
-        // Strictly team-scoped: only show players that belong to the active team.
-        // Use the already-loaded currentTeamPlayers as the candidate pool, so
-        // players from other teams (e.g. Epsilons) cannot leak into a different
-        // team's linking flow (e.g. Alphot B).
         setPlayers(
           currentTeamPlayers.map((p) => ({
             id: p.id,
@@ -75,23 +78,23 @@ export const SelectExistingPlayerDialog = ({
     }
   };
 
-  const currentPlayerIds = new Set(currentTeamPlayers.map((p) => p.id));
+  const teamPlayerIds = new Set(currentTeamPlayers.map((p) => p.id));
+  const blockedPlayerIds = new Set(disabledPlayerIds ?? currentTeamPlayers.map((p) => p.id));
 
   const filteredPlayers = players.filter((p) =>
     p.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  // Sort: players not in current team first
   const sortedPlayers = [...filteredPlayers].sort((a, b) => {
-    const aInTeam = currentPlayerIds.has(a.id);
-    const bInTeam = currentPlayerIds.has(b.id);
-    if (aInTeam && !bInTeam) return 1;
-    if (!aInTeam && bInTeam) return -1;
+    const aBlocked = blockedPlayerIds.has(a.id);
+    const bBlocked = blockedPlayerIds.has(b.id);
+    if (aBlocked && !bBlocked) return 1;
+    if (!aBlocked && bBlocked) return -1;
     return a.name.localeCompare(b.name, "he");
   });
 
   const handleSelect = (player: PlayerWithTeams) => {
-    if (currentPlayerIds.has(player.id)) return;
+    if (blockedPlayerIds.has(player.id)) return;
     onPlayerSelected(player.id, player.name);
     onOpenChange(false);
   };
@@ -125,25 +128,26 @@ export const SelectExistingPlayerDialog = ({
             </div>
           ) : (
             sortedPlayers.map((player) => {
-              const isInCurrentTeam = currentPlayerIds.has(player.id);
+              const isBlocked = blockedPlayerIds.has(player.id);
+              const isInCurrentTeam = teamPlayerIds.has(player.id);
               return (
                 <Button
                   key={player.id}
                   variant="ghost"
                   className={`w-full justify-start h-auto py-3 px-4 ${
-                    isInCurrentTeam
+                    isBlocked
                       ? "opacity-50 cursor-not-allowed"
                       : "hover:bg-neon-green/10"
                   }`}
                   onClick={() => handleSelect(player)}
-                  disabled={isInCurrentTeam}
+                  disabled={isBlocked}
                 >
                   <div className="flex flex-col items-start gap-1 w-full">
                     <div className="flex items-center gap-2 w-full">
                       <span className="font-medium text-foreground">
                         {player.name}
                       </span>
-                      {isInCurrentTeam && (
+                      {isBlocked && (
                         <Check className="h-4 w-4 text-neon-green mr-auto" />
                       )}
                     </div>
@@ -154,7 +158,7 @@ export const SelectExistingPlayerDialog = ({
                             key={team.id}
                             variant="secondary"
                             className={`text-xs ${
-                              team.id === currentTeamId
+                              team.id === currentTeamId || isInCurrentTeam
                                 ? "bg-neon-green/20 text-neon-green"
                                 : "bg-muted text-muted-foreground"
                             }`}
