@@ -1,14 +1,22 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Users, Trophy, User, Edit2, Check, X, UserCheck, Target, Medal, Award, BarChart3, UserPlus, ChevronDown } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  ArrowLeft,
+  Users,
+  User,
+  Edit2,
+  Check,
+  X,
+  UserCheck,
+  UserPlus,
+  ChevronDown,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { RemoteStorageService } from "@/services/remoteStorageService";
-import { StorageService } from "@/services/storageService";
-import type { Evening } from "@/types/tournament";
 import { toast } from "sonner";
 import { useTeam } from "@/contexts/TeamContext";
 import {
@@ -18,103 +26,101 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { SelectExistingPlayerDialog } from "@/components/SelectExistingPlayerDialog";
-
-interface TeamStats {
-  team_id: string;
-  team_name: string;
-  games_played: number;
-  games_won: number;
-  games_lost: number;
-  games_drawn: number;
-  goals_for: number;
-  goals_against: number;
-  alpha_count: number;
-  beta_count: number;
-  gamma_count: number;
-  delta_count: number;
-}
-
-const slugify = (s: string) =>
-  s.toLowerCase().trim().replace(/[^a-z0-9\u0590-\u05ff]+/g, "-").replace(/^-+|-+$/g, "");
+import {
+  UserHistoryService,
+  type MyEvening,
+  type OverviewStats,
+  type UnifiedEvening,
+} from "@/services/userHistoryService";
+import { ProfileOverviewTab } from "@/components/profile/ProfileOverviewTab";
+import { ProfileMyHistoryTab } from "@/components/profile/ProfileMyHistoryTab";
+import { ProfileTeamViewTab } from "@/components/profile/ProfileTeamViewTab";
 
 const Profile = () => {
-  const { teams, activeTeamId, setActiveTeamId, activePlayer, claimedPlayers, refresh: refreshTeamContext, loading: teamLoading } = useTeam();
+  const {
+    teams,
+    activeTeamId,
+    setActiveTeamId,
+    activePlayer,
+    claimedPlayers,
+    refresh: refreshTeamContext,
+    loading: teamLoading,
+  } = useTeam();
 
-  const [loading, setLoading] = useState(true);
+  // ===== Identity =====
   const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [evenings, setEvenings] = useState<Evening[]>([]);
-
   const [displayName, setDisplayName] = useState("");
   const [editingName, setEditingName] = useState(false);
   const [newDisplayName, setNewDisplayName] = useState("");
+  const [profileLoading, setProfileLoading] = useState(true);
 
-  const [activeTeamStats, setActiveTeamStats] = useState<TeamStats | null>(null);
-  const [statsLoading, setStatsLoading] = useState(false);
-
+  // ===== Player linking (per active team) =====
   const [teamPlayers, setTeamPlayers] = useState<Array<{ id: string; name: string }>>([]);
   const [showClaimDialog, setShowClaimDialog] = useState(false);
-  const [newPlayerName, setNewPlayerName] = useState("");
   const [showCreatePlayer, setShowCreatePlayer] = useState(false);
+  const [newPlayerName, setNewPlayerName] = useState("");
 
+  // ===== Unified history data =====
+  const [allEvenings, setAllEvenings] = useState<UnifiedEvening[]>([]);
+  const [myEvenings, setMyEvenings] = useState<MyEvening[]>([]);
+  const [overview, setOverview] = useState<OverviewStats | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(true);
+
+  // Team View selected team (defaults to active team)
+  const [teamViewId, setTeamViewId] = useState<string | null>(null);
+
+  // ----- Identity load -----
   useEffect(() => {
     let mounted = true;
     (async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
-          setLoading(false);
+          if (mounted) setProfileLoading(false);
           return;
         }
-
-        setUserEmail(user.email ?? null);
-
+        if (mounted) setUserEmail(user.email ?? null);
         const profile = await RemoteStorageService.getProfile(user.id);
-        if (profile && mounted) {
-          setDisplayName(profile.display_name);
-        }
-
-        let evs: Evening[] = [];
-        try {
-          evs = await RemoteStorageService.loadEvenings();
-        } catch {
-          evs = [];
-        }
-        if (!evs.length) evs = StorageService.loadEvenings();
-        if (mounted) setEvenings(evs);
+        if (mounted && profile) setDisplayName(profile.display_name);
       } finally {
-        if (mounted) setLoading(false);
+        if (mounted) setProfileLoading(false);
       }
     })();
-
     return () => {
       mounted = false;
     };
   }, []);
 
+  // ----- Unified history load (re-run when claims change) -----
   useEffect(() => {
-    if (!activePlayer || !activeTeamId) {
-      setActiveTeamStats(null);
-      return;
-    }
-
     let mounted = true;
     (async () => {
-      setStatsLoading(true);
+      setHistoryLoading(true);
       try {
-        const byTeam = await RemoteStorageService.getPlayerStatsByTeam(activePlayer.player_id);
-        const match = byTeam.find((t) => t.team_id === activeTeamId);
-        if (mounted) setActiveTeamStats(match || null);
-      } catch {
+        const all = await UserHistoryService.loadAllVisibleEvenings();
+        const mine = await UserHistoryService.loadMyEvenings(all);
+        const ov = await UserHistoryService.loadOverview(mine);
+        if (!mounted) return;
+        setAllEvenings(all);
+        setMyEvenings(mine);
+        setOverview(ov);
       } finally {
-        if (mounted) setStatsLoading(false);
+        if (mounted) setHistoryLoading(false);
       }
     })();
-
     return () => {
       mounted = false;
     };
-  }, [activePlayer?.player_id, activeTeamId]);
+  }, [claimedPlayers.length, claimedPlayers.map((c) => c.player_id).join("|")]);
 
+  // ----- Default Team View to active team -----
+  useEffect(() => {
+    if (!teamViewId && (activeTeamId || teams[0]?.team_id)) {
+      setTeamViewId(activeTeamId ?? teams[0]?.team_id ?? null);
+    }
+  }, [activeTeamId, teams, teamViewId]);
+
+  // ----- Team players for the linking dialog -----
   useEffect(() => {
     if (!activeTeamId) {
       setTeamPlayers([]);
@@ -125,14 +131,14 @@ const Profile = () => {
       .catch(() => setTeamPlayers([]));
   }, [activeTeamId]);
 
+  // ----- Identity actions -----
   const handleUpdateDisplayName = async () => {
     if (!newDisplayName.trim()) {
       toast.error("שם התצוגה לא יכול להיות ריק");
       return;
     }
-
-    const success = await RemoteStorageService.updateProfile({ display_name: newDisplayName.trim() });
-    if (success) {
+    const ok = await RemoteStorageService.updateProfile({ display_name: newDisplayName.trim() });
+    if (ok) {
       setDisplayName(newDisplayName.trim());
       setEditingName(false);
       toast.success("שם התצוגה עודכן בהצלחה");
@@ -142,13 +148,11 @@ const Profile = () => {
   };
 
   const handleUnclaimForTeam = async (teamId: string) => {
-    const success = await RemoteStorageService.unclaimPlayerForTeam(teamId);
-    if (success) {
+    const ok = await RemoteStorageService.unclaimPlayerForTeam(teamId);
+    if (ok) {
       await refreshTeamContext();
       toast.success("הקישור לשחקן הוסר");
-    } else {
-      toast.error("שגיאה בהסרת הקישור");
-    }
+    } else toast.error("שגיאה בהסרת הקישור");
   };
 
   const handleClaimPlayer = async (playerId: string) => {
@@ -165,149 +169,66 @@ const Profile = () => {
 
   const handleCreateAndClaim = async () => {
     if (!activeTeamId || !newPlayerName.trim()) return;
-
     const added = await RemoteStorageService.addPlayerToTeamByName(activeTeamId, newPlayerName.trim());
     if (!added) {
       toast.error("שגיאה ביצירת שחקן");
       return;
     }
-
     const players = await RemoteStorageService.listTeamPlayers(activeTeamId);
     setTeamPlayers(players);
-    const createdPlayer = players.find((p) => p.name.toLowerCase() === newPlayerName.trim().toLowerCase());
-    if (createdPlayer) {
-      await handleClaimPlayer(createdPlayer.id);
-    }
-
+    const created = players.find(
+      (p) => p.name.toLowerCase() === newPlayerName.trim().toLowerCase()
+    );
+    if (created) await handleClaimPlayer(created.id);
     setShowCreatePlayer(false);
     setNewPlayerName("");
   };
 
+  // ----- Derived for Team View -----
+  const teamViewEvenings = useMemo(
+    () => (teamViewId ? allEvenings.filter((e) => e.teamId === teamViewId) : []),
+    [allEvenings, teamViewId]
+  );
+  const myEveningIdsForTeam = useMemo(
+    () => new Set(myEvenings.filter((e) => e.teamId === teamViewId).map((e) => e.id)),
+    [myEvenings, teamViewId]
+  );
+  const myParticipationById = useMemo(() => {
+    const m = new Map<string, MyEvening["participation"]>();
+    for (const e of myEvenings) m.set(e.id, e.participation);
+    return m;
+  }, [myEvenings]);
+
   const activeTeam = teams.find((t) => t.team_id === activeTeamId);
   const hasLinkablePlayers = teamPlayers.length > 0;
-
-  const teamEvenings = (() => {
-    let filtered: Evening[];
-
-    if (!activeTeamId) {
-      filtered = evenings;
-    } else {
-      const linkedPlayerId = activePlayer?.player_id ?? null;
-      const linkedPlayerName = activePlayer?.player_name ?? null;
-      const linkedSlug = linkedPlayerName ? slugify(linkedPlayerName) : null;
-
-      if (linkedPlayerId) {
-        filtered = evenings.filter((e) => {
-          if (!Array.isArray(e.players)) return false;
-          return e.players.some(
-            (p) => p.id === linkedPlayerId || (linkedSlug && slugify(p.name) === linkedSlug)
-          );
-        });
-      } else {
-        filtered = evenings.filter((e) => ((e as any)._team_id as string | undefined) === activeTeamId);
-      }
-    }
-
-    const tsOf = (e: Evening): number => {
-      const candidates = [(e as any).date, (e as any).updated_at, (e as any).created_at];
-      for (const candidate of candidates) {
-        if (!candidate) continue;
-        const ts = new Date(candidate).getTime();
-        if (!Number.isNaN(ts)) return ts;
-      }
-      return 0;
-    };
-
-    return [...filtered].sort((a, b) => tsOf(b) - tsOf(a));
-  })();
-
-  const derivedTiers = (() => {
-    if (!activePlayer) return null;
-
-    const linkedSlug = slugify(activePlayer.player_name);
-    let alpha = 0;
-    let beta = 0;
-    let gamma = 0;
-    let delta = 0;
-
-    for (const e of teamEvenings) {
-      const r = e.rankings;
-      if (!r) continue;
-
-      const inTier = (group?: { id: string; name: string }[]) =>
-        Array.isArray(group) && group.some((p) => p.id === activePlayer.player_id || slugify(p.name) === linkedSlug);
-
-      if (inTier(r.alpha)) alpha++;
-      else if (inTier(r.beta)) beta++;
-      else if (inTier(r.gamma)) gamma++;
-      else if (inTier(r.delta)) delta++;
-    }
-
-    return { alpha, beta, gamma, delta };
-  })();
-
-  const mergedStats = (() => {
-    if (!activePlayer || !activeTeamId) return null;
-
-    const base = activeTeamStats || {
-      team_id: activeTeamId,
-      team_name: activeTeam?.team_name || "",
-      games_played: 0,
-      games_won: 0,
-      games_lost: 0,
-      games_drawn: 0,
-      goals_for: 0,
-      goals_against: 0,
-      alpha_count: 0,
-      beta_count: 0,
-      gamma_count: 0,
-      delta_count: 0,
-    };
-
-    if (!derivedTiers) return base;
-
-    return {
-      ...base,
-      alpha_count: Math.max(base.alpha_count, derivedTiers.alpha),
-      beta_count: Math.max(base.beta_count, derivedTiers.beta),
-      gamma_count: Math.max(base.gamma_count, derivedTiers.gamma),
-      delta_count: Math.max(base.delta_count, derivedTiers.delta),
-    };
-  })();
-
-  const winRate = mergedStats && mergedStats.games_played > 0
-    ? Math.round((mergedStats.games_won / mergedStats.games_played) * 100)
-    : 0;
-
-  const formatEveningDate = (e: Evening) => {
-    const value = (e as any).date || (e as any).updated_at || (e as any).created_at;
-    if (!value) return "—";
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? "—" : date.toLocaleDateString();
-  };
+  const overallLoading = profileLoading || teamLoading;
 
   return (
     <div className="min-h-screen bg-gaming-bg p-4">
       <div className="max-w-md mx-auto">
+        {/* Header */}
         <div className="flex items-center gap-4 mb-6">
           <Button variant="ghost" size="icon" onClick={() => window.history.back()}>
             <ArrowLeft className="h-5 w-5 rotate-180" />
           </Button>
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">הפרופיל שלי</h1>
-            <p className="text-muted-foreground text-sm">{userEmail || "לא מחובר"}</p>
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold text-foreground break-words">הפרופיל שלי</h1>
+            <p className="text-muted-foreground text-sm break-words">{userEmail || "לא מחובר"}</p>
           </div>
         </div>
 
-        {loading || teamLoading ? (
+        {overallLoading ? (
           <Card className="bg-gradient-card border-primary/20 p-6 shadow-card">טוען פרופיל...</Card>
         ) : !userEmail ? (
           <Card className="bg-gradient-card border-primary/20 p-6 shadow-card text-center">
             <p className="mb-4">כדי לראות היסטוריה וקבוצות, התחבר לחשבון.</p>
-            <Button variant="gaming" onClick={() => (window.location.href = "/auth")}>התחבר</Button>
+            <Button variant="gaming" onClick={() => (window.location.href = "/auth")}>
+              התחבר
+            </Button>
           </Card>
         ) : (
           <>
+            {/* Active team picker */}
             {teams.length > 1 && (
               <Card className="bg-gradient-card border-primary/20 p-3 mb-4 shadow-card">
                 <div className="flex items-center justify-between">
@@ -323,7 +244,9 @@ const Profile = () => {
                       {teams.map((t) => (
                         <DropdownMenuItem key={t.team_id} onClick={() => setActiveTeamId(t.team_id)}>
                           {t.team_name}
-                          {t.team_id === activeTeamId && <Check className="h-3.5 w-3.5 mr-2 text-neon-green" />}
+                          {t.team_id === activeTeamId && (
+                            <Check className="h-3.5 w-3.5 mr-2 text-neon-green" />
+                          )}
                         </DropdownMenuItem>
                       ))}
                     </DropdownMenuContent>
@@ -332,26 +255,25 @@ const Profile = () => {
               </Card>
             )}
 
-            {teams.length === 0 && (
-              <Card className="bg-gradient-card border-primary/20 p-4 mb-4 shadow-card text-center">
-                <Users className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground mb-3">אתה עדיין לא חבר בקבוצה.</p>
-                <p className="text-xs text-muted-foreground">בקש קישור הזמנה מחבר כדי להצטרף לקבוצה.</p>
-              </Card>
-            )}
-
+            {/* Identity + linked players card */}
             <Card className="bg-gradient-card border-primary/20 p-4 mb-4 shadow-card">
               <div className="flex items-center gap-2 mb-3">
                 <User className="h-5 w-5 text-neon-green" />
-                <h2 className="text-lg font-semibold text-foreground">פרטי פרופיל</h2>
+                <h2 className="text-lg font-semibold text-foreground">פרטי המשתמש</h2>
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-3">
+                {/* Display name */}
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-sm text-muted-foreground">שם תצוגה:</span>
                   {editingName ? (
                     <div className="flex items-center gap-2">
-                      <Input value={newDisplayName} onChange={(e) => setNewDisplayName(e.target.value)} className="h-8 w-32" maxLength={50} />
+                      <Input
+                        value={newDisplayName}
+                        onChange={(e) => setNewDisplayName(e.target.value)}
+                        className="h-8 w-32"
+                        maxLength={50}
+                      />
                       <Button size="icon" variant="ghost" onClick={handleUpdateDisplayName}>
                         <Check className="h-4 w-4 text-neon-green" />
                       </Button>
@@ -362,156 +284,145 @@ const Profile = () => {
                   ) : (
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-foreground break-words">{displayName}</span>
-                      <Button size="icon" variant="ghost" onClick={() => { setNewDisplayName(displayName); setEditingName(true); }}>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => {
+                          setNewDisplayName(displayName);
+                          setEditingName(true);
+                        }}
+                      >
                         <Edit2 className="h-4 w-4" />
                       </Button>
                     </div>
                   )}
                 </div>
 
-                {activeTeamId && (
-                  <div>
-                    <span className="text-sm text-muted-foreground">
-                      שחקן מקושר {activeTeam ? `(${activeTeam.team_name})` : ""}:
-                    </span>
-                    {activePlayer ? (
-                      <div className="flex items-center justify-between mt-1 gap-3">
-                        <Badge variant="secondary" className="flex items-center gap-1">
-                          <UserCheck className="h-3 w-3" />
-                          {activePlayer.player_name}
-                        </Badge>
-                        <Button size="sm" variant="ghost" onClick={() => handleUnclaimForTeam(activeTeamId)}>
-                          <X className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="mt-2 space-y-2">
-                        <p className="text-xs text-muted-foreground">אין שחקן מקושר בקבוצה זו.</p>
-                        <div className="flex gap-2">
-                          {hasLinkablePlayers && (
-                            <Button size="sm" variant="outline" onClick={() => setShowClaimDialog(true)} className="gap-1">
-                              <UserPlus className="h-3.5 w-3.5" />
-                              קשר שחקן קיים
+                {/* Linked players across teams */}
+                <div>
+                  <p className="text-sm text-muted-foreground mb-2">השחקנים המקושרים שלך:</p>
+                  {claimedPlayers.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">
+                      אין שחקנים מקושרים. בחר קבוצה פעילה ולחץ "קשר שחקן".
+                    </p>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {claimedPlayers.map((claim) => {
+                        const team = teams.find((t) => t.team_id === claim.team_id);
+                        return (
+                          <div
+                            key={claim.team_id}
+                            className="flex items-center justify-between p-2 bg-gaming-surface rounded-lg gap-2"
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <Badge variant="secondary" className="flex items-center gap-1 shrink-0">
+                                <UserCheck className="h-3 w-3" />
+                                {claim.player_name}
+                              </Badge>
+                              {team && (
+                                <span className="text-xs text-muted-foreground break-words">
+                                  ב{team.team_name}
+                                </span>
+                              )}
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleUnclaimForTeam(claim.team_id)}
+                            >
+                              <X className="h-4 w-4 text-destructive" />
                             </Button>
-                          )}
-                          <Button size="sm" variant="outline" onClick={() => setShowCreatePlayer(true)} className="gap-1">
-                            <UserPlus className="h-3.5 w-3.5" />
-                            צור שחקן חדש
-                          </Button>
-                        </div>
-                      </div>
-                    )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Link controls for active team */}
+                {activeTeamId && !activePlayer && (
+                  <div className="pt-2 border-t border-border/40">
+                    <p className="text-xs text-muted-foreground mb-2">
+                      אינך מקושר לשחקן ב{activeTeam?.team_name}. קשר עכשיו:
+                    </p>
+                    <div className="flex gap-2 flex-wrap">
+                      {hasLinkablePlayers && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setShowClaimDialog(true)}
+                          className="gap-1"
+                        >
+                          <UserPlus className="h-3.5 w-3.5" />
+                          קשר שחקן קיים
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setShowCreatePlayer(true)}
+                        className="gap-1"
+                      >
+                        <UserPlus className="h-3.5 w-3.5" />
+                        צור שחקן חדש
+                      </Button>
+                    </div>
                   </div>
                 )}
               </div>
             </Card>
 
-            {activeTeamId && activePlayer && (
-              <Card className="bg-gradient-card border-primary/20 p-4 mb-4 shadow-card">
-                <div className="flex items-center gap-2 mb-3">
-                  <BarChart3 className="h-5 w-5 text-neon-green" />
-                  <h2 className="text-lg font-semibold text-foreground">סטטיסטיקות {activeTeam?.team_name || ""}</h2>
-                </div>
+            {/* Tabs */}
+            <Tabs defaultValue="overview" className="w-full">
+              <TabsList className="grid w-full grid-cols-3 mb-3">
+                <TabsTrigger value="overview">סיכום</TabsTrigger>
+                <TabsTrigger value="mine">ההיסטוריה שלי</TabsTrigger>
+                <TabsTrigger value="team">לפי קבוצה</TabsTrigger>
+              </TabsList>
 
-                {statsLoading ? (
-                  <p className="text-sm text-muted-foreground">טוען סטטיסטיקות...</p>
-                ) : mergedStats && (mergedStats.games_played > 0 || teamEvenings.length > 0) ? (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-3 gap-3">
-                      <div className="text-center p-3 bg-gaming-surface rounded-lg">
-                        <div className="text-2xl font-bold text-neon-green">{mergedStats.games_played}</div>
-                        <div className="text-xs text-muted-foreground">משחקים</div>
-                      </div>
-                      <div className="text-center p-3 bg-gaming-surface rounded-lg">
-                        <div className="text-2xl font-bold text-neon-green">{mergedStats.games_won}</div>
-                        <div className="text-xs text-muted-foreground">ניצחונות</div>
-                      </div>
-                      <div className="text-center p-3 bg-gaming-surface rounded-lg">
-                        <div className="text-2xl font-bold text-foreground">{winRate}%</div>
-                        <div className="text-xs text-muted-foreground">אחוז ניצחון</div>
-                      </div>
-                    </div>
+              <TabsContent value="overview">
+                <ProfileOverviewTab stats={overview} loading={historyLoading} />
+              </TabsContent>
 
-                    <div className="rounded-lg bg-gaming-surface p-4 flex items-center justify-between">
-                      <span className="text-muted-foreground">שערים</span>
-                      <span className="text-2xl font-bold text-foreground" dir="ltr">
-                        {mergedStats.goals_for} : {mergedStats.goals_against}
-                      </span>
-                    </div>
+              <TabsContent value="mine">
+                <ProfileMyHistoryTab evenings={myEvenings} loading={historyLoading} />
+              </TabsContent>
 
-                    <div className="grid grid-cols-4 gap-3">
-                      <div className="flex flex-col items-center p-3 bg-yellow-500/10 rounded-lg border border-yellow-500/30">
-                        <Trophy className="h-4 w-4 text-yellow-500 mb-1" />
-                        <span className="text-2xl font-bold text-yellow-500">{mergedStats.alpha_count}</span>
-                        <span className="text-xs text-muted-foreground">אלפא</span>
-                      </div>
-                      <div className="flex flex-col items-center p-3 bg-slate-400/10 rounded-lg border border-slate-400/30">
-                        <Medal className="h-4 w-4 text-slate-300 mb-1" />
-                        <span className="text-2xl font-bold text-slate-300">{mergedStats.beta_count}</span>
-                        <span className="text-xs text-muted-foreground">בטא</span>
-                      </div>
-                      <div className="flex flex-col items-center p-3 bg-amber-500/10 rounded-lg border border-amber-500/30">
-                        <Award className="h-4 w-4 text-amber-500 mb-1" />
-                        <span className="text-2xl font-bold text-amber-500">{mergedStats.gamma_count}</span>
-                        <span className="text-xs text-muted-foreground">גמא</span>
-                      </div>
-                      <div className="flex flex-col items-center p-3 bg-sky-400/10 rounded-lg border border-sky-400/30">
-                        <Target className="h-4 w-4 text-sky-400 mb-1" />
-                        <span className="text-2xl font-bold text-sky-400">{mergedStats.delta_count}</span>
-                        <span className="text-xs text-muted-foreground">דלתא</span>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">אין נתונים עדיין. הסטטיסטיקות יתעדכנו לאחר סיום טורנירים.</p>
-                )}
-              </Card>
-            )}
+              <TabsContent value="team">
+                <ProfileTeamViewTab
+                  teams={teams}
+                  selectedTeamId={teamViewId}
+                  onSelectTeam={setTeamViewId}
+                  evenings={teamViewEvenings}
+                  myEveningIds={myEveningIdsForTeam}
+                  myParticipationById={myParticipationById}
+                  loading={historyLoading}
+                />
+              </TabsContent>
+            </Tabs>
 
-            {claimedPlayers.length > 1 && (
-              <Card className="bg-gradient-card border-primary/20 p-4 mb-4 shadow-card">
-                <div className="flex items-center gap-2 mb-3">
-                  <Users className="h-5 w-5 text-neon-green" />
-                  <h2 className="text-lg font-semibold text-foreground">שחקנים בקבוצות נוספות</h2>
-                </div>
-                <div className="space-y-1.5">
-                  {claimedPlayers
-                    .filter((c) => c.team_id !== activeTeamId)
-                    .map((claim) => {
-                      const team = teams.find((t) => t.team_id === claim.team_id);
-                      return (
-                        <div key={claim.team_id} className="flex items-center justify-between p-2 bg-gaming-surface rounded-lg">
-                          <div className="flex items-center gap-2">
-                            <Badge variant="secondary" className="flex items-center gap-1">
-                              <UserCheck className="h-3 w-3" />
-                              {claim.player_name}
-                            </Badge>
-                            {team && <span className="text-xs text-muted-foreground">({team.team_name})</span>}
-                          </div>
-                          <Button size="sm" variant="ghost" onClick={() => handleUnclaimForTeam(claim.team_id)}>
-                            <X className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
-                      );
-                    })}
-                </div>
-              </Card>
-            )}
-
-            <Card className="bg-gradient-card border-primary/20 p-4 mb-4 shadow-card">
+            {/* Teams list (kept for clarity of role) */}
+            <Card className="bg-gradient-card border-primary/20 p-4 mt-4 shadow-card">
               <div className="flex items-center gap-2 mb-3">
                 <Users className="h-5 w-5 text-neon-green" />
-                <h2 className="text-lg font-semibold text-foreground">הקבוצות שלי</h2>
+                <h2 className="text-base font-semibold text-foreground">הקבוצות שלי</h2>
               </div>
               {teams.length === 0 ? (
                 <p className="text-sm text-muted-foreground">לא נמצאו קבוצות.</p>
               ) : (
                 <div className="space-y-2">
                   {teams.map((m) => (
-                    <div key={m.team_id} className="flex items-center justify-between p-2 bg-gaming-surface rounded-lg">
-                      <div className="flex items-center gap-2">
+                    <div
+                      key={m.team_id}
+                      className="flex items-center justify-between p-2 bg-gaming-surface rounded-lg"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
                         <span className="font-medium text-foreground break-words">{m.team_name}</span>
-                        {m.team_id === activeTeamId && <Badge variant="outline" className="text-[10px]">פעילה</Badge>}
+                        {m.team_id === activeTeamId && (
+                          <Badge variant="outline" className="text-[10px]">
+                            פעילה
+                          </Badge>
+                        )}
                       </div>
                       <Badge variant={m.role === "owner" ? "default" : "secondary"}>
                         {m.role === "owner" ? "בעלים" : "חבר"}
@@ -519,39 +430,6 @@ const Profile = () => {
                     </div>
                   ))}
                 </div>
-              )}
-            </Card>
-
-            <Card className="bg-gradient-card border-primary/20 p-4 shadow-card">
-              <div className="flex items-center gap-2 mb-3">
-                <Trophy className="h-5 w-5 text-neon-green" />
-                <h2 className="text-lg font-semibold text-foreground">היסטוריית טורנירים</h2>
-              </div>
-              {teamEvenings.length === 0 ? (
-                <p className="text-sm text-muted-foreground">אין ערבים בהיסטוריה שלך עדיין.</p>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="text-left">תאריך</TableHead>
-                      <TableHead className="text-left">שחקנים</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {teamEvenings.map((e) => (
-                      <TableRow key={e.id} className="hover:bg-gaming-surface/50">
-                        <TableCell className="text-left">{formatEveningDate(e)}</TableCell>
-                        <TableCell className="text-left">
-                          <div className="flex flex-wrap gap-1">
-                            {e.players.map((p) => (
-                              <Badge key={`${e.id}-${p.id}`} variant="secondary">{p.name}</Badge>
-                            ))}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
               )}
             </Card>
           </>
@@ -582,7 +460,13 @@ const Profile = () => {
               maxLength={50}
             />
             <div className="flex gap-2 justify-end">
-              <Button variant="ghost" onClick={() => { setShowCreatePlayer(false); setNewPlayerName(""); }}>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setShowCreatePlayer(false);
+                  setNewPlayerName("");
+                }}
+              >
                 ביטול
               </Button>
               <Button variant="gaming" onClick={handleCreateAndClaim} disabled={!newPlayerName.trim()}>
