@@ -79,6 +79,9 @@ export function TeamProvider({ children }: { children: ReactNode }) {
       RemoteStorageService.getClaimedPlayersByTeam(),
     ]);
 
+    console.log("[TeamContext.refresh] memberships", memberships);
+    console.log("[TeamContext.refresh] claims", claims);
+
     setTeams(memberships);
     setClaimedPlayers(claims);
 
