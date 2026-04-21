@@ -213,46 +213,46 @@ export class RemoteStorageService {
   }
 
   // Load evenings with their team info
-  static async loadEveningsWithTeams(): Promise<Array<Evening & { teamId?: string; teamName?: string }>> {
+  static async loadEveningsWithTeams(): Promise<Array<Evening & { teamId?: string; teamName?: string; _updatedAt?: string; _createdAt?: string }>> {
     if (!supabase) return [];
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return [];
-    
+
     // Try with JOIN first
     const { data, error } = await supabase
       .from(EVENINGS_TABLE)
-      .select("data, team_id, teams(name)")
+      .select("data, team_id, updated_at, created_at, teams(name)")
       .order("updated_at", { ascending: false });
-    
+
     if (!error && data && data.length > 0) {
       return data.map((r: any) => ({
         ...(r.data as Evening),
         teamId: r.team_id || undefined,
         teamName: r.teams?.name || undefined,
+        _updatedAt: r.updated_at || undefined,
+        _createdAt: r.created_at || undefined,
       }));
     }
-    
-    // Fallback: load evenings without JOIN (if JOIN failed or no data)
+
     if (error) {
       console.warn("loadEveningsWithTeams JOIN failed, falling back:", error.message);
     }
-    
+
     const { data: simpleData, error: simpleError } = await supabase
       .from(EVENINGS_TABLE)
-      .select("data, team_id")
+      .select("data, team_id, updated_at, created_at")
       .order("updated_at", { ascending: false });
-    
+
     if (simpleError || !simpleData || simpleData.length === 0) {
       if (simpleError) {
         console.error("loadEveningsWithTeams fallback also failed:", simpleError.message);
       }
       return [];
     }
-    
-    // Fetch team names separately if needed
+
     const teamIds = [...new Set(simpleData.map((r: any) => r.team_id).filter(Boolean))] as string[];
     let teamMap: Record<string, string> = {};
-    
+
     if (teamIds.length > 0) {
       const { data: teams } = await supabase
         .from(TEAMS_TABLE)
@@ -262,11 +262,13 @@ export class RemoteStorageService {
         teamMap = Object.fromEntries(teams.map((t: any) => [t.id, t.name]));
       }
     }
-    
+
     return simpleData.map((r: any) => ({
       ...(r.data as Evening),
       teamId: r.team_id || undefined,
       teamName: r.team_id ? teamMap[r.team_id] : undefined,
+      _updatedAt: r.updated_at || undefined,
+      _createdAt: r.created_at || undefined,
     }));
   }
 
