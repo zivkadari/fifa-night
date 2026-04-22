@@ -11,8 +11,37 @@ import { RemoteStorageService } from "@/services/remoteStorageService";
 import { EveningMatchDetails } from "@/components/EveningMatchDetails";
 import { LinkToTeamDialog } from "@/components/LinkToTeamDialog";
 import { ManualTournamentEntry } from "@/components/ManualTournamentEntry";
+import { UserHistoryService, type UnifiedEvening } from "@/services/userHistoryService";
 
-export type EveningWithTeam = Evening & { teamId?: string; teamName?: string };
+export type EveningWithTeam = Evening & {
+  teamId?: string;
+  teamName?: string;
+  _updatedAt?: string;
+  _createdAt?: string;
+};
+
+// Deterministic newest-first sort: prefers tournament date, then updated_at, then created_at.
+const tsOf = (e: EveningWithTeam) => {
+  for (const c of [e.date, (e as any)._updatedAt, (e as any)._createdAt]) {
+    if (!c) continue;
+    const t = new Date(c).getTime();
+    if (!Number.isNaN(t)) return t;
+  }
+  return 0;
+};
+
+// Deduplicate players by canonical id within a single evening so the
+// per-evening leaderboard never double-counts the same logical player.
+const dedupePlayers = <T extends { id: string; name: string }>(players: T[]): T[] => {
+  const seen = new Set<string>();
+  const out: T[] = [];
+  for (const p of players) {
+    if (seen.has(p.id)) continue;
+    seen.add(p.id);
+    out.push(p);
+  }
+  return out;
+};
 
 interface TournamentHistoryProps {
   evenings: EveningWithTeam[];
@@ -22,16 +51,34 @@ interface TournamentHistoryProps {
 }
 
 export const TournamentHistory = ({ evenings, onBack, onDeleteEvening, onRefresh }: TournamentHistoryProps) => {
-  const sortedEvenings = [...evenings].sort((a, b) => 
-    new Date(b.date).getTime() - new Date(a.date).getTime()
-  );
+  // Use the unified history service as a fallback so this screen shares the
+  // same deduplicated, team-aware data model as the Profile pages.
+  const [unified, setUnified] = useState<UnifiedEvening[] | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const all = await UserHistoryService.loadAllVisibleEvenings();
+        if (mounted) setUnified(all);
+      } catch {
+        if (mounted) setUnified([]);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
+
+  // Prefer unified data when available (it carries _updatedAt/_createdAt and
+  // canonical team info); otherwise fall back to the props-provided list.
+  const baseEvenings: EveningWithTeam[] = (unified && unified.length > 0)
+    ? (unified as unknown as EveningWithTeam[])
+    : evenings;
+
+  const sortedEvenings = [...baseEvenings].sort((a, b) => tsOf(b) - tsOf(a));
 
   // Teams filter and per-team evenings
   const [teams, setTeams] = useState<Array<{ id: string; name: string }>>([]);
   const [selectedTeamId, setSelectedTeamId] = useState<string | 'all'>('all');
-  const [teamEvenings, setTeamEvenings] = useState<EveningWithTeam[]>([]);
-  
-  const [loading, setLoading] = useState(false);
   const [manualEntryOpen, setManualEntryOpen] = useState(false);
 
   useEffect(() => {
@@ -45,33 +92,12 @@ export const TournamentHistory = ({ evenings, onBack, onDeleteEvening, onRefresh
     return () => { mounted = false; };
   }, []);
 
-  useEffect(() => {
-    let mounted = true;
-    if (selectedTeamId === 'all') {
-      setTeamEvenings([]);
-      return () => { mounted = false; };
-    }
-    
-    // First check if we have direct matches in already-loaded evenings
-    const directMatch = sortedEvenings.filter(e => e.teamId === selectedTeamId);
-    if (directMatch.length > 0) {
-      setTeamEvenings(directMatch);
-      return () => { mounted = false; };
-    }
-    
-    // Fallback: load from server with player-based matching
-    setLoading(true);
-    (async () => {
-      const evs = await RemoteStorageService.loadEveningsByTeam(selectedTeamId);
-      if (mounted) setTeamEvenings(evs);
-      if (mounted) setLoading(false);
-    })();
-    return () => { mounted = false; };
-  }, [selectedTeamId, sortedEvenings]);
-
+  // Strict team scoping by team_id only (no name-based fuzzy matching across
+  // teams). This eliminates the duplicated-players issue caused by
+  // legacy player records appearing in multiple teams.
   const activeEvenings = selectedTeamId === 'all'
     ? sortedEvenings
-    : [...teamEvenings].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    : sortedEvenings.filter(e => e.teamId === selectedTeamId);
 
   // Build overall leaderboard with counts per rank and tournaments played
   type Counts = { name: string; alpha: number; beta: number; gamma: number; delta: number; tournaments: number };
