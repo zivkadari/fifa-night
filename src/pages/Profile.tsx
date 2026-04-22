@@ -122,6 +122,30 @@ const Profile = () => {
     }
   }, [activeTeamId, teams, teamViewId]);
 
+  // ----- Compute TeamStats for the selected Team View -----
+  useEffect(() => {
+    let mounted = true;
+    if (!teamViewId) {
+      setTeamStats(null);
+      return;
+    }
+    const team = teams.find((t) => t.team_id === teamViewId);
+    if (!team) {
+      setTeamStats(null);
+      return;
+    }
+    UserHistoryService.loadTeamStats(teamViewId, team.team_name, allEvenings, myEvenings)
+      .then((ts) => {
+        if (mounted) setTeamStats(ts);
+      })
+      .catch(() => {
+        if (mounted) setTeamStats(null);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [teamViewId, teams, allEvenings, myEvenings]);
+
   // ----- Team players for the linking dialog -----
   useEffect(() => {
     if (!activeTeamId) {
@@ -398,6 +422,7 @@ const Profile = () => {
                   evenings={teamViewEvenings}
                   myEveningIds={myEveningIdsForTeam}
                   myParticipationById={myParticipationById}
+                  teamStats={teamStats}
                   loading={historyLoading}
                 />
               </TabsContent>
