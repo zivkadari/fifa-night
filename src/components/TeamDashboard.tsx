@@ -291,22 +291,6 @@ export const TeamDashboard = ({
           היסטוריית טורנירים
         </Button>
 
-        {onViewFPHistory && (
-          <Button variant="secondary" size="default" onClick={onViewFPHistory} className="w-full justify-start gap-3">
-            <Users2 className="h-4 w-4" />
-            היסטוריית ליגות 5 שחקנים
-          </Button>
-        )}
-
-        {fpTeamId && (
-          <Button asChild variant="secondary" size="default" className="w-full justify-start gap-3">
-            <Link to={`/fp-hub/${fpTeamId}`}>
-              <Eye className="h-4 w-4" />
-              צפייה בהאב הקבוצתי
-            </Link>
-          </Button>
-        )}
-
         {onJoinEvening && isAuthed && (
           <Button variant="outline" size="default" onClick={onJoinEvening} className="w-full justify-start gap-3 border-neon-green/20">
             <UserPlus className="h-4 w-4" />
