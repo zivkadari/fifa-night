@@ -76,9 +76,14 @@ export const TournamentHistory = ({ evenings, onBack, onDeleteEvening, onRefresh
 
   const sortedEvenings = [...baseEvenings].sort((a, b) => tsOf(b) - tsOf(a));
 
-  // Teams filter and per-team evenings
+  // Teams filter and per-team evenings.
+  // Strict team scoping: history MUST be viewed within a single team to
+  // prevent cross-team player duplication. The "all teams" view was the
+  // primary source of duplicate-player rows in the leaderboard, so it has
+  // been removed in favor of the unified Profile → My History feed for
+  // cross-team views.
   const [teams, setTeams] = useState<Array<{ id: string; name: string }>>([]);
-  const [selectedTeamId, setSelectedTeamId] = useState<string | 'all'>('all');
+  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [manualEntryOpen, setManualEntryOpen] = useState(false);
 
   useEffect(() => {
@@ -86,18 +91,21 @@ export const TournamentHistory = ({ evenings, onBack, onDeleteEvening, onRefresh
     (async () => {
       try {
         const list = await RemoteStorageService.listTeams();
-        if (mounted) setTeams(list);
+        if (mounted) {
+          setTeams(list);
+          // Auto-select the first team only if none chosen yet, so the
+          // history is always team-scoped from the first render.
+          setSelectedTeamId((prev) => prev ?? (list[0]?.id ?? null));
+        }
       } catch {}
     })();
     return () => { mounted = false; };
   }, []);
 
-  // Strict team scoping by team_id only (no name-based fuzzy matching across
-  // teams). This eliminates the duplicated-players issue caused by
-  // legacy player records appearing in multiple teams.
-  const activeEvenings = selectedTeamId === 'all'
-    ? sortedEvenings
-    : sortedEvenings.filter(e => e.teamId === selectedTeamId);
+  // Strict team scoping by team_id only — never aggregate across teams here.
+  const activeEvenings = selectedTeamId
+    ? sortedEvenings.filter(e => e.teamId === selectedTeamId)
+    : [];
 
   // Build overall leaderboard with counts per rank and tournaments played
   type Counts = { name: string; alpha: number; beta: number; gamma: number; delta: number; tournaments: number };
@@ -221,17 +229,19 @@ export const TournamentHistory = ({ evenings, onBack, onDeleteEvening, onRefresh
               <Users className="h-4 w-4 text-neon-green" />
               <span className="text-sm text-muted-foreground">צפה לפי קבוצה</span>
             </div>
-            <Select value={selectedTeamId} onValueChange={(v) => setSelectedTeamId(v as any)}>
+            <Select value={selectedTeamId ?? ''} onValueChange={(v) => setSelectedTeamId(v)}>
               <SelectTrigger className="w-full bg-gaming-surface border-border">
                 <SelectValue placeholder="בחר קבוצה" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">כל הקבוצות</SelectItem>
                 {teams.map((t) => (
                   <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            <p className="text-[10px] text-muted-foreground mt-2">
+              להיסטוריה כוללת בין קבוצות, עבור לפרופיל → ההיסטוריה שלי.
+            </p>
           </div>
 
           {/* Overall Leaderboard */}

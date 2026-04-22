@@ -33,11 +33,10 @@ import { FPGame } from "@/components/FPGame";
 import { FPSummary } from "@/components/FPSummary";
 import { FPEvening } from "@/types/fivePlayerTypes";
 import { createFPEvening } from "@/services/fivePlayerEngine";
-import { FPHistory } from "@/components/FPHistory";
 import { FPBankOverview } from "@/components/FPBankOverview";
 import { useTeam } from "@/contexts/TeamContext";
 
-type AppState = 'home' | 'setup' | 'tournament-type' | 'singles-setup' | 'singles-clubs' | 'singles-schedule' | 'game' | 'summary' | 'history' | 'teams' | 'join' | 'pairs-mode-selection' | 'tier-question-flow' | 'fp-setup' | 'fp-bank-overview' | 'fp-game' | 'fp-summary' | 'fp-history';
+type AppState = 'home' | 'setup' | 'tournament-type' | 'singles-setup' | 'singles-clubs' | 'singles-schedule' | 'game' | 'summary' | 'history' | 'teams' | 'join' | 'pairs-mode-selection' | 'tier-question-flow' | 'fp-setup' | 'fp-bank-overview' | 'fp-game' | 'fp-summary';
 
 const Index = () => {
   const location = useLocation();
@@ -828,12 +827,7 @@ const handleGoHome = () => {
               }}
             />
           ) : null;
-        
-        case 'fp-history':
-          return (
-            <FPHistory onBack={() => window.history.back()} fpTeamId={fpTeamId} />
-          );
-        
+
         default:
           return null;
     }

@@ -38,7 +38,6 @@ interface TeamDashboardProps {
   onStartPairs: () => void;
   onStartSingles: () => void;
   onViewHistory: () => void;
-  onViewFPHistory?: () => void;
   onResume?: () => void;
   onCloseTournament?: () => void;
   onManageTeams?: () => void;
@@ -48,7 +47,6 @@ interface TeamDashboardProps {
   onSignOut?: () => void;
   activeTournamentMode?: string | null;
   activeTournamentProgress?: string | null;
-  fpTeamId?: string | null;
 }
 
 export const TeamDashboard = ({
@@ -57,7 +55,6 @@ export const TeamDashboard = ({
   onStartPairs,
   onStartSingles,
   onViewHistory,
-  onViewFPHistory,
   onResume,
   onCloseTournament,
   onManageTeams,
@@ -67,7 +64,6 @@ export const TeamDashboard = ({
   onSignOut,
   activeTournamentMode,
   activeTournamentProgress,
-  fpTeamId,
 }: TeamDashboardProps) => {
   const { teams, activeTeamId, setActiveTeamId, activePlayer } = useTeam();
   const [manageOpen, setManageOpen] = useState(false);

@@ -24,7 +24,6 @@ import {
 interface TournamentHomeProps {
   onStartNew: () => void;
   onViewHistory: () => void;
-  onViewFPHistory?: () => void;
   onResume?: () => void;
   onCloseTournament?: () => void;
   onManageTeams?: () => void;
@@ -37,7 +36,6 @@ interface TournamentHomeProps {
 export const TournamentHome = ({ 
   onStartNew, 
   onViewHistory, 
-  onViewFPHistory,
   onResume, 
   onCloseTournament,
   onManageTeams,
@@ -135,13 +133,6 @@ export const TournamentHome = ({
           <History className="h-5 w-5" />
           History
         </Button>
-
-        {onViewFPHistory && (
-          <Button variant="outline" size="lg" onClick={onViewFPHistory} className="w-full border-neon-green/30 hover:bg-neon-green/10">
-            <Users2 className="h-5 w-5" />
-            היסטוריית ליגות 5 שחקנים
-          </Button>
-        )}
 
         {/* Admin Options - single dropdown */}
         {isAdmin && (
