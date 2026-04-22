@@ -484,7 +484,6 @@ const handleGoHome = () => {
             onStartPairs={() => { setSelectedTournamentType('pairs'); goTo('setup'); }}
             onStartSingles={() => { setSelectedTournamentType('singles'); goTo('singles-setup'); }}
             onViewHistory={handleViewHistory}
-            onViewFPHistory={() => goTo('fp-history')}
             onResume={
               activeFP
                 ? () => goTo('fp-game')
@@ -510,7 +509,6 @@ const handleGoHome = () => {
             onSignOut={handleSignOut}
             activeTournamentMode={tournamentMode}
             activeTournamentProgress={tournamentProgress}
-            fpTeamId={fpTeamId}
           />
         );
       }
