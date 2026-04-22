@@ -111,8 +111,9 @@ export const TournamentHistory = ({ evenings, onBack, onDeleteEvening, onRefresh
   };
 
   activeEvenings.forEach((evening) => {
+    const uniquePlayers = dedupePlayers(evening.players || []);
     // Count tournament participation
-    evening.players.forEach((p) => {
+    uniquePlayers.forEach((p) => {
       ensure(p.id, p.name);
       const prev = countsMap.get(p.id)!;
       prev.tournaments += 1;
@@ -120,13 +121,15 @@ export const TournamentHistory = ({ evenings, onBack, onDeleteEvening, onRefresh
 
     if (!evening.rankings) return;
 
-    const alpha = evening.rankings.alpha || [];
-    const beta = evening.rankings.beta || [];
-    const gamma = evening.rankings.gamma || [];
+    const alpha = dedupePlayers(evening.rankings.alpha || []);
+    const beta = dedupePlayers(evening.rankings.beta || []);
+    const gamma = dedupePlayers(evening.rankings.gamma || []);
     const knownIds = new Set<string>([...alpha, ...beta, ...gamma].map(p => p.id));
-    const delta = (evening.rankings.delta && evening.rankings.delta.length > 0)
-      ? evening.rankings.delta
-      : evening.players.filter(p => !knownIds.has(p.id));
+    const delta = dedupePlayers(
+      (evening.rankings.delta && evening.rankings.delta.length > 0)
+        ? evening.rankings.delta
+        : uniquePlayers.filter(p => !knownIds.has(p.id))
+    );
 
     const inc = (players: typeof evening.players, key: keyof Omit<Counts, 'name' | 'tournaments'>) => {
       players.forEach((p) => {
