@@ -30,6 +30,7 @@ import {
   UserHistoryService,
   type MyEvening,
   type OverviewStats,
+  type TeamStats,
   type UnifiedEvening,
 } from "@/services/userHistoryService";
 import { ProfileOverviewTab } from "@/components/profile/ProfileOverviewTab";
@@ -68,6 +69,7 @@ const Profile = () => {
 
   // Team View selected team (defaults to active team)
   const [teamViewId, setTeamViewId] = useState<string | null>(null);
+  const [teamStats, setTeamStats] = useState<TeamStats | null>(null);
 
   // ----- Identity load -----
   useEffect(() => {
@@ -119,6 +121,30 @@ const Profile = () => {
       setTeamViewId(activeTeamId ?? teams[0]?.team_id ?? null);
     }
   }, [activeTeamId, teams, teamViewId]);
+
+  // ----- Compute TeamStats for the selected Team View -----
+  useEffect(() => {
+    let mounted = true;
+    if (!teamViewId) {
+      setTeamStats(null);
+      return;
+    }
+    const team = teams.find((t) => t.team_id === teamViewId);
+    if (!team) {
+      setTeamStats(null);
+      return;
+    }
+    UserHistoryService.loadTeamStats(teamViewId, team.team_name, allEvenings, myEvenings)
+      .then((ts) => {
+        if (mounted) setTeamStats(ts);
+      })
+      .catch(() => {
+        if (mounted) setTeamStats(null);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [teamViewId, teams, allEvenings, myEvenings]);
 
   // ----- Team players for the linking dialog -----
   useEffect(() => {
@@ -396,6 +422,7 @@ const Profile = () => {
                   evenings={teamViewEvenings}
                   myEveningIds={myEveningIdsForTeam}
                   myParticipationById={myParticipationById}
+                  teamStats={teamStats}
                   loading={historyLoading}
                 />
               </TabsContent>

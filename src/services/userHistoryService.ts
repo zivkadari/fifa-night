@@ -1,8 +1,8 @@
 /**
  * Unified, team-aware history data layer.
  *
- * Single source of truth for the new Profile experience and (later) the
- * existing TournamentHistory page. Identity is grounded strictly in
+ * Single source of truth for the new Profile experience and for the
+ * team-scoped TournamentHistory page. Identity is grounded strictly in
  * `player_accounts` — i.e. the explicit user→player link per team.
  *
  * Why an extra "name match within linked team" step?
@@ -35,6 +35,13 @@ export interface MyParticipation {
   selfPlayer: Player;
   /** Tier the user landed in for this evening, if any */
   tier?: "alpha" | "beta" | "gamma" | "delta" | "epsilon";
+  /** Aggregate per-evening result for the user */
+  played: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  goalsFor: number;
+  goalsAgainst: number;
 }
 
 export interface MyEvening extends UnifiedEvening {
@@ -43,6 +50,13 @@ export interface MyEvening extends UnifiedEvening {
 
 export interface OverviewStats {
   tournamentsPlayed: number;
+  gamesPlayed: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  winRate: number; // 0..1
   alpha: number;
   beta: number;
   gamma: number;
@@ -54,7 +68,42 @@ export interface OverviewStats {
     teamName: string;
     playerName: string;
     tournaments: number;
+    wins: number;
+    games: number;
+    winRate: number;
+    alpha: number;
   }>;
+  /** Cross-team insights (sorted by impact, derived from perTeam + mode) */
+  insights: Insight[];
+}
+
+export interface TeamStats {
+  teamId: string;
+  teamName: string;
+  /** How many tournaments the user played in this team */
+  tournamentsPlayed: number;
+  /** How many tournaments exist in this team total (visible) */
+  teamTournamentsTotal: number;
+  gamesPlayed: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  winRate: number;
+  alpha: number;
+  beta: number;
+  gamma: number;
+  delta: number;
+  epsilon: number;
+  insights: Insight[];
+}
+
+export interface Insight {
+  id: string;
+  icon: "trophy" | "flame" | "target" | "users" | "trending" | "medal" | "star";
+  title: string;
+  detail?: string;
 }
 
 const norm = (s: string) =>
@@ -75,7 +124,6 @@ function resolveMode(e: Evening): TournamentMode {
   if (anyE.mode === "five-player-doubles") return "five-player-doubles";
   if (anyE.type === "singles") return "singles";
   if (anyE.type === "pairs") return "pairs";
-  // Heuristic fallback
   if (typeof anyE.id === "string" && anyE.id.startsWith("fp-")) return "five-player-doubles";
   return "unknown";
 }
@@ -94,9 +142,6 @@ function sortNewestFirst<T extends UnifiedEvening>(arr: T[]): T[] {
   return [...arr].sort((a, b) => timestampOf(b) - timestampOf(a));
 }
 
-/**
- * Detect tier of a given player in an evening's rankings.
- */
 function detectTier(
   e: Evening,
   playerId: string,
@@ -115,11 +160,273 @@ function detectTier(
   return undefined;
 }
 
+/**
+ * Aggregate per-evening counters for the user (games, W/L/D, goals).
+ * Handles three shapes:
+ *   - Pairs evening: rounds[].matches[] (pair vs pair, score [a,b])
+ *   - Singles evening: gameSequence[] (player vs player)
+ *   - 5-player doubles: schedule[] (pairA vs pairB)
+ */
+function aggregateUserCounters(
+  e: Evening,
+  selfPlayerId: string,
+  selfNameSlug: string
+): Pick<MyParticipation, "played" | "wins" | "draws" | "losses" | "goalsFor" | "goalsAgainst"> {
+  let played = 0,
+    wins = 0,
+    draws = 0,
+    losses = 0,
+    goalsFor = 0,
+    goalsAgainst = 0;
+
+  const isMe = (p?: { id?: string; name?: string }) =>
+    !!p && (p.id === selfPlayerId || slugify(p.name || "") === selfNameSlug);
+
+  const anyE = e as any;
+
+  // Pairs (rounds)
+  if (Array.isArray(e.rounds) && e.rounds.length > 0) {
+    for (const r of e.rounds) {
+      for (const m of r.matches || []) {
+        if (!m.completed || !m.score) continue;
+        const [a, b] = m.score;
+        const inA = m.pairs?.[0]?.players?.some(isMe);
+        const inB = m.pairs?.[1]?.players?.some(isMe);
+        if (!inA && !inB) continue;
+        played++;
+        if (inA) {
+          goalsFor += a;
+          goalsAgainst += b;
+          if (a > b) wins++;
+          else if (a < b) losses++;
+          else draws++;
+        } else {
+          goalsFor += b;
+          goalsAgainst += a;
+          if (b > a) wins++;
+          else if (b < a) losses++;
+          else draws++;
+        }
+      }
+    }
+  }
+
+  // Singles (gameSequence)
+  if (Array.isArray(anyE.gameSequence)) {
+    for (const g of anyE.gameSequence) {
+      if (!g.completed || !g.score) continue;
+      const [a, b] = g.score;
+      const inA = isMe(g.players?.[0]);
+      const inB = isMe(g.players?.[1]);
+      if (!inA && !inB) continue;
+      played++;
+      if (inA) {
+        goalsFor += a;
+        goalsAgainst += b;
+        if (a > b) wins++;
+        else if (a < b) losses++;
+        else draws++;
+      } else {
+        goalsFor += b;
+        goalsAgainst += a;
+        if (b > a) wins++;
+        else if (b < a) losses++;
+        else draws++;
+      }
+    }
+  }
+
+  // 5-player doubles (schedule)
+  if (Array.isArray(anyE.schedule)) {
+    for (const m of anyE.schedule) {
+      if (!m.completed || m.scoreA == null || m.scoreB == null) continue;
+      const inA = m.pairA?.players?.some(isMe);
+      const inB = m.pairB?.players?.some(isMe);
+      if (!inA && !inB) continue;
+      played++;
+      const a = m.scoreA as number;
+      const b = m.scoreB as number;
+      if (inA) {
+        goalsFor += a;
+        goalsAgainst += b;
+        if (a > b) wins++;
+        else if (a < b) losses++;
+        else draws++;
+      } else {
+        goalsFor += b;
+        goalsAgainst += a;
+        if (b > a) wins++;
+        else if (b < a) losses++;
+        else draws++;
+      }
+    }
+  }
+
+  return { played, wins, draws, losses, goalsFor, goalsAgainst };
+}
+
+function pct(num: number, den: number): number {
+  return den > 0 ? num / den : 0;
+}
+
+function buildGlobalInsights(stats: OverviewStats): Insight[] {
+  const out: Insight[] = [];
+  const teamsWithGames = stats.perTeam.filter((t) => t.games > 0);
+  if (teamsWithGames.length === 0) return out;
+
+  const mostActive = [...stats.perTeam].sort((a, b) => b.tournaments - a.tournaments)[0];
+  if (mostActive && mostActive.tournaments > 0) {
+    out.push({
+      id: "most-active",
+      icon: "flame",
+      title: `הקבוצה הפעילה ביותר שלך: ${mostActive.teamName}`,
+      detail: `${mostActive.tournaments} טורנירים`,
+    });
+  }
+
+  const bestWinRate = [...teamsWithGames].sort((a, b) => b.winRate - a.winRate)[0];
+  if (bestWinRate && bestWinRate.games >= 3) {
+    out.push({
+      id: "best-winrate",
+      icon: "trending",
+      title: `אחוז ניצחון הכי גבוה: ${bestWinRate.teamName}`,
+      detail: `${Math.round(bestWinRate.winRate * 100)}% (${bestWinRate.wins}/${bestWinRate.games})`,
+    });
+  }
+
+  const mostAlpha = [...stats.perTeam].sort((a, b) => b.alpha - a.alpha)[0];
+  if (mostAlpha && mostAlpha.alpha > 0) {
+    out.push({
+      id: "alpha-king",
+      icon: "trophy",
+      title: `הכי הרבה אלפא ב${mostAlpha.teamName}`,
+      detail: `${mostAlpha.alpha} פעמים`,
+    });
+  }
+
+  return out;
+}
+
+function buildTeamInsights(
+  teamStats: TeamStats,
+  myTeamEvenings: MyEvening[]
+): Insight[] {
+  const out: Insight[] = [];
+  const totalGames = teamStats.gamesPlayed;
+
+  if (totalGames >= 3) {
+    out.push({
+      id: "team-winrate",
+      icon: "trending",
+      title: `אחוז ניצחון בקבוצה: ${Math.round(teamStats.winRate * 100)}%`,
+      detail: `${teamStats.wins}-${teamStats.draws}-${teamStats.losses} (W-D-L)`,
+    });
+  }
+
+  // Best mode within this team
+  const byMode = new Map<TournamentMode, { wins: number; games: number }>();
+  for (const e of myTeamEvenings) {
+    const cur = byMode.get(e.resolvedMode) || { wins: 0, games: 0 };
+    cur.wins += e.participation.wins;
+    cur.games += e.participation.played;
+    byMode.set(e.resolvedMode, cur);
+  }
+  let bestMode: { mode: TournamentMode; rate: number; wins: number; games: number } | null = null;
+  for (const [mode, v] of byMode) {
+    if (v.games < 3) continue;
+    const rate = v.wins / v.games;
+    if (!bestMode || rate > bestMode.rate) bestMode = { mode, rate, wins: v.wins, games: v.games };
+  }
+  if (bestMode) {
+    out.push({
+      id: "team-best-mode",
+      icon: "star",
+      title: `המצב החזק שלך כאן: ${modeLabelHe[bestMode.mode]}`,
+      detail: `${Math.round(bestMode.rate * 100)}% (${bestMode.wins}/${bestMode.games})`,
+    });
+  }
+
+  // Best teammate (5P + pairs)
+  const teammateScore = new Map<string, { name: string; wins: number; games: number }>();
+  for (const e of myTeamEvenings) {
+    const selfId = e.participation.selfPlayer.id;
+    const selfSlug = slugify(e.participation.selfPlayer.name);
+    const isMe = (p?: { id?: string; name?: string }) =>
+      !!p && (p.id === selfId || slugify(p.name || "") === selfSlug);
+
+    const consume = (
+      teammates: Player[],
+      didWin: boolean
+    ) => {
+      for (const t of teammates) {
+        if (isMe(t)) continue;
+        const key = slugify(t.name);
+        const cur = teammateScore.get(key) || { name: t.name, wins: 0, games: 0 };
+        cur.games++;
+        if (didWin) cur.wins++;
+        teammateScore.set(key, cur);
+      }
+    };
+
+    // pairs rounds
+    for (const r of e.rounds || []) {
+      for (const m of r.matches || []) {
+        if (!m.completed || !m.score) continue;
+        const inA = m.pairs?.[0]?.players?.some(isMe);
+        const inB = m.pairs?.[1]?.players?.some(isMe);
+        if (!inA && !inB) continue;
+        const [a, b] = m.score;
+        const myPair = inA ? m.pairs[0] : m.pairs[1];
+        const myScore = inA ? a : b;
+        const oppScore = inA ? b : a;
+        consume(myPair.players as Player[], myScore > oppScore);
+      }
+    }
+    // 5P schedule
+    const sched = (e as any).schedule as any[] | undefined;
+    if (Array.isArray(sched)) {
+      for (const m of sched) {
+        if (!m.completed || m.scoreA == null || m.scoreB == null) continue;
+        const inA = m.pairA?.players?.some(isMe);
+        const inB = m.pairB?.players?.some(isMe);
+        if (!inA && !inB) continue;
+        const myPair = inA ? m.pairA : m.pairB;
+        const myScore = inA ? m.scoreA : m.scoreB;
+        const oppScore = inA ? m.scoreB : m.scoreA;
+        consume(myPair.players as Player[], myScore > oppScore);
+      }
+    }
+  }
+  let bestTeammate: { name: string; rate: number; wins: number; games: number } | null = null;
+  for (const v of teammateScore.values()) {
+    if (v.games < 3) continue;
+    const rate = v.wins / v.games;
+    if (!bestTeammate || rate > bestTeammate.rate) {
+      bestTeammate = { name: v.name, rate, wins: v.wins, games: v.games };
+    }
+  }
+  if (bestTeammate) {
+    out.push({
+      id: "team-best-teammate",
+      icon: "users",
+      title: `הפרטנר החזק שלך: ${bestTeammate.name}`,
+      detail: `${Math.round(bestTeammate.rate * 100)}% ניצחון יחד (${bestTeammate.wins}/${bestTeammate.games})`,
+    });
+  }
+
+  // Tier highlights
+  if (teamStats.alpha > 0) {
+    out.push({
+      id: "team-alpha",
+      icon: "trophy",
+      title: `סיימת אלפא ${teamStats.alpha} פעמים בקבוצה זו`,
+    });
+  }
+
+  return out;
+}
+
 export class UserHistoryService {
-  /**
-   * Load every evening visible to the current user, augmented with team info
-   * and resolved mode. Sorted newest first.
-   */
   static async loadAllVisibleEvenings(): Promise<UnifiedEvening[]> {
     const rows = await RemoteStorageService.loadEveningsWithTeams();
     const enriched: UnifiedEvening[] = rows.map((r) => {
@@ -136,26 +443,12 @@ export class UserHistoryService {
     return sortNewestFirst(enriched);
   }
 
-  /**
-   * Return the evenings the current user actually participated in, across
-   * every team where they have a linked player. Sorted newest first.
-   *
-   * Participation rule: evening's team_id must be one of the user's
-   * claimed teams AND the evening's player list must contain a player whose
-   * id matches the claimed player_id OR whose name matches the claimed
-   * player_name (case/slug-insensitive). Name matching is restricted to the
-   * linked team — never cross-team — so it stays grounded in the explicit
-   * link.
-   */
-  static async loadMyEvenings(
-    allEvenings?: UnifiedEvening[]
-  ): Promise<MyEvening[]> {
+  static async loadMyEvenings(allEvenings?: UnifiedEvening[]): Promise<MyEvening[]> {
     const claims = await RemoteStorageService.getClaimedPlayersByTeam();
     if (claims.length === 0) return [];
 
     const all = allEvenings ?? (await this.loadAllVisibleEvenings());
 
-    // Index claims by team for O(1) lookup
     const claimByTeam = new Map<string, { player_id: string; player_name: string }>();
     for (const c of claims) {
       if (c.team_id) {
@@ -180,19 +473,17 @@ export class UserHistoryService {
       );
       if (!selfPlayer) continue;
 
-      const tier = detectTier(e, selfPlayer.id, slugify(selfPlayer.name));
+      const selfSlug = slugify(selfPlayer.name);
+      const tier = detectTier(e, selfPlayer.id, selfSlug);
+      const counters = aggregateUserCounters(e, selfPlayer.id, selfSlug);
       mine.push({
         ...e,
-        participation: { selfPlayer, tier },
+        participation: { selfPlayer, tier, ...counters },
       });
     }
     return sortNewestFirst(mine);
   }
 
-  /**
-   * Cross-team aggregate stats for the current user, computed from
-   * MyEvenings (so it inherits the strict link-based participation rule).
-   */
   static async loadOverview(myEvenings?: MyEvening[]): Promise<OverviewStats> {
     const mine = myEvenings ?? (await this.loadMyEvenings());
     const claims = await RemoteStorageService.getClaimedPlayersByTeam();
@@ -201,41 +492,117 @@ export class UserHistoryService {
 
     const stats: OverviewStats = {
       tournamentsPlayed: mine.length,
+      gamesPlayed: 0,
+      wins: 0,
+      draws: 0,
+      losses: 0,
+      goalsFor: 0,
+      goalsAgainst: 0,
+      winRate: 0,
       alpha: 0,
       beta: 0,
       gamma: 0,
       delta: 0,
       epsilon: 0,
       perTeam: [],
+      insights: [],
     };
 
-    const perTeamCount = new Map<string, number>();
+    type TeamAgg = {
+      tournaments: number;
+      games: number;
+      wins: number;
+      alpha: number;
+    };
+    const perTeamAgg = new Map<string, TeamAgg>();
+
     for (const e of mine) {
-      const t = e.participation.tier;
-      if (t) stats[t]++;
-      if (e.teamId) perTeamCount.set(e.teamId, (perTeamCount.get(e.teamId) || 0) + 1);
+      const p = e.participation;
+      stats.gamesPlayed += p.played;
+      stats.wins += p.wins;
+      stats.draws += p.draws;
+      stats.losses += p.losses;
+      stats.goalsFor += p.goalsFor;
+      stats.goalsAgainst += p.goalsAgainst;
+      if (p.tier) stats[p.tier]++;
+      if (e.teamId) {
+        const a = perTeamAgg.get(e.teamId) || { tournaments: 0, games: 0, wins: 0, alpha: 0 };
+        a.tournaments++;
+        a.games += p.played;
+        a.wins += p.wins;
+        if (p.tier === "alpha") a.alpha++;
+        perTeamAgg.set(e.teamId, a);
+      }
     }
+    stats.winRate = pct(stats.wins, stats.gamesPlayed);
 
     for (const c of claims) {
       if (!c.team_id) continue;
+      const a = perTeamAgg.get(c.team_id) || { tournaments: 0, games: 0, wins: 0, alpha: 0 };
       stats.perTeam.push({
         teamId: c.team_id,
         teamName: teamNameById.get(c.team_id) || "—",
         playerName: c.player_name,
-        tournaments: perTeamCount.get(c.team_id) || 0,
+        tournaments: a.tournaments,
+        wins: a.wins,
+        games: a.games,
+        winRate: pct(a.wins, a.games),
+        alpha: a.alpha,
       });
     }
     stats.perTeam.sort((a, b) => b.tournaments - a.tournaments);
+    stats.insights = buildGlobalInsights(stats);
     return stats;
   }
 
   /**
-   * Team-scoped history. Strictly filters by team_id — no cross-team noise,
-   * no duplicated players from name collisions across teams.
-   *
-   * Optional `onlyMine`: if true, restrict to evenings the current user
-   * participated in within that team.
+   * Compute a team-scoped stat block + insights for the current user.
    */
+  static async loadTeamStats(
+    teamId: string,
+    teamName: string,
+    allEvenings?: UnifiedEvening[],
+    myEvenings?: MyEvening[]
+  ): Promise<TeamStats> {
+    const all = allEvenings ?? (await this.loadAllVisibleEvenings());
+    const mine = myEvenings ?? (await this.loadMyEvenings(all));
+    const myTeam = mine.filter((e) => e.teamId === teamId);
+    const teamTotal = all.filter((e) => e.teamId === teamId).length;
+
+    const ts: TeamStats = {
+      teamId,
+      teamName,
+      tournamentsPlayed: myTeam.length,
+      teamTournamentsTotal: teamTotal,
+      gamesPlayed: 0,
+      wins: 0,
+      draws: 0,
+      losses: 0,
+      goalsFor: 0,
+      goalsAgainst: 0,
+      winRate: 0,
+      alpha: 0,
+      beta: 0,
+      gamma: 0,
+      delta: 0,
+      epsilon: 0,
+      insights: [],
+    };
+    for (const e of myTeam) {
+      const p = e.participation;
+      ts.gamesPlayed += p.played;
+      ts.wins += p.wins;
+      ts.draws += p.draws;
+      ts.losses += p.losses;
+      ts.goalsFor += p.goalsFor;
+      ts.goalsAgainst += p.goalsAgainst;
+      if (p.tier) ts[p.tier]++;
+    }
+    ts.winRate = pct(ts.wins, ts.gamesPlayed);
+    ts.insights = buildTeamInsights(ts, myTeam);
+    return ts;
+  }
+
   static async loadTeamHistory(
     teamId: string,
     options: { onlyMine?: boolean } = {},
