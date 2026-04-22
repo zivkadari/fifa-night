@@ -38,7 +38,6 @@ interface TeamDashboardProps {
   onStartPairs: () => void;
   onStartSingles: () => void;
   onViewHistory: () => void;
-  onViewFPHistory?: () => void;
   onResume?: () => void;
   onCloseTournament?: () => void;
   onManageTeams?: () => void;
@@ -57,7 +56,6 @@ export const TeamDashboard = ({
   onStartPairs,
   onStartSingles,
   onViewHistory,
-  onViewFPHistory,
   onResume,
   onCloseTournament,
   onManageTeams,
