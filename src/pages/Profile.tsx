@@ -30,6 +30,7 @@ import {
   UserHistoryService,
   type MyEvening,
   type OverviewStats,
+  type TeamStats,
   type UnifiedEvening,
 } from "@/services/userHistoryService";
 import { ProfileOverviewTab } from "@/components/profile/ProfileOverviewTab";
@@ -68,6 +69,7 @@ const Profile = () => {
 
   // Team View selected team (defaults to active team)
   const [teamViewId, setTeamViewId] = useState<string | null>(null);
+  const [teamStats, setTeamStats] = useState<TeamStats | null>(null);
 
   // ----- Identity load -----
   useEffect(() => {
