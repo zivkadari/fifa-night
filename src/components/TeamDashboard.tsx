@@ -47,7 +47,6 @@ interface TeamDashboardProps {
   onSignOut?: () => void;
   activeTournamentMode?: string | null;
   activeTournamentProgress?: string | null;
-  fpTeamId?: string | null;
 }
 
 export const TeamDashboard = ({
@@ -65,7 +64,6 @@ export const TeamDashboard = ({
   onSignOut,
   activeTournamentMode,
   activeTournamentProgress,
-  fpTeamId,
 }: TeamDashboardProps) => {
   const { teams, activeTeamId, setActiveTeamId, activePlayer } = useTeam();
   const [manageOpen, setManageOpen] = useState(false);
