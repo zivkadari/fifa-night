@@ -171,28 +171,7 @@ export const FPHistory = ({ onBack, fpTeamId }: FPHistoryProps) => {
 
         {/* Action buttons row */}
         <div className="flex gap-2 mb-4 flex-wrap">
-          {fpTeamId && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="border-neon-green/40 text-neon-green hover:bg-neon-green/10"
-              onClick={() => {
-                const url = `${window.location.origin}/fp-hub/${fpTeamId}`;
-                if (navigator.share) {
-                  navigator.share({ title: "ליגת 5 שחקנים - Hub", url }).catch(() => {
-                    navigator.clipboard.writeText(url);
-                    toast({ title: "הקישור הועתק!" });
-                  });
-                } else {
-                  navigator.clipboard.writeText(url);
-                  toast({ title: "הקישור הועתק!" });
-                }
-              }}
-            >
-              <Eye className="h-3 w-3" />
-              קישור Hub
-            </Button>
-          )}
+          {/* Public hub route was removed; per-tournament spectate links remain available below. */}
           <Button
             variant={showTrash ? "default" : "outline"}
             size="sm"
