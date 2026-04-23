@@ -317,7 +317,7 @@ export const TournamentHistory = ({ evenings, onBack, onDeleteEvening, onRefresh
                 </TableHeader>
                 <TableBody>
                   {overallCounts.map((row) => (
-                    <TableRow key={row.id}>
+                    <TableRow key={row.key}>
                       <TableCell className="text-left font-medium">
                         <span>{row.name}</span>
                       </TableCell>
@@ -352,7 +352,7 @@ export const TournamentHistory = ({ evenings, onBack, onDeleteEvening, onRefresh
                       {[...overallCounts]
                         .sort((a, b) => b.tournaments - a.tournaments || a.name.localeCompare(b.name))
                         .map((row) => (
-                          <TableRow key={row.id}>
+                          <TableRow key={row.key}>
                             <TableCell className="text-left font-medium">{row.name}</TableCell>
                             <TableCell className="text-left font-bold">{row.tournaments}</TableCell>
                           </TableRow>
