@@ -6,12 +6,19 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, Calendar, Trophy, Medal, Award, Trash2, Target, Users, Link2, Plus } from "lucide-react";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
-import { Evening } from "@/types/tournament";
+import { Evening, Player } from "@/types/tournament";
 import { RemoteStorageService } from "@/services/remoteStorageService";
+import { supabase } from "@/integrations/supabase/client";
 import { EveningMatchDetails } from "@/components/EveningMatchDetails";
 import { LinkToTeamDialog } from "@/components/LinkToTeamDialog";
 import { ManualTournamentEntry } from "@/components/ManualTournamentEntry";
 import { UserHistoryService, type UnifiedEvening } from "@/services/userHistoryService";
+import {
+  buildTeamIdentityResolver,
+  type CanonicalIdentity,
+  type TeamPlayer,
+} from "@/services/teamPlayerIdentity";
+import { TeamDuplicatePlayersCard } from "@/components/TeamDuplicatePlayersCard";
 
 export type EveningWithTeam = Evening & {
   teamId?: string;
@@ -30,14 +37,18 @@ const tsOf = (e: EveningWithTeam) => {
   return 0;
 };
 
-// Deduplicate players by canonical id within a single evening so the
+// Deduplicate players by CANONICAL identity within a single evening so the
 // per-evening leaderboard never double-counts the same logical player.
-const dedupePlayers = <T extends { id: string; name: string }>(players: T[]): T[] => {
+const dedupeByIdentity = (
+  players: Player[],
+  resolve: (p: Pick<Player, "id" | "name">) => CanonicalIdentity
+): Player[] => {
   const seen = new Set<string>();
-  const out: T[] = [];
+  const out: Player[] = [];
   for (const p of players) {
-    if (seen.has(p.id)) continue;
-    seen.add(p.id);
+    const id = resolve(p).key;
+    if (seen.has(id)) continue;
+    seen.add(id);
     out.push(p);
   }
   return out;
