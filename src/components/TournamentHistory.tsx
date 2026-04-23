@@ -106,13 +106,10 @@ function synthesizeFivePlayerRankings(evening: any): Evening["rankings"] | undef
     (x, y) => y.points - x.points || y.gd - x.gd || y.gf - x.gf
   );
 
-  const tiers: Array<keyof NonNullable<Evening["rankings"]>> = [
-    "alpha",
-    "beta",
-    "gamma",
-    "delta",
-    "epsilon",
-  ];
+  // Evening.rankings type only declares alpha/beta/gamma/delta. We still
+  // populate epsilon at runtime for 5P 5th-place display, but cast to any
+  // for the assignment so TypeScript stays happy.
+  const tiers = ["alpha", "beta", "gamma", "delta", "epsilon"] as const;
   const rankings: any = { alpha: [], beta: [], gamma: [], delta: [], epsilon: [] };
   sorted.forEach((row, idx) => {
     const tier = tiers[Math.min(idx, tiers.length - 1)];
