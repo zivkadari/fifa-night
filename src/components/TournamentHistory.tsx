@@ -258,17 +258,21 @@ export const TournamentHistory = ({ evenings, onBack, onDeleteEvening, onRefresh
       countsMap.get(ci.key)!.tournaments += 1;
     });
 
-    if (!evening.rankings) return;
+    // For 5-player tournaments, rankings are not persisted — compute them
+    // on the fly from the schedule so team-history leaderboards reflect
+    // the actual results instead of all zeros.
+    const effectiveRankings = getEffectiveRankings(evening) as any;
+    if (!effectiveRankings) return;
 
-    const alpha = dedupeByIdentity(evening.rankings.alpha || [], resolver.resolve);
-    const beta = dedupeByIdentity(evening.rankings.beta || [], resolver.resolve);
-    const gamma = dedupeByIdentity(evening.rankings.gamma || [], resolver.resolve);
+    const alpha = dedupeByIdentity(effectiveRankings.alpha || [], resolver.resolve);
+    const beta = dedupeByIdentity(effectiveRankings.beta || [], resolver.resolve);
+    const gamma = dedupeByIdentity(effectiveRankings.gamma || [], resolver.resolve);
     const knownKeys = new Set<string>(
       [...alpha, ...beta, ...gamma].map((p) => resolver.resolve(p).key)
     );
     const delta = dedupeByIdentity(
-      (evening.rankings.delta && evening.rankings.delta.length > 0)
-        ? evening.rankings.delta
+      (effectiveRankings.delta && effectiveRankings.delta.length > 0)
+        ? effectiveRankings.delta
         : uniquePlayers.filter((p) => !knownKeys.has(resolver.resolve(p).key)),
       resolver.resolve
     );
