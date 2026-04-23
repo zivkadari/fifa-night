@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -6,12 +6,19 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, Calendar, Trophy, Medal, Award, Trash2, Target, Users, Link2, Plus } from "lucide-react";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
-import { Evening } from "@/types/tournament";
+import { Evening, Player } from "@/types/tournament";
 import { RemoteStorageService } from "@/services/remoteStorageService";
+import { supabase } from "@/integrations/supabase/client";
 import { EveningMatchDetails } from "@/components/EveningMatchDetails";
 import { LinkToTeamDialog } from "@/components/LinkToTeamDialog";
 import { ManualTournamentEntry } from "@/components/ManualTournamentEntry";
 import { UserHistoryService, type UnifiedEvening } from "@/services/userHistoryService";
+import {
+  buildTeamIdentityResolver,
+  type CanonicalIdentity,
+  type TeamPlayer,
+} from "@/services/teamPlayerIdentity";
+import { TeamDuplicatePlayersCard } from "@/components/TeamDuplicatePlayersCard";
 
 export type EveningWithTeam = Evening & {
   teamId?: string;
@@ -30,14 +37,18 @@ const tsOf = (e: EveningWithTeam) => {
   return 0;
 };
 
-// Deduplicate players by canonical id within a single evening so the
+// Deduplicate players by CANONICAL identity within a single evening so the
 // per-evening leaderboard never double-counts the same logical player.
-const dedupePlayers = <T extends { id: string; name: string }>(players: T[]): T[] => {
+const dedupeByIdentity = (
+  players: Player[],
+  resolve: (p: Pick<Player, "id" | "name">) => CanonicalIdentity
+): Player[] => {
   const seen = new Set<string>();
-  const out: T[] = [];
+  const out: Player[] = [];
   for (const p of players) {
-    if (seen.has(p.id)) continue;
-    seen.add(p.id);
+    const id = resolve(p).key;
+    if (seen.has(id)) continue;
+    seen.add(id);
     out.push(p);
   }
   return out;
@@ -85,6 +96,13 @@ export const TournamentHistory = ({ evenings, onBack, onDeleteEvening, onRefresh
   const [teams, setTeams] = useState<Array<{ id: string; name: string }>>([]);
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [manualEntryOpen, setManualEntryOpen] = useState(false);
+  // Canonical team roster (drives identity resolution).
+  const [teamPlayers, setTeamPlayers] = useState<TeamPlayer[]>([]);
+  // Whether the current user is the owner of the selected team — gates the
+  // admin-only "possible duplicates" card.
+  const [isTeamOwner, setIsTeamOwner] = useState(false);
+  // Bumped after a manual merge/reject to force re-aggregation.
+  const [identityRev, setIdentityRev] = useState(0);
 
   useEffect(() => {
     let mounted = true;
@@ -93,8 +111,6 @@ export const TournamentHistory = ({ evenings, onBack, onDeleteEvening, onRefresh
         const list = await RemoteStorageService.listTeams();
         if (mounted) {
           setTeams(list);
-          // Auto-select the first team only if none chosen yet, so the
-          // history is always team-scoped from the first render.
           setSelectedTeamId((prev) => prev ?? (list[0]?.id ?? null));
         }
       } catch {}
@@ -102,48 +118,88 @@ export const TournamentHistory = ({ evenings, onBack, onDeleteEvening, onRefresh
     return () => { mounted = false; };
   }, []);
 
+  // Load team roster + ownership when the selected team changes.
+  useEffect(() => {
+    let mounted = true;
+    if (!selectedTeamId) {
+      setTeamPlayers([]);
+      setIsTeamOwner(false);
+      return;
+    }
+    (async () => {
+      try {
+        const players = await RemoteStorageService.listTeamPlayers(selectedTeamId);
+        if (mounted) setTeamPlayers(players);
+      } catch {
+        if (mounted) setTeamPlayers([]);
+      }
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) { if (mounted) setIsTeamOwner(false); return; }
+        const { data } = await supabase
+          .from("teams")
+          .select("owner_id")
+          .eq("id", selectedTeamId)
+          .maybeSingle();
+        if (mounted) setIsTeamOwner(Boolean(data && (data as any).owner_id === user.id));
+      } catch {
+        if (mounted) setIsTeamOwner(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [selectedTeamId]);
+
   // Strict team scoping by team_id only — never aggregate across teams here.
   const activeEvenings = selectedTeamId
     ? sortedEvenings.filter(e => e.teamId === selectedTeamId)
     : [];
 
-  // Build overall leaderboard with counts per rank and tournaments played
-  type Counts = { name: string; alpha: number; beta: number; gamma: number; delta: number; tournaments: number };
-  const countsMap = new Map<string, Counts>();
+  // Build a team-scoped canonical identity resolver. Aggregation below uses
+  // the canonical key so the same logical player appears once per team —
+  // even when legacy evenings used different raw player.ids.
+  const resolver = useMemo(
+    () => buildTeamIdentityResolver(selectedTeamId ?? "__none__", teamPlayers),
+    // identityRev bumps after manual merges so cached aliases are reapplied.
+    [selectedTeamId, teamPlayers, identityRev]
+  );
 
-  // Helper to ensure a player exists in the map
-  const ensure = (id: string, name: string) => {
-    if (!countsMap.has(id)) {
-      countsMap.set(id, { name, alpha: 0, beta: 0, gamma: 0, delta: 0, tournaments: 0 });
+  // Build overall leaderboard with counts per rank and tournaments played
+  type Counts = { key: string; name: string; linked: boolean; alpha: number; beta: number; gamma: number; delta: number; tournaments: number };
+  const countsMap = new Map<string, Counts>();
+  const ensure = (ci: CanonicalIdentity) => {
+    if (!countsMap.has(ci.key)) {
+      countsMap.set(ci.key, { key: ci.key, name: ci.name, linked: ci.linked, alpha: 0, beta: 0, gamma: 0, delta: 0, tournaments: 0 });
     }
   };
 
   activeEvenings.forEach((evening) => {
-    const uniquePlayers = dedupePlayers(evening.players || []);
-    // Count tournament participation
+    const uniquePlayers = dedupeByIdentity(evening.players || [], resolver.resolve);
     uniquePlayers.forEach((p) => {
-      ensure(p.id, p.name);
-      const prev = countsMap.get(p.id)!;
-      prev.tournaments += 1;
+      const ci = resolver.resolve(p);
+      ensure(ci);
+      countsMap.get(ci.key)!.tournaments += 1;
     });
 
     if (!evening.rankings) return;
 
-    const alpha = dedupePlayers(evening.rankings.alpha || []);
-    const beta = dedupePlayers(evening.rankings.beta || []);
-    const gamma = dedupePlayers(evening.rankings.gamma || []);
-    const knownIds = new Set<string>([...alpha, ...beta, ...gamma].map(p => p.id));
-    const delta = dedupePlayers(
+    const alpha = dedupeByIdentity(evening.rankings.alpha || [], resolver.resolve);
+    const beta = dedupeByIdentity(evening.rankings.beta || [], resolver.resolve);
+    const gamma = dedupeByIdentity(evening.rankings.gamma || [], resolver.resolve);
+    const knownKeys = new Set<string>(
+      [...alpha, ...beta, ...gamma].map((p) => resolver.resolve(p).key)
+    );
+    const delta = dedupeByIdentity(
       (evening.rankings.delta && evening.rankings.delta.length > 0)
         ? evening.rankings.delta
-        : uniquePlayers.filter(p => !knownIds.has(p.id))
+        : uniquePlayers.filter((p) => !knownKeys.has(resolver.resolve(p).key)),
+      resolver.resolve
     );
 
-    const inc = (players: typeof evening.players, key: keyof Omit<Counts, 'name' | 'tournaments'>) => {
+    const inc = (players: Player[], key: keyof Omit<Counts, 'key' | 'name' | 'linked' | 'tournaments'>) => {
       players.forEach((p) => {
-        ensure(p.id, p.name);
-        const prev = countsMap.get(p.id)!;
-        prev[key] += 1;
+        const ci = resolver.resolve(p);
+        ensure(ci);
+        countsMap.get(ci.key)![key] += 1;
       });
     };
 
@@ -153,7 +209,7 @@ export const TournamentHistory = ({ evenings, onBack, onDeleteEvening, onRefresh
     inc(delta, 'delta');
   });
 
-  const overallCounts = Array.from(countsMap.entries()).map(([id, v]) => ({ id, ...v }))
+  const overallCounts = Array.from(countsMap.values())
     .sort((a, b) => b.alpha - a.alpha || b.beta - a.beta || b.gamma - a.gamma || b.delta - a.delta || a.name.localeCompare(b.name));
 
   const getRankIcon = (rank: 'alpha' | 'beta' | 'gamma' | 'delta') => {
@@ -244,6 +300,21 @@ export const TournamentHistory = ({ evenings, onBack, onDeleteEvening, onRefresh
             </p>
           </div>
 
+          {/* Admin-only data quality: surface possible duplicate logical
+              players within this team. Never auto-merges. */}
+          {isTeamOwner && selectedTeamId && (
+            <TeamDuplicatePlayersCard
+              teamId={selectedTeamId}
+              identities={overallCounts.map((c) => ({
+                key: c.key,
+                name: c.name,
+                linked: c.linked,
+                tournaments: c.tournaments,
+              }))}
+              onResolved={() => setIdentityRev((r) => r + 1)}
+            />
+          )}
+
           {/* Overall Leaderboard */}
         {overallCounts.length > 0 && (
           <>
@@ -261,7 +332,7 @@ export const TournamentHistory = ({ evenings, onBack, onDeleteEvening, onRefresh
                 </TableHeader>
                 <TableBody>
                   {overallCounts.map((row) => (
-                    <TableRow key={row.id}>
+                    <TableRow key={row.key}>
                       <TableCell className="text-left font-medium">
                         <span>{row.name}</span>
                       </TableCell>
@@ -296,7 +367,7 @@ export const TournamentHistory = ({ evenings, onBack, onDeleteEvening, onRefresh
                       {[...overallCounts]
                         .sort((a, b) => b.tournaments - a.tournaments || a.name.localeCompare(b.name))
                         .map((row) => (
-                          <TableRow key={row.id}>
+                          <TableRow key={row.key}>
                             <TableCell className="text-left font-medium">{row.name}</TableCell>
                             <TableCell className="text-left font-bold">{row.tournaments}</TableCell>
                           </TableRow>
