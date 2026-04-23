@@ -300,6 +300,21 @@ export const TournamentHistory = ({ evenings, onBack, onDeleteEvening, onRefresh
             </p>
           </div>
 
+          {/* Admin-only data quality: surface possible duplicate logical
+              players within this team. Never auto-merges. */}
+          {isTeamOwner && selectedTeamId && (
+            <TeamDuplicatePlayersCard
+              teamId={selectedTeamId}
+              identities={overallCounts.map((c) => ({
+                key: c.key,
+                name: c.name,
+                linked: c.linked,
+                tournaments: c.tournaments,
+              }))}
+              onResolved={() => setIdentityRev((r) => r + 1)}
+            />
+          )}
+
           {/* Overall Leaderboard */}
         {overallCounts.length > 0 && (
           <>
