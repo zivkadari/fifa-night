@@ -689,7 +689,7 @@ function PersonalizedSpectateView({
               <Users className="h-4 w-4 ml-1" />
               החלף שחקן
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => navigate(teamId ? `/fp-hub/${teamId}` : "/")} className="text-muted-foreground">
+            <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="text-muted-foreground">
               <Home className="h-4 w-4 ml-1" />
               בית
             </Button>
