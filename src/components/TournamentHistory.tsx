@@ -54,6 +54,84 @@ const dedupeByIdentity = (
   return out;
 };
 
+/**
+ * Synthesize Greek-tier rankings (alpha/beta/gamma/delta/epsilon) from a
+ * 5-player doubles evening. FPEvening stores results per-match in
+ * `schedule[]` and never writes to `evening.rankings`, which previously
+ * caused team-history leaderboards to show all zeros for 5P tournaments.
+ *
+ * Ranking rule: per individual player, sum points (3 win / 1 draw / 0 loss)
+ * across matches they played in (capped goal-diff ±3 per match — same as
+ * the live 5P standings logic). Sort by points desc, then GD desc, then
+ * goalsFor desc. Top → alpha, next → beta, etc.
+ */
+function synthesizeFivePlayerRankings(evening: any): Evening["rankings"] | undefined {
+  const schedule: any[] = Array.isArray(evening?.schedule) ? evening.schedule : [];
+  const players: Player[] = Array.isArray(evening?.players) ? evening.players : [];
+  if (schedule.length === 0 || players.length === 0) return undefined;
+
+  type Row = { player: Player; points: number; gd: number; gf: number };
+  const stats = new Map<string, Row>();
+  for (const p of players) {
+    stats.set(p.id, { player: p, points: 0, gd: 0, gf: 0 });
+  }
+
+  let anyCompleted = false;
+  for (const m of schedule) {
+    if (!m?.completed || m.scoreA == null || m.scoreB == null) continue;
+    anyCompleted = true;
+    const a = m.scoreA as number;
+    const b = m.scoreB as number;
+    const diff = Math.min(3, Math.max(-3, a - b));
+    const aWin = a > b, bWin = b > a, draw = a === b;
+    for (const p of m.pairA?.players || []) {
+      const s = stats.get(p.id);
+      if (!s) continue;
+      s.points += aWin ? 3 : draw ? 1 : 0;
+      s.gd += diff;
+      s.gf += a;
+    }
+    for (const p of m.pairB?.players || []) {
+      const s = stats.get(p.id);
+      if (!s) continue;
+      s.points += bWin ? 3 : draw ? 1 : 0;
+      s.gd -= diff;
+      s.gf += b;
+    }
+  }
+
+  if (!anyCompleted) return undefined;
+
+  const sorted = Array.from(stats.values()).sort(
+    (x, y) => y.points - x.points || y.gd - x.gd || y.gf - x.gf
+  );
+
+  // Evening.rankings type only declares alpha/beta/gamma/delta. We still
+  // populate epsilon at runtime for 5P 5th-place display, but cast to any
+  // for the assignment so TypeScript stays happy.
+  const tiers = ["alpha", "beta", "gamma", "delta", "epsilon"] as const;
+  const rankings: any = { alpha: [], beta: [], gamma: [], delta: [], epsilon: [] };
+  sorted.forEach((row, idx) => {
+    const tier = tiers[Math.min(idx, tiers.length - 1)];
+    rankings[tier].push(row.player);
+  });
+  return rankings as Evening["rankings"];
+}
+
+/**
+ * Return the evening's rankings, computing them on-the-fly for 5-player
+ * doubles tournaments where rankings are not persisted on the evening.
+ */
+function getEffectiveRankings(evening: any): Evening["rankings"] | undefined {
+  if (evening?.rankings) return evening.rankings;
+  const mode = evening?.mode || evening?.resolvedMode;
+  const isFivePlayer =
+    mode === "five-player-doubles" ||
+    (typeof evening?.id === "string" && evening.id.startsWith("fp-"));
+  if (!isFivePlayer) return undefined;
+  return synthesizeFivePlayerRankings(evening);
+}
+
 interface TournamentHistoryProps {
   evenings: EveningWithTeam[];
   onBack: () => void;
@@ -180,17 +258,21 @@ export const TournamentHistory = ({ evenings, onBack, onDeleteEvening, onRefresh
       countsMap.get(ci.key)!.tournaments += 1;
     });
 
-    if (!evening.rankings) return;
+    // For 5-player tournaments, rankings are not persisted — compute them
+    // on the fly from the schedule so team-history leaderboards reflect
+    // the actual results instead of all zeros.
+    const effectiveRankings = getEffectiveRankings(evening) as any;
+    if (!effectiveRankings) return;
 
-    const alpha = dedupeByIdentity(evening.rankings.alpha || [], resolver.resolve);
-    const beta = dedupeByIdentity(evening.rankings.beta || [], resolver.resolve);
-    const gamma = dedupeByIdentity(evening.rankings.gamma || [], resolver.resolve);
+    const alpha = dedupeByIdentity(effectiveRankings.alpha || [], resolver.resolve);
+    const beta = dedupeByIdentity(effectiveRankings.beta || [], resolver.resolve);
+    const gamma = dedupeByIdentity(effectiveRankings.gamma || [], resolver.resolve);
     const knownKeys = new Set<string>(
       [...alpha, ...beta, ...gamma].map((p) => resolver.resolve(p).key)
     );
     const delta = dedupeByIdentity(
-      (evening.rankings.delta && evening.rankings.delta.length > 0)
-        ? evening.rankings.delta
+      (effectiveRankings.delta && effectiveRankings.delta.length > 0)
+        ? effectiveRankings.delta
         : uniquePlayers.filter((p) => !knownKeys.has(resolver.resolve(p).key)),
       resolver.resolve
     );
