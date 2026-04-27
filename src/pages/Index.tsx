@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { TeamDashboard } from "@/components/TeamDashboard";
 import { EveningSetup } from "@/components/EveningSetup";
 import { TournamentTypeSelection } from "@/components/TournamentTypeSelection";
@@ -40,6 +40,7 @@ type AppState = 'home' | 'setup' | 'tournament-type' | 'singles-setup' | 'single
 
 const Index = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { activeTeamId: contextTeamId } = useTeam();
   const [appState, setAppState] = useState<AppState>('home');
   const [currentEvening, setCurrentEvening] = useState<Evening | null>(null);
@@ -462,6 +463,11 @@ const handleGoHome = () => {
         return (
           <TeamDashboard
             onStartNew={handleStartNewEvening}
+            onViewTeamTournaments={
+              contextTeamId
+                ? () => navigate(`/team/${contextTeamId}/tournaments`)
+                : undefined
+            }
             onStartFivePlayer={async () => {
               // Load team players if we have an active team with exactly 5 players
               if (contextTeamId && RemoteStorageService.isEnabled()) {
