@@ -147,16 +147,97 @@ function detectTier(
   playerId: string,
   playerNameSlug: string
 ): MyParticipation["tier"] | undefined {
-  const r = e.rankings as any;
-  if (!r) return undefined;
+  const anyE = e as any;
+
   const inGroup = (group?: Array<{ id: string; name: string }>) =>
     Array.isArray(group) &&
     group.some((p) => p.id === playerId || slugify(p.name) === playerNameSlug);
-  if (inGroup(r.alpha)) return "alpha";
-  if (inGroup(r.beta)) return "beta";
-  if (inGroup(r.gamma)) return "gamma";
-  if (inGroup(r.delta)) return "delta";
-  if (inGroup(r.epsilon)) return "epsilon";
+
+  const r = anyE.rankings;
+
+  if (r) {
+    if (inGroup(r.alpha)) return "alpha";
+    if (inGroup(r.beta)) return "beta";
+    if (inGroup(r.gamma)) return "gamma";
+    if (inGroup(r.delta)) return "delta";
+    if (inGroup(r.epsilon)) return "epsilon";
+  }
+
+  // 5-player doubles tournaments store results in schedule[] instead of rankings.
+  // Compute the final player tier from completed matches.
+  if (!Array.isArray(anyE.schedule) || !Array.isArray(anyE.players)) {
+    return undefined;
+  }
+
+  type Row = {
+    player: Player;
+    points: number;
+    gd: number;
+    gf: number;
+  };
+
+  const stats = new Map<string, Row>();
+
+  for (const p of anyE.players as Player[]) {
+    stats.set(p.id, {
+      player: p,
+      points: 0,
+      gd: 0,
+      gf: 0,
+    });
+  }
+
+  let anyCompleted = false;
+
+  for (const m of anyE.schedule) {
+    if (!m?.completed || m.scoreA == null || m.scoreB == null) continue;
+
+    anyCompleted = true;
+
+    const a = m.scoreA as number;
+    const b = m.scoreB as number;
+    const diff = Math.min(3, Math.max(-3, a - b));
+    const aWin = a > b;
+    const bWin = b > a;
+    const draw = a === b;
+
+    for (const p of m.pairA?.players || []) {
+      const s = stats.get(p.id);
+      if (!s) continue;
+
+      s.points += aWin ? 3 : draw ? 1 : 0;
+      s.gd += diff;
+      s.gf += a;
+    }
+
+    for (const p of m.pairB?.players || []) {
+      const s = stats.get(p.id);
+      if (!s) continue;
+
+      s.points += bWin ? 3 : draw ? 1 : 0;
+      s.gd -= diff;
+      s.gf += b;
+    }
+  }
+
+  if (!anyCompleted) return undefined;
+
+  const sorted = Array.from(stats.values()).sort(
+    (x, y) => y.points - x.points || y.gd - x.gd || y.gf - x.gf
+  );
+
+  const index = sorted.findIndex(
+    (row) =>
+      row.player.id === playerId ||
+      slugify(row.player.name) === playerNameSlug
+  );
+
+  if (index === 0) return "alpha";
+  if (index === 1) return "beta";
+  if (index === 2) return "gamma";
+  if (index === 3) return "delta";
+  if (index >= 4) return "epsilon";
+
   return undefined;
 }
 
