@@ -38,6 +38,7 @@ interface TeamDashboardProps {
   onStartPairs: () => void;
   onStartSingles: () => void;
   onViewHistory: () => void;
+  onViewTeamTournaments?: () => void;
   onResume?: () => void;
   onCloseTournament?: () => void;
   onManageTeams?: () => void;
@@ -55,6 +56,7 @@ export const TeamDashboard = ({
   onStartPairs,
   onStartSingles,
   onViewHistory,
+  onViewTeamTournaments,
   onResume,
   onCloseTournament,
   onManageTeams,
@@ -281,6 +283,18 @@ export const TeamDashboard = ({
       {/* ── 4. Spectator + History ── */}
       <div className="mb-4 space-y-2">
         <p className="text-xs text-muted-foreground font-medium">צפייה והיסטוריה</p>
+
+        {onViewTeamTournaments && (
+          <Button
+            variant="gaming"
+            size="default"
+            onClick={onViewTeamTournaments}
+            className="w-full justify-start gap-3"
+          >
+            <Eye className="h-4 w-4" />
+            צפייה בטורנירי הקבוצה
+          </Button>
+        )}
 
         <Button variant="secondary" size="default" onClick={onViewHistory} className="w-full justify-start gap-3">
           <History className="h-4 w-4" />
