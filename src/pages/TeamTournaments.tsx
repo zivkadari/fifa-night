@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Calendar, Eye, Loader2, Trophy, Users } from "lucide-react";
+import {
+  ArrowLeft,
+  Calendar,
+  Eye,
+  Filter,
+  Loader2,
+  Trophy,
+  Users,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,16 +17,17 @@ import { calculatePairStats, calculatePlayerStats } from "@/services/fivePlayerE
 import { Evening } from "@/types/tournament";
 import { FPEvening } from "@/types/fivePlayerTypes";
 
-type Team = {
-  id: string;
-  name: string;
-};
+type StatusFilter = "all" | "active" | "completed";
 
-type TeamEvening = Evening & {
+type TournamentRow = Evening & {
+  teamId?: string;
+  teamName?: string;
   mode?: string;
   matchCount?: number;
   schedule?: any[];
   completed?: boolean;
+  _updatedAt?: string;
+  _createdAt?: string;
 };
 
 function formatDate(date: string) {
@@ -29,11 +38,15 @@ function formatDate(date: string) {
   });
 }
 
-function isFivePlayerEvening(evening: TeamEvening) {
-  return evening.mode === "five-player-doubles" || evening.id?.startsWith("fp-");
+function isFivePlayerEvening(evening: TournamentRow) {
+  return (
+    evening.mode === "five-player-doubles" ||
+    evening.id?.startsWith("fp-") ||
+    Array.isArray(evening.schedule)
+  );
 }
 
-function completedGames(evening: TeamEvening) {
+function getCompletedGames(evening: TournamentRow) {
   if (Array.isArray(evening.schedule)) {
     return evening.schedule.filter((m) => m.completed).length;
   }
@@ -47,33 +60,55 @@ function completedGames(evening: TeamEvening) {
   return 0;
 }
 
+function getTotalGames(evening: TournamentRow) {
+  if (Array.isArray(evening.schedule)) {
+    return evening.matchCount || evening.schedule.length || 30;
+  }
+
+  if (Array.isArray(evening.rounds)) {
+    const total = evening.rounds.reduce((sum, round) => {
+      return sum + (round.matches || []).length;
+    }, 0);
+
+    return total || getCompletedGames(evening);
+  }
+
+  return getCompletedGames(evening);
+}
+
+function getTournamentTypeLabel(evening: TournamentRow) {
+  if (isFivePlayerEvening(evening)) return "ליגת 5 שחקנים";
+  if (evening.type === "singles") return "טורניר יחידים";
+  if (evening.type === "pairs") return "טורניר זוגות";
+  return "טורניר";
+}
+
 export default function TeamTournaments() {
-  const { teamId } = useParams<{ teamId: string }>();
+  const { teamId } = useParams<{ teamId?: string }>();
   const navigate = useNavigate();
 
-  const [team, setTeam] = useState<Team | null>(null);
-  const [evenings, setEvenings] = useState<TeamEvening[]>([]);
+  const [tournaments, setTournaments] = useState<TournamentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [openingId, setOpeningId] = useState<string | null>(null);
+  const [teamFilter, setTeamFilter] = useState<string>(teamId || "all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
   useEffect(() => {
     let mounted = true;
 
     async function load() {
-      if (!teamId) return;
-
       setLoading(true);
 
       try {
-        const teams = await RemoteStorageService.listTeams();
-        const foundTeam = teams.find((t) => t.id === teamId) || null;
+        let rows: TournamentRow[] = [];
 
-        const teamEvenings = await RemoteStorageService.loadEveningsByTeam(teamId);
+        if (RemoteStorageService.isEnabled()) {
+          rows = (await RemoteStorageService.loadEveningsWithTeams()) as TournamentRow[];
+        }
 
         if (!mounted) return;
 
-        setTeam(foundTeam);
-        setEvenings(teamEvenings as TeamEvening[]);
+        setTournaments(rows);
       } finally {
         if (mounted) setLoading(false);
       }
@@ -84,15 +119,46 @@ export default function TeamTournaments() {
     return () => {
       mounted = false;
     };
+  }, []);
+
+  useEffect(() => {
+    if (teamId) {
+      setTeamFilter(teamId);
+    }
   }, [teamId]);
 
-  const sortedEvenings = useMemo(() => {
-    return [...evenings].sort(
-      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-    );
-  }, [evenings]);
+  const teams = useMemo(() => {
+    const map = new Map<string, string>();
 
-  const openSpectate = async (evening: TeamEvening) => {
+    tournaments.forEach((t) => {
+      if (t.teamId) {
+        map.set(t.teamId, t.teamName || "קבוצה ללא שם");
+      }
+    });
+
+    return Array.from(map.entries())
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [tournaments]);
+
+  const filteredTournaments = useMemo(() => {
+    return [...tournaments]
+      .filter((t) => {
+        if (teamFilter !== "all" && t.teamId !== teamFilter) return false;
+        if (statusFilter === "active" && t.completed) return false;
+        if (statusFilter === "completed" && !t.completed) return false;
+        return true;
+      })
+      .sort((a, b) => {
+        if (!!a.completed !== !!b.completed) {
+          return a.completed ? 1 : -1;
+        }
+
+        return new Date(b.date).getTime() - new Date(a.date).getTime();
+      });
+  }, [tournaments, teamFilter, statusFilter]);
+
+  const openSpectate = async (evening: TournamentRow) => {
     setOpeningId(evening.id);
 
     try {
@@ -103,7 +169,6 @@ export default function TeamTournaments() {
         return;
       }
 
-      // Fallback: no share code found, stay on the page.
       alert("לא נמצא קישור צפייה לטורניר הזה");
     } finally {
       setOpeningId(null);
@@ -130,83 +195,134 @@ export default function TeamTournaments() {
           </Button>
 
           <div className="flex-1">
-            <h1 className="text-2xl font-bold text-foreground">טורנירי הקבוצה</h1>
+            <h1 className="text-3xl font-bold text-foreground">טורנירים</h1>
             <p className="text-sm text-muted-foreground">
-              {team?.name || "קבוצה"} · {sortedEvenings.length} טורנירים
+              כל הטורנירים שמקושרים אליך
             </p>
           </div>
         </div>
 
-        {sortedEvenings.length === 0 ? (
-          <Card className="bg-gradient-card border-neon-green/20 p-6 text-center">
+        <Card className="bg-gradient-card border-neon-green/20 p-3 space-y-3">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Filter className="h-4 w-4 text-neon-green" />
+            סינון
+          </div>
+
+          <div className="grid grid-cols-3 gap-2">
+            <Button
+              variant={statusFilter === "all" ? "gaming" : "outline"}
+              size="sm"
+              onClick={() => setStatusFilter("all")}
+            >
+              הכל
+            </Button>
+            <Button
+              variant={statusFilter === "active" ? "gaming" : "outline"}
+              size="sm"
+              onClick={() => setStatusFilter("active")}
+            >
+              פעילים
+            </Button>
+            <Button
+              variant={statusFilter === "completed" ? "gaming" : "outline"}
+              size="sm"
+              onClick={() => setStatusFilter("completed")}
+            >
+              הסתיימו
+            </Button>
+          </div>
+
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            <Button
+              variant={teamFilter === "all" ? "gaming" : "outline"}
+              size="sm"
+              className="shrink-0"
+              onClick={() => setTeamFilter("all")}
+            >
+              כל הקבוצות
+            </Button>
+
+            {teams.map((team) => (
+              <Button
+                key={team.id}
+                variant={teamFilter === team.id ? "gaming" : "outline"}
+                size="sm"
+                className="shrink-0"
+                onClick={() => setTeamFilter(team.id)}
+              >
+                {team.name}
+              </Button>
+            ))}
+          </div>
+        </Card>
+
+        {filteredTournaments.length === 0 ? (
+          <Card className="bg-gradient-card border-border p-6 text-center">
             <Trophy className="h-10 w-10 text-muted-foreground mx-auto mb-2" />
-            <h2 className="text-lg font-semibold text-foreground">אין טורנירים עדיין</h2>
+            <h2 className="text-lg font-semibold text-foreground">אין טורנירים להצגה</h2>
             <p className="text-sm text-muted-foreground mt-1">
-              טורנירים שמקושרים לקבוצה יופיעו כאן.
+              נסה לשנות סינון או לבדוק קבוצה אחרת.
             </p>
           </Card>
         ) : (
           <div className="space-y-3">
-            {sortedEvenings.map((evening) => {
+            {filteredTournaments.map((evening) => {
               const isFive = isFivePlayerEvening(evening);
-              const games = completedGames(evening);
-              const totalGames = isFive
-                ? evening.matchCount || evening.schedule?.length || 30
-                : games;
+              const completed = getCompletedGames(evening);
+              const total = getTotalGames(evening);
+              const typeLabel = getTournamentTypeLabel(evening);
 
               let topText = "";
               let playerStatsText = "";
 
               if (isFive && evening.schedule && evening.players) {
-                const fp = evening as unknown as FPEvening;
-                const pairStats = calculatePairStats(fp);
-                const playerStats = calculatePlayerStats(fp);
+                try {
+                  const fp = evening as unknown as FPEvening;
+                  const pairStats = calculatePairStats(fp);
+                  const playerStats = calculatePlayerStats(fp);
 
-                if (pairStats[0]) {
-                  topText = `${pairStats[0].pair.players[0].name} & ${pairStats[0].pair.players[1].name}`;
-                }
+                  if (pairStats[0]) {
+                    topText = `${pairStats[0].pair.players[0].name} & ${pairStats[0].pair.players[1].name}`;
+                  }
 
-                if (playerStats[0]) {
-                  playerStatsText = `מוביל: ${playerStats[0].player.name} · ${playerStats[0].points} נק׳`;
+                  if (playerStats[0]) {
+                    playerStatsText = `מוביל: ${playerStats[0].player.name} · ${playerStats[0].points} נק׳`;
+                  }
+                } catch {
+                  topText = "";
+                  playerStatsText = "";
                 }
               }
 
               return (
                 <Card
                   key={evening.id}
-                  className="bg-gradient-card border-neon-green/20 p-4 shadow-card space-y-3"
+                  className={`bg-gradient-card p-4 shadow-card space-y-3 ${
+                    evening.completed
+                      ? "border-border"
+                      : "border-neon-green/40 shadow-glow"
+                  }`}
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <div>
+                    <div className="min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <Calendar className="h-4 w-4 text-neon-green" />
-                        <span className="text-lg font-bold text-foreground">
+                        <Calendar className="h-4 w-4 text-neon-green shrink-0" />
+                        <span className="text-xl font-bold text-foreground">
                           {formatDate(evening.date)}
                         </span>
                       </div>
 
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <Badge variant="outline" className="text-xs">
-                          {isFive ? "5 שחקנים" : "טורניר"}
-                        </Badge>
-
-                        <Badge variant="outline" className="text-xs">
-                          {games}/{totalGames} משחקים
-                        </Badge>
-
-                        {evening.completed && (
-                          <Badge className="text-xs bg-yellow-400/20 text-yellow-300 border-yellow-400/30">
-                            הסתיים
-                          </Badge>
-                        )}
-                      </div>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {evening.teamName || "ללא קבוצה"}
+                      </p>
                     </div>
 
                     <Button
-                      variant="neon"
+                      variant={evening.completed ? "outline" : "gaming"}
                       size="sm"
                       disabled={openingId === evening.id}
                       onClick={() => openSpectate(evening)}
+                      className="shrink-0"
                     >
                       {openingId === evening.id ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -215,6 +331,26 @@ export default function TeamTournaments() {
                       )}
                       צפה
                     </Button>
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge variant="outline" className="text-xs">
+                      {typeLabel}
+                    </Badge>
+
+                    <Badge variant="outline" className="text-xs">
+                      {completed}/{total} משחקים
+                    </Badge>
+
+                    <Badge
+                      className={
+                        evening.completed
+                          ? "text-xs bg-yellow-400/20 text-yellow-300 border-yellow-400/30"
+                          : "text-xs bg-neon-green/15 text-neon-green border-neon-green/30"
+                      }
+                    >
+                      {evening.completed ? "הסתיים" : "פעיל"}
+                    </Badge>
                   </div>
 
                   {isFive && topText && (
@@ -231,7 +367,7 @@ export default function TeamTournaments() {
                     </div>
                   )}
 
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground line-clamp-2">
                     שחקנים: {evening.players?.map((p) => p.name).join(", ")}
                   </p>
                 </Card>
