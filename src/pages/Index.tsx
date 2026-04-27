@@ -463,11 +463,7 @@ const handleGoHome = () => {
         return (
           <TeamDashboard
             onStartNew={handleStartNewEvening}
-            onViewTeamTournaments={
-              contextTeamId
-                ? () => navigate(`/team/${contextTeamId}/tournaments`)
-                : undefined
-            }
+            onViewTeamTournaments={() => navigate("/tournaments")}
             onStartFivePlayer={async () => {
               // Load team players if we have an active team with exactly 5 players
               if (contextTeamId && RemoteStorageService.isEnabled()) {
