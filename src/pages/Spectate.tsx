@@ -233,8 +233,8 @@ function PersonalizedSpectateView({
   };
 
   const goHome = () => {
-  navigate("/");
-};
+    navigate("/", { replace: true });
+  };
 
   const pairStats = useMemo(() => calculatePairStats(evening), [evening]);
   const playerStats = useMemo(() => calculatePlayerStats(evening), [evening]);
