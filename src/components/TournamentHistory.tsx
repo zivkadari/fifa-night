@@ -45,12 +45,14 @@ const dedupeByIdentity = (
 ): Player[] => {
   const seen = new Set<string>();
   const out: Player[] = [];
+
   for (const p of players) {
     const id = resolve(p).key;
     if (seen.has(id)) continue;
     seen.add(id);
     out.push(p);
   }
+
   return out;
 };
 
@@ -68,32 +70,54 @@ const dedupeByIdentity = (
 function synthesizeFivePlayerRankings(evening: any): Evening["rankings"] | undefined {
   const schedule: any[] = Array.isArray(evening?.schedule) ? evening.schedule : [];
   const players: Player[] = Array.isArray(evening?.players) ? evening.players : [];
+
   if (schedule.length === 0 || players.length === 0) return undefined;
 
-  type Row = { player: Player; points: number; gd: number; gf: number };
+  type Row = {
+    player: Player;
+    points: number;
+    gd: number;
+    gf: number;
+  };
+
   const stats = new Map<string, Row>();
+
   for (const p of players) {
-    stats.set(p.id, { player: p, points: 0, gd: 0, gf: 0 });
+    stats.set(p.id, {
+      player: p,
+      points: 0,
+      gd: 0,
+      gf: 0,
+    });
   }
 
   let anyCompleted = false;
+
   for (const m of schedule) {
     if (!m?.completed || m.scoreA == null || m.scoreB == null) continue;
+
     anyCompleted = true;
+
     const a = m.scoreA as number;
     const b = m.scoreB as number;
     const diff = Math.min(3, Math.max(-3, a - b));
-    const aWin = a > b, bWin = b > a, draw = a === b;
+    const aWin = a > b;
+    const bWin = b > a;
+    const draw = a === b;
+
     for (const p of m.pairA?.players || []) {
       const s = stats.get(p.id);
       if (!s) continue;
+
       s.points += aWin ? 3 : draw ? 1 : 0;
       s.gd += diff;
       s.gf += a;
     }
+
     for (const p of m.pairB?.players || []) {
       const s = stats.get(p.id);
       if (!s) continue;
+
       s.points += bWin ? 3 : draw ? 1 : 0;
       s.gd -= diff;
       s.gf += b;
@@ -108,13 +132,21 @@ function synthesizeFivePlayerRankings(evening: any): Evening["rankings"] | undef
 
   // Evening.rankings type only declares alpha/beta/gamma/delta. We still
   // populate epsilon at runtime for 5P 5th-place display, but cast to any
-  // for the assignment so TypeScript stays happy.
+  // so TypeScript stays happy.
   const tiers = ["alpha", "beta", "gamma", "delta", "epsilon"] as const;
-  const rankings: any = { alpha: [], beta: [], gamma: [], delta: [], epsilon: [] };
+  const rankings: any = {
+    alpha: [],
+    beta: [],
+    gamma: [],
+    delta: [],
+    epsilon: [],
+  };
+
   sorted.forEach((row, idx) => {
     const tier = tiers[Math.min(idx, tiers.length - 1)];
     rankings[tier].push(row.player);
   });
+
   return rankings as Evening["rankings"];
 }
 
@@ -124,11 +156,14 @@ function synthesizeFivePlayerRankings(evening: any): Evening["rankings"] | undef
  */
 function getEffectiveRankings(evening: any): Evening["rankings"] | undefined {
   if (evening?.rankings) return evening.rankings;
+
   const mode = evening?.mode || evening?.resolvedMode;
   const isFivePlayer =
     mode === "five-player-doubles" ||
     (typeof evening?.id === "string" && evening.id.startsWith("fp-"));
+
   if (!isFivePlayer) return undefined;
+
   return synthesizeFivePlayerRankings(evening);
 }
 
@@ -139,13 +174,19 @@ interface TournamentHistoryProps {
   onRefresh?: () => void;
 }
 
-export const TournamentHistory = ({ evenings, onBack, onDeleteEvening, onRefresh }: TournamentHistoryProps) => {
+export const TournamentHistory = ({
+  evenings,
+  onBack,
+  onDeleteEvening,
+  onRefresh,
+}: TournamentHistoryProps) => {
   // Use the unified history service as a fallback so this screen shares the
   // same deduplicated, team-aware data model as the Profile pages.
   const [unified, setUnified] = useState<UnifiedEvening[] | null>(null);
 
   useEffect(() => {
     let mounted = true;
+
     (async () => {
       try {
         const all = await UserHistoryService.loadAllVisibleEvenings();
@@ -154,14 +195,18 @@ export const TournamentHistory = ({ evenings, onBack, onDeleteEvening, onRefresh
         if (mounted) setUnified([]);
       }
     })();
-    return () => { mounted = false; };
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   // Prefer unified data when available (it carries _updatedAt/_createdAt and
   // canonical team info); otherwise fall back to the props-provided list.
-  const baseEvenings: EveningWithTeam[] = (unified && unified.length > 0)
-    ? (unified as unknown as EveningWithTeam[])
-    : evenings;
+  const baseEvenings: EveningWithTeam[] =
+    unified && unified.length > 0
+      ? (unified as unknown as EveningWithTeam[])
+      : evenings;
 
   const sortedEvenings = [...baseEvenings].sort((a, b) => tsOf(b) - tsOf(a));
 
@@ -174,36 +219,46 @@ export const TournamentHistory = ({ evenings, onBack, onDeleteEvening, onRefresh
   const [teams, setTeams] = useState<Array<{ id: string; name: string }>>([]);
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [manualEntryOpen, setManualEntryOpen] = useState(false);
+
   // Canonical team roster (drives identity resolution).
   const [teamPlayers, setTeamPlayers] = useState<TeamPlayer[]>([]);
+
   // Whether the current user is the owner of the selected team — gates the
   // admin-only "possible duplicates" card.
   const [isTeamOwner, setIsTeamOwner] = useState(false);
+
   // Bumped after a manual merge/reject to force re-aggregation.
   const [identityRev, setIdentityRev] = useState(0);
 
   useEffect(() => {
     let mounted = true;
+
     (async () => {
       try {
         const list = await RemoteStorageService.listTeams();
+
         if (mounted) {
           setTeams(list);
           setSelectedTeamId((prev) => prev ?? (list[0]?.id ?? null));
         }
       } catch {}
     })();
-    return () => { mounted = false; };
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   // Load team roster + ownership when the selected team changes.
   useEffect(() => {
     let mounted = true;
+
     if (!selectedTeamId) {
       setTeamPlayers([]);
       setIsTeamOwner(false);
       return;
     }
+
     (async () => {
       try {
         const players = await RemoteStorageService.listTeamPlayers(selectedTeamId);
@@ -211,25 +266,39 @@ export const TournamentHistory = ({ evenings, onBack, onDeleteEvening, onRefresh
       } catch {
         if (mounted) setTeamPlayers([]);
       }
+
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) { if (mounted) setIsTeamOwner(false); return; }
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        if (!user) {
+          if (mounted) setIsTeamOwner(false);
+          return;
+        }
+
         const { data } = await supabase
           .from("teams")
           .select("owner_id")
           .eq("id", selectedTeamId)
           .maybeSingle();
-        if (mounted) setIsTeamOwner(Boolean(data && (data as any).owner_id === user.id));
+
+        if (mounted) {
+          setIsTeamOwner(Boolean(data && (data as any).owner_id === user.id));
+        }
       } catch {
         if (mounted) setIsTeamOwner(false);
       }
     })();
-    return () => { mounted = false; };
+
+    return () => {
+      mounted = false;
+    };
   }, [selectedTeamId]);
 
   // Strict team scoping by team_id only — never aggregate across teams here.
   const activeEvenings = selectedTeamId
-    ? sortedEvenings.filter(e => e.teamId === selectedTeamId)
+    ? sortedEvenings.filter((e) => e.teamId === selectedTeamId)
     : [];
 
   // Build a team-scoped canonical identity resolver. Aggregation below uses
@@ -241,17 +310,40 @@ export const TournamentHistory = ({ evenings, onBack, onDeleteEvening, onRefresh
     [selectedTeamId, teamPlayers, identityRev]
   );
 
-  // Build overall leaderboard with counts per rank and tournaments played
-  type Counts = { key: string; name: string; linked: boolean; alpha: number; beta: number; gamma: number; delta: number; tournaments: number };
+  // Build overall leaderboard with counts per rank and tournaments played.
+  type Counts = {
+    key: string;
+    name: string;
+    linked: boolean;
+    alpha: number;
+    beta: number;
+    gamma: number;
+    delta: number;
+    epsilon: number;
+    tournaments: number;
+  };
+
   const countsMap = new Map<string, Counts>();
+
   const ensure = (ci: CanonicalIdentity) => {
     if (!countsMap.has(ci.key)) {
-      countsMap.set(ci.key, { key: ci.key, name: ci.name, linked: ci.linked, alpha: 0, beta: 0, gamma: 0, delta: 0, tournaments: 0 });
+      countsMap.set(ci.key, {
+        key: ci.key,
+        name: ci.name,
+        linked: ci.linked,
+        alpha: 0,
+        beta: 0,
+        gamma: 0,
+        delta: 0,
+        epsilon: 0,
+        tournaments: 0,
+      });
     }
   };
 
   activeEvenings.forEach((evening) => {
     const uniquePlayers = dedupeByIdentity(evening.players || [], resolver.resolve);
+
     uniquePlayers.forEach((p) => {
       const ci = resolver.resolve(p);
       ensure(ci);
@@ -267,17 +359,23 @@ export const TournamentHistory = ({ evenings, onBack, onDeleteEvening, onRefresh
     const alpha = dedupeByIdentity(effectiveRankings.alpha || [], resolver.resolve);
     const beta = dedupeByIdentity(effectiveRankings.beta || [], resolver.resolve);
     const gamma = dedupeByIdentity(effectiveRankings.gamma || [], resolver.resolve);
+    const epsilon = dedupeByIdentity(effectiveRankings.epsilon || [], resolver.resolve);
+
     const knownKeys = new Set<string>(
-      [...alpha, ...beta, ...gamma].map((p) => resolver.resolve(p).key)
+      [...alpha, ...beta, ...gamma, ...epsilon].map((p) => resolver.resolve(p).key)
     );
+
     const delta = dedupeByIdentity(
-      (effectiveRankings.delta && effectiveRankings.delta.length > 0)
+      effectiveRankings.delta && effectiveRankings.delta.length > 0
         ? effectiveRankings.delta
         : uniquePlayers.filter((p) => !knownKeys.has(resolver.resolve(p).key)),
       resolver.resolve
     );
 
-    const inc = (players: Player[], key: keyof Omit<Counts, 'key' | 'name' | 'linked' | 'tournaments'>) => {
+    const inc = (
+      players: Player[],
+      key: keyof Omit<Counts, "key" | "name" | "linked" | "tournaments">
+    ) => {
       players.forEach((p) => {
         const ci = resolver.resolve(p);
         ensure(ci);
@@ -285,29 +383,41 @@ export const TournamentHistory = ({ evenings, onBack, onDeleteEvening, onRefresh
       });
     };
 
-    inc(alpha, 'alpha');
-    inc(beta, 'beta');
-    inc(gamma, 'gamma');
-    inc(delta, 'delta');
+    inc(alpha, "alpha");
+    inc(beta, "beta");
+    inc(gamma, "gamma");
+    inc(delta, "delta");
+    inc(epsilon, "epsilon");
   });
 
-  const overallCounts = Array.from(countsMap.values())
-    .sort((a, b) => b.alpha - a.alpha || b.beta - a.beta || b.gamma - a.gamma || b.delta - a.delta || a.name.localeCompare(b.name));
+  const overallCounts = Array.from(countsMap.values()).sort(
+    (a, b) =>
+      b.alpha - a.alpha ||
+      b.beta - a.beta ||
+      b.gamma - a.gamma ||
+      b.delta - a.delta ||
+      b.epsilon - a.epsilon ||
+      a.name.localeCompare(b.name)
+  );
 
-  const getRankIcon = (rank: 'alpha' | 'beta' | 'gamma' | 'delta') => {
+  const getRankIcon = (rank: "alpha" | "beta" | "gamma" | "delta") => {
     switch (rank) {
-      case 'alpha': return <Trophy className="h-4 w-4 text-yellow-400" />;
-      case 'beta': return <Medal className="h-4 w-4 text-gray-400" />;
-      case 'gamma': return <Award className="h-4 w-4 text-amber-600" />;
-      case 'delta': return <Target className="h-4 w-4 text-sky-400" />;
+      case "alpha":
+        return <Trophy className="h-4 w-4 text-yellow-400" />;
+      case "beta":
+        return <Medal className="h-4 w-4 text-gray-400" />;
+      case "gamma":
+        return <Award className="h-4 w-4 text-amber-600" />;
+      case "delta":
+        return <Target className="h-4 w-4 text-sky-400" />;
     }
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
+    return new Date(dateString).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
     });
   };
 
@@ -331,7 +441,9 @@ export const TournamentHistory = ({ evenings, onBack, onDeleteEvening, onRefresh
             <div className="flex justify-center mb-4">
               <Trophy className="h-16 w-16 text-muted-foreground/50" />
             </div>
-            <h2 className="text-xl font-semibold text-foreground mb-2">No Tournaments Yet</h2>
+            <h2 className="text-xl font-semibold text-foreground mb-2">
+              No Tournaments Yet
+            </h2>
             <p className="text-muted-foreground mb-6">
               Start your first tournament to see results here
             </p>
@@ -349,8 +461,8 @@ export const TournamentHistory = ({ evenings, onBack, onDeleteEvening, onRefresh
       <div className="max-w-md mx-auto">
         {/* Header */}
         <div className="flex items-center gap-4 mb-6">
-           <Button variant="ghost" size="icon" onClick={onBack}>
-              <ArrowLeft className="h-5 w-5 rotate-180" />
+          <Button variant="ghost" size="icon" onClick={onBack}>
+            <ArrowLeft className="h-5 w-5 rotate-180" />
           </Button>
           <div className="flex-1">
             <h1 className="text-2xl font-bold text-foreground">Tournament History</h1>
@@ -361,47 +473,58 @@ export const TournamentHistory = ({ evenings, onBack, onDeleteEvening, onRefresh
           <Button variant="neon" size="sm" onClick={() => setManualEntryOpen(true)}>
             <Plus className="h-4 w-4" /> הוסף
           </Button>
-          </div>
-          <div className="mb-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Users className="h-4 w-4 text-neon-green" />
-              <span className="text-sm text-muted-foreground">צפה לפי קבוצה</span>
-            </div>
-            <Select value={selectedTeamId ?? ''} onValueChange={(v) => setSelectedTeamId(v)}>
-              <SelectTrigger className="w-full bg-gaming-surface border-border">
-                <SelectValue placeholder="בחר קבוצה" />
-              </SelectTrigger>
-              <SelectContent>
-                {teams.map((t) => (
-                  <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-[10px] text-muted-foreground mt-2">
-              להיסטוריה כוללת בין קבוצות, עבור לפרופיל → ההיסטוריה שלי.
-            </p>
+        </div>
+
+        <div className="mb-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Users className="h-4 w-4 text-neon-green" />
+            <span className="text-sm text-muted-foreground">צפה לפי קבוצה</span>
           </div>
 
-          {/* Admin-only data quality: surface possible duplicate logical
-              players within this team. Never auto-merges. */}
-          {isTeamOwner && selectedTeamId && (
-            <TeamDuplicatePlayersCard
-              teamId={selectedTeamId}
-              identities={overallCounts.map((c) => ({
-                key: c.key,
-                name: c.name,
-                linked: c.linked,
-                tournaments: c.tournaments,
-              }))}
-              onResolved={() => setIdentityRev((r) => r + 1)}
-            />
-          )}
+          <Select
+            value={selectedTeamId ?? ""}
+            onValueChange={(v) => setSelectedTeamId(v)}
+          >
+            <SelectTrigger className="w-full bg-gaming-surface border-border">
+              <SelectValue placeholder="בחר קבוצה" />
+            </SelectTrigger>
+            <SelectContent>
+              {teams.map((t) => (
+                <SelectItem key={t.id} value={t.id}>
+                  {t.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-          {/* Overall Leaderboard */}
+          <p className="text-[10px] text-muted-foreground mt-2">
+            להיסטוריה כוללת בין קבוצות, עבור לפרופיל → ההיסטוריה שלי.
+          </p>
+        </div>
+
+        {/* Admin-only data quality: surface possible duplicate logical
+            players within this team. Never auto-merges. */}
+        {isTeamOwner && selectedTeamId && (
+          <TeamDuplicatePlayersCard
+            teamId={selectedTeamId}
+            identities={overallCounts.map((c) => ({
+              key: c.key,
+              name: c.name,
+              linked: c.linked,
+              tournaments: c.tournaments,
+            }))}
+            onResolved={() => setIdentityRev((r) => r + 1)}
+          />
+        )}
+
+        {/* Overall Leaderboard */}
         {overallCounts.length > 0 && (
           <>
-            <Card className="bg-gradient-card border-neon-green/30 p-4 mb-6 shadow-card">
-              <h2 className="text-lg font-semibold text-foreground mb-3">טבלת על</h2>
+            <Card className="bg-gradient-card border-neon-green/30 p-4 mb-6 shadow-card overflow-x-auto">
+              <h2 className="text-lg font-semibold text-foreground mb-3">
+                טבלת על
+              </h2>
+
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -409,19 +532,32 @@ export const TournamentHistory = ({ evenings, onBack, onDeleteEvening, onRefresh
                     <TableHead className="text-left">אלפא</TableHead>
                     <TableHead className="text-left">בטא</TableHead>
                     <TableHead className="text-left">גמא</TableHead>
-                    <TableHead className="text-left">גרוע מאוד</TableHead>
+                    <TableHead className="text-left">גרוע</TableHead>
+                    <TableHead className="text-left">אפס׳</TableHead>
                   </TableRow>
                 </TableHeader>
+
                 <TableBody>
                   {overallCounts.map((row) => (
                     <TableRow key={row.key}>
                       <TableCell className="text-left font-medium">
                         <span>{row.name}</span>
                       </TableCell>
-                      <TableCell className="text-left font-bold">{row.alpha}</TableCell>
-                      <TableCell className="text-left font-bold">{row.beta}</TableCell>
-                      <TableCell className="text-left font-bold">{row.gamma}</TableCell>
-                      <TableCell className="text-left font-bold">{row.delta}</TableCell>
+                      <TableCell className="text-left font-bold">
+                        {row.alpha}
+                      </TableCell>
+                      <TableCell className="text-left font-bold">
+                        {row.beta}
+                      </TableCell>
+                      <TableCell className="text-left font-bold">
+                        {row.gamma}
+                      </TableCell>
+                      <TableCell className="text-left font-bold">
+                        {row.delta}
+                      </TableCell>
+                      <TableCell className="text-left font-bold">
+                        {row.epsilon}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -432,11 +568,16 @@ export const TournamentHistory = ({ evenings, onBack, onDeleteEvening, onRefresh
             <Collapsible defaultOpen={false}>
               <Card className="bg-gradient-card border-neon-green/30 p-4 mb-6 shadow-card">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-lg font-semibold text-foreground">מספר טורנירים לשחקן</h3>
+                  <h3 className="text-lg font-semibold text-foreground">
+                    מספר טורנירים לשחקן
+                  </h3>
                   <CollapsibleTrigger asChild>
-                    <Button variant="ghost" size="sm">פתח/סגור</Button>
+                    <Button variant="ghost" size="sm">
+                      פתח/סגור
+                    </Button>
                   </CollapsibleTrigger>
                 </div>
+
                 <CollapsibleContent>
                   <Table>
                     <TableHeader>
@@ -445,13 +586,22 @@ export const TournamentHistory = ({ evenings, onBack, onDeleteEvening, onRefresh
                         <TableHead className="text-left">טורנירים</TableHead>
                       </TableRow>
                     </TableHeader>
+
                     <TableBody>
                       {[...overallCounts]
-                        .sort((a, b) => b.tournaments - a.tournaments || a.name.localeCompare(b.name))
+                        .sort(
+                          (a, b) =>
+                            b.tournaments - a.tournaments ||
+                            a.name.localeCompare(b.name)
+                        )
                         .map((row) => (
                           <TableRow key={row.key}>
-                            <TableCell className="text-left font-medium">{row.name}</TableCell>
-                            <TableCell className="text-left font-bold">{row.tournaments}</TableCell>
+                            <TableCell className="text-left font-medium">
+                              {row.name}
+                            </TableCell>
+                            <TableCell className="text-left font-bold">
+                              {row.tournaments}
+                            </TableCell>
                           </TableRow>
                         ))}
                     </TableBody>
@@ -462,134 +612,195 @@ export const TournamentHistory = ({ evenings, onBack, onDeleteEvening, onRefresh
           </>
         )}
 
-
         {/* Tournament List */}
         <div className="space-y-4">
-          {activeEvenings.map((evening) => (
-            <Card 
-              key={evening.id} 
-              className="bg-gradient-card border-neon-green/20 p-4 shadow-card hover:shadow-glow transition-all duration-200"
-            >
-              <div className="flex justify-between items-start mb-4">
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-neon-green" />
-                  <span className="font-semibold text-foreground">
-                    {formatDate(evening.date)}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="text-xs">
-                    {evening.rounds?.length || 0} rounds
-                  </Badge>
-                  {/* Link to team button */}
-                  <LinkToTeamDialog
-                    eveningId={evening.id}
-                    currentTeamId={evening.teamId}
-                    currentTeamName={evening.teamName}
-                    onLinked={() => onRefresh?.()}
-                  />
-                  {onDeleteEvening && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => onDeleteEvening(evening.id)}
-                      className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  )}
-                </div>
-              </div>
+          {activeEvenings.map((evening) => {
+            const effectiveRankings = getEffectiveRankings(evening) as any;
 
-              {/* Rankings */}
-              {evening.rankings && (
-                <div className="space-y-2">
-                  {/* Alpha */}
-                  {evening.rankings.alpha.length > 0 && (
-                    <div className="flex items-center gap-2">
-                      {getRankIcon('alpha')}
-                      <span className="text-sm font-medium text-foreground">Alpha:</span>
-                      <div className="flex flex-wrap gap-1">
-                        {evening.rankings.alpha.map((player) => (
-                          <Badge 
-                            key={player.id} 
-                            variant="secondary" 
-                            className="text-xs bg-yellow-400/20 text-yellow-300 border-yellow-400/30"
-                          >
-                            {player.name}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+            const completedGames =
+              (evening as any).schedule?.filter((m: any) => m.completed).length || 0;
 
-                  {/* Beta */}
-                  {evening.rankings.beta.length > 0 && (
-                    <div className="flex items-center gap-2">
-                      {getRankIcon('beta')}
-                      <span className="text-sm font-medium text-foreground">Beta:</span>
-                      <div className="flex flex-wrap gap-1">
-                        {evening.rankings.beta.map((player) => (
-                          <Badge 
-                            key={player.id} 
-                            variant="secondary" 
-                            className="text-xs bg-gray-400/20 text-gray-300 border-gray-400/30"
-                          >
-                            {player.name}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+            const roundsOrGames =
+              evening.rounds?.length && evening.rounds.length > 0
+                ? `${evening.rounds.length} rounds`
+                : `${completedGames} games`;
 
-                  {/* Gamma */}
-                  {evening.rankings.gamma.length > 0 && (
-                    <div className="flex items-center gap-2">
-                      {getRankIcon('gamma')}
-                      <span className="text-sm font-medium text-foreground">Gamma:</span>
-                      <div className="flex flex-wrap gap-1">
-                        {evening.rankings.gamma.map((player) => (
-                          <Badge 
-                            key={player.id} 
-                            variant="secondary" 
-                            className="text-xs bg-amber-600/20 text-amber-300 border-amber-600/30"
-                          >
-                            {player.name}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Match Details - Expandable */}
-              {evening.rounds && evening.rounds.length > 0 && (
-                <div className="mt-3 pt-3 border-t border-border/30">
-                  <EveningMatchDetails evening={evening} />
-                </div>
-              )}
-
-              {/* Team badge */}
-              {evening.teamName && (
-                <div className="mt-3 pt-3 border-t border-border/30">
+            return (
+              <Card
+                key={evening.id}
+                className="bg-gradient-card border-neon-green/20 p-4 shadow-card hover:shadow-glow transition-all duration-200"
+              >
+                <div className="flex justify-between items-start mb-4">
                   <div className="flex items-center gap-2">
-                    <Link2 className="h-3 w-3 text-neon-green" />
-                    <span className="text-xs text-neon-green font-medium">
-                      קבוצה: {evening.teamName}
+                    <Calendar className="h-4 w-4 text-neon-green" />
+                    <span className="font-semibold text-foreground">
+                      {formatDate(evening.date)}
                     </span>
                   </div>
-                </div>
-              )}
 
-              {/* Players */}
-              <div className="mt-3 pt-3 border-t border-border/30">
-                <p className="text-xs text-muted-foreground">
-                  Players: {evening.players.map(p => p.name).join(', ')}
-                </p>
-              </div>
-            </Card>
-          ))}
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-xs">
+                      {roundsOrGames}
+                    </Badge>
+
+                    <LinkToTeamDialog
+                      eveningId={evening.id}
+                      currentTeamId={evening.teamId}
+                      currentTeamName={evening.teamName}
+                      onLinked={() => onRefresh?.()}
+                    />
+
+                    {onDeleteEvening && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onDeleteEvening(evening.id)}
+                        className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Rankings */}
+                {effectiveRankings && (
+                  <div className="space-y-2">
+                    {/* Alpha */}
+                    {effectiveRankings.alpha?.length > 0 && (
+                      <div className="flex items-center gap-2">
+                        {getRankIcon("alpha")}
+                        <span className="text-sm font-medium text-foreground">
+                          Alpha:
+                        </span>
+                        <div className="flex flex-wrap gap-1">
+                          {effectiveRankings.alpha.map((player: Player) => (
+                            <Badge
+                              key={player.id}
+                              variant="secondary"
+                              className="text-xs bg-yellow-400/20 text-yellow-300 border-yellow-400/30"
+                            >
+                              {player.name}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Beta */}
+                    {effectiveRankings.beta?.length > 0 && (
+                      <div className="flex items-center gap-2">
+                        {getRankIcon("beta")}
+                        <span className="text-sm font-medium text-foreground">
+                          Beta:
+                        </span>
+                        <div className="flex flex-wrap gap-1">
+                          {effectiveRankings.beta.map((player: Player) => (
+                            <Badge
+                              key={player.id}
+                              variant="secondary"
+                              className="text-xs bg-gray-400/20 text-gray-300 border-gray-400/30"
+                            >
+                              {player.name}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Gamma */}
+                    {effectiveRankings.gamma?.length > 0 && (
+                      <div className="flex items-center gap-2">
+                        {getRankIcon("gamma")}
+                        <span className="text-sm font-medium text-foreground">
+                          Gamma:
+                        </span>
+                        <div className="flex flex-wrap gap-1">
+                          {effectiveRankings.gamma.map((player: Player) => (
+                            <Badge
+                              key={player.id}
+                              variant="secondary"
+                              className="text-xs bg-amber-600/20 text-amber-300 border-amber-600/30"
+                            >
+                              {player.name}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Delta */}
+                    {effectiveRankings.delta?.length > 0 && (
+                      <div className="flex items-center gap-2">
+                        {getRankIcon("delta")}
+                        <span className="text-sm font-medium text-foreground">
+                          Delta:
+                        </span>
+                        <div className="flex flex-wrap gap-1">
+                          {effectiveRankings.delta.map((player: Player) => (
+                            <Badge
+                              key={player.id}
+                              variant="secondary"
+                              className="text-xs bg-sky-400/20 text-sky-300 border-sky-400/30"
+                            >
+                              {player.name}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Epsilon */}
+                    {effectiveRankings.epsilon?.length > 0 && (
+                      <div className="flex items-center gap-2">
+                        <Target className="h-4 w-4 text-red-400" />
+                        <span className="text-sm font-medium text-foreground">
+                          Epsilon:
+                        </span>
+                        <div className="flex flex-wrap gap-1">
+                          {effectiveRankings.epsilon.map((player: Player) => (
+                            <Badge
+                              key={player.id}
+                              variant="secondary"
+                              className="text-xs bg-red-400/20 text-red-300 border-red-400/30"
+                            >
+                              {player.name}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Match Details - Expandable */}
+                {evening.rounds && evening.rounds.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-border/30">
+                    <EveningMatchDetails evening={evening} />
+                  </div>
+                )}
+
+                {/* Team badge */}
+                {evening.teamName && (
+                  <div className="mt-3 pt-3 border-t border-border/30">
+                    <div className="flex items-center gap-2">
+                      <Link2 className="h-3 w-3 text-neon-green" />
+                      <span className="text-xs text-neon-green font-medium">
+                        קבוצה: {evening.teamName}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Players */}
+                <div className="mt-3 pt-3 border-t border-border/30">
+                  <p className="text-xs text-muted-foreground">
+                    Players: {evening.players.map((p) => p.name).join(", ")}
+                  </p>
+                </div>
+              </Card>
+            );
+          })}
         </div>
 
         {/* Footer */}
