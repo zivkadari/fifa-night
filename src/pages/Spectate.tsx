@@ -224,7 +224,7 @@ function PersonalizedSpectateView({
   const navigate = useNavigate();
 
   const goBack = () => {
-  navigate("/tournaments");
+    navigate("/tournaments");
   };
 
   const goHome = () => {
