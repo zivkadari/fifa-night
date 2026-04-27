@@ -6,12 +6,23 @@ import {
   Eye,
   Filter,
   Loader2,
+  Trash2,
   Trophy,
   Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { RemoteStorageService } from "@/services/remoteStorageService";
 import { calculatePairStats, calculatePlayerStats } from "@/services/fivePlayerEngine";
 import { Evening } from "@/types/tournament";
@@ -90,8 +101,26 @@ export default function TeamTournaments() {
   const [tournaments, setTournaments] = useState<TournamentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [openingId, setOpeningId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<TournamentRow | null>(null);
   const [teamFilter, setTeamFilter] = useState<string>(teamId || "all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+
+  const loadTournaments = async () => {
+    setLoading(true);
+
+    try {
+      let rows: TournamentRow[] = [];
+
+      if (RemoteStorageService.isEnabled()) {
+        rows = (await RemoteStorageService.loadEveningsWithTeams()) as TournamentRow[];
+      }
+
+      setTournaments(rows);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -175,6 +204,38 @@ export default function TeamTournaments() {
     }
   };
 
+  const deleteTournament = async () => {
+    if (!deleteTarget) return;
+
+    setDeletingId(deleteTarget.id);
+
+    try {
+      await RemoteStorageService.deleteEvening(deleteTarget.id);
+
+      setTournaments((prev) => prev.filter((t) => t.id !== deleteTarget.id));
+      setDeleteTarget(null);
+    } catch (error: any) {
+      alert(error?.message || "לא ניתן למחוק את הטורניר");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const totalCount = tournaments.length;
+  const shownCount = filteredTournaments.length;
+
+  const selectedTeamName =
+    teamFilter === "all"
+      ? "כל הקבוצות"
+      : teams.find((t) => t.id === teamFilter)?.name || "קבוצה";
+
+  const statusLabel =
+    statusFilter === "all"
+      ? "הכל"
+      : statusFilter === "active"
+        ? "פעילים"
+        : "הסתיימו";
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gaming-bg p-4 flex items-center justify-center" dir="rtl">
@@ -203,9 +264,15 @@ export default function TeamTournaments() {
         </div>
 
         <Card className="bg-gradient-card border-neon-green/20 p-3 space-y-3">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Filter className="h-4 w-4 text-neon-green" />
-            סינון
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Filter className="h-4 w-4 text-neon-green" />
+              סינון
+            </div>
+
+            <p className="text-xs text-muted-foreground whitespace-nowrap">
+              מציג {shownCount}/{totalCount} טורנירים
+            </p>
           </div>
 
           <div className="grid grid-cols-3 gap-2">
@@ -254,6 +321,10 @@ export default function TeamTournaments() {
               </Button>
             ))}
           </div>
+
+          <p className="text-[11px] text-muted-foreground">
+            {selectedTeamName} · {statusLabel} · מציג {shownCount}/{totalCount}
+          </p>
         </Card>
 
         {filteredTournaments.length === 0 ? (
@@ -317,20 +388,36 @@ export default function TeamTournaments() {
                       </p>
                     </div>
 
-                    <Button
-                      variant={evening.completed ? "outline" : "gaming"}
-                      size="sm"
-                      disabled={openingId === evening.id}
-                      onClick={() => openSpectate(evening)}
-                      className="shrink-0"
-                    >
-                      {openingId === evening.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                      צפה
-                    </Button>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Button
+                        variant={evening.completed ? "outline" : "gaming"}
+                        size="sm"
+                        disabled={openingId === evening.id}
+                        onClick={() => openSpectate(evening)}
+                      >
+                        {openingId === evening.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                        צפה
+                      </Button>
+
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        disabled={deletingId === evening.id}
+                        onClick={() => setDeleteTarget(evening)}
+                        title="מחק טורניר"
+                      >
+                        {deletingId === evening.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
                   </div>
 
                   <div className="flex items-center gap-2 flex-wrap">
@@ -376,6 +463,37 @@ export default function TeamTournaments() {
           </div>
         )}
       </div>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>למחוק את הטורניר?</AlertDialogTitle>
+            <AlertDialogDescription>
+              הפעולה תמחק את הטורניר מהרשימה ולא ניתן יהיה לשחזר אותו מתוך האפליקציה.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          {deleteTarget && (
+            <div className="rounded-lg border border-border/50 bg-gaming-surface/40 p-3 text-sm text-muted-foreground">
+              <p className="text-foreground font-semibold">
+                {getTournamentTypeLabel(deleteTarget)}
+              </p>
+              <p>{formatDate(deleteTarget.date)}</p>
+              <p>{deleteTarget.teamName || "ללא קבוצה"}</p>
+            </div>
+          )}
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>ביטול</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={deleteTournament}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {deletingId ? "מוחק..." : "מחק טורניר"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
