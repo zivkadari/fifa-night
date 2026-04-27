@@ -67,7 +67,7 @@ const dedupeByIdentity = (
  * the live 5P standings logic). Sort by points desc, then GD desc, then
  * goalsFor desc. Top → alpha, next → beta, etc.
  */
-function synthesizeFivePlayerRankings(evening: any): Evening["rankings"] | undefined {
+function synthesizeFivePlayerRankings(evening: any): any {
   const schedule: any[] = Array.isArray(evening?.schedule) ? evening.schedule : [];
   const players: Player[] = Array.isArray(evening?.players) ? evening.players : [];
 
@@ -154,7 +154,7 @@ function synthesizeFivePlayerRankings(evening: any): Evening["rankings"] | undef
  * Return the evening's rankings, computing them on-the-fly for 5-player
  * doubles tournaments where rankings are not persisted on the evening.
  */
-function getEffectiveRankings(evening: any): Evening["rankings"] | undefined {
+function getEffectiveRankings(evening: any): any {
   if (evening?.rankings) return evening.rankings;
 
   const mode = evening?.mode || evening?.resolvedMode;
