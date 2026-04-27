@@ -223,7 +223,7 @@ function PersonalizedSpectateView({
 }: PersonalizedViewProps) {
   const navigate = useNavigate();
 
-const goBack = () => {
+  const goBack = () => {
   if (window.history.length > 1) {
     navigate(-1);
   } else {
@@ -231,11 +231,11 @@ const goBack = () => {
   }
 };
 
-const goHome = () => {
+  const goHome = () => {
   navigate("/");
 };
 
-const pairStats = useMemo(() => calculatePairStats(evening), [evening]);
+  const pairStats = useMemo(() => calculatePairStats(evening), [evening]);
   const playerStats = useMemo(() => calculatePlayerStats(evening), [evening]);
   const personal = useMemo(
     () => computePersonalStats(evening, selectedPlayerId, playerStats),
