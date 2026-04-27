@@ -224,12 +224,7 @@ function PersonalizedSpectateView({
   const navigate = useNavigate();
 
   const goBack = () => {
-    if (teamId) {
-      navigate(`/team/${teamId}/tournaments`);
-      return;
-    }
-
-    navigate("/", { replace: true });
+  navigate("/tournaments");
   };
 
   const goHome = () => {
