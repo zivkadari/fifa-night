@@ -22,9 +22,18 @@ interface Props {
   selectedPlayerId: string;
   onSwitchPlayer: () => void;
   isCompleted: boolean;
+  onBack?: () => void;
+  onHome?: () => void;
 }
 
-export default function CouplesSpectateView({ evening, selectedPlayerId, onSwitchPlayer, isCompleted }: Props) {
+export default function CouplesSpectateView({
+  evening,
+  selectedPlayerId,
+  onSwitchPlayer,
+  isCompleted,
+  onBack,
+  onHome,
+}: Props) {
   const [showRecent, setShowRecent] = useState(false);
   const [teamsDrawerOpen, setTeamsDrawerOpen] = useState(false);
 
@@ -33,7 +42,7 @@ export default function CouplesSpectateView({ evening, selectedPlayerId, onSwitc
   const pairStandings = useMemo(() => computeCouplesPairStandings(evening), [evening]);
 
   const pairName = (pair: Pair) => `${pair.players[0].name} & ${pair.players[1].name}`;
-
+  const tournamentTitle = evening.type === "singles" ? "טורניר יחידים" : "טורניר זוגות";
   const totalRounds = (evening.rounds || []).length;
   const completedRounds = (evening.rounds || []).filter(r => r.completed).length;
   const totalMatches = (evening.rounds || []).reduce((sum, r) => sum + r.matches.length, 0);
@@ -74,28 +83,62 @@ export default function CouplesSpectateView({ evening, selectedPlayerId, onSwitc
     <div className="min-h-[100svh] bg-gaming-bg p-3 pb-[max(1rem,env(safe-area-inset-bottom))]" dir="rtl">
       <div className="max-w-md mx-auto space-y-3">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Eye className="h-5 w-5 text-neon-green" />
-            <div>
-              <h1 className="text-base font-bold text-foreground">טורניר זוגות</h1>
-              <p className="text-xs text-muted-foreground">
-                {evening.players.map(p => p.name).join(", ")}
-              </p>
-            </div>
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onBack}
+          className="gap-1 text-muted-foreground"
+        >
+          <ArrowLeft className="h-4 w-4 rotate-180" />
+          חזרה
+        </Button>
+    
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onHome}
+          className="gap-1 text-muted-foreground"
+        >
+          <Home className="h-4 w-4" />
+          בית
+        </Button>
+      </div>
+    
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 min-w-0">
+          <Eye className="h-5 w-5 text-neon-green shrink-0" />
+          <div className="min-w-0">
+            <h1 className="text-base font-bold text-foreground">{tournamentTitle}</h1>
+            <p className="text-xs text-muted-foreground truncate">
+              {evening.players.map((p) => p.name).join(", ")}
+            </p>
           </div>
-          {isCompleted ? (
-            <Badge className="bg-yellow-400/20 text-yellow-300 border-yellow-400/30 text-xs">
-              <Trophy className="h-3 w-3 ml-1" />
-              תוצאות סופיות
-            </Badge>
-          ) : (
-            <Badge className="bg-neon-green/20 text-neon-green border-neon-green/30 text-xs">
-              <Eye className="h-3 w-3 ml-1" />
-              צפייה בלבד
-            </Badge>
-          )}
         </div>
+    
+        {isCompleted ? (
+          <Badge className="bg-yellow-400/20 text-yellow-300 border-yellow-400/30 text-xs shrink-0">
+            <Trophy className="h-3 w-3 ml-1" />
+            תוצאות סופיות
+          </Badge>
+        ) : (
+          <Badge className="bg-neon-green/20 text-neon-green border-neon-green/30 text-xs shrink-0">
+            <Eye className="h-3 w-3 ml-1" />
+            צפייה בלבד
+          </Badge>
+        )}
+      </div>
+
+  <Button
+    variant="outline"
+    size="sm"
+    onClick={onSwitchPlayer}
+    className="w-full border-border/50 text-muted-foreground"
+  >
+    החלף שחקן
+  </Button>
+</div>
 
         {/* Personal Card */}
         {personal && (
