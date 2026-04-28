@@ -4,10 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Trophy, Users, Eye, ChevronDown, ChevronUp } from "lucide-react";
-import {
-  Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription,
-} from "@/components/ui/drawer";
+import { Trophy, Users, Eye, ChevronDown, ChevronUp, ArrowLeft, Home } from "lucide-react";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from "@/components/ui/drawer";
 import { Evening, Pair, Round } from "@/types/tournament";
 import { StarRating, starText } from "@/components/StarRating";
 import {
