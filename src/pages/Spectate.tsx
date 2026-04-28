@@ -44,6 +44,7 @@ function getStorageKey(code: string) {
 
 export default function Spectate() {
   const { code } = useParams<{ code: string }>();
+  const navigate = useNavigate();
   const [state, setState] = useState<SpectateState>("loading");
   const [evening, setEvening] = useState<FPEvening | null>(null);
   const [couplesEvening, setCouplesEvening] = useState<Evening | null>(null);
@@ -162,7 +163,12 @@ export default function Spectate() {
 
   // Show player picker if no player selected
   if (!selectedPlayerId) {
-    const title = eveningMode === "five-player" ? "ליגת 5 שחקנים" : "טורניר זוגות";
+    const title =
+  eveningMode === "five-player"
+    ? "ליגת 5 שחקנים"
+    : couplesEvening?.type === "singles"
+      ? "טורניר יחידים"
+      : "טורניר זוגות";
     return <PlayerPicker players={allPlayers} onSelect={selectPlayer} title={title} />;
   }
 
@@ -174,6 +180,8 @@ export default function Spectate() {
         selectedPlayerId={selectedPlayerId}
         onSwitchPlayer={clearPlayer}
         isCompleted={!!isCompleted}
+        onBack={() => navigate("/tournaments")}
+        onHome={() => navigate("/", { replace: true })}
       />
     );
   }
