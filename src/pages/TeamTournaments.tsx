@@ -24,6 +24,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { RemoteStorageService } from "@/services/remoteStorageService";
+import {
+  computeCouplesPlayerStandings,
+  computeCouplesPairStandings,
+} from "@/services/spectatorCouplesStats";
 import { calculatePairStats, calculatePlayerStats } from "@/services/fivePlayerEngine";
 import { Evening } from "@/types/tournament";
 import { FPEvening } from "@/types/fivePlayerTypes";
@@ -92,6 +96,43 @@ function getTournamentTypeLabel(evening: TournamentRow) {
   if (evening.type === "singles") return "טורניר יחידים";
   if (evening.type === "pairs") return "טורניר זוגות";
   return "טורניר";
+}
+function getTournamentLeaders(evening: TournamentRow) {
+  let playerLeaderText = "";
+  let pairLeaderText = "";
+
+  try {
+    if (isFivePlayerEvening(evening) && evening.schedule && evening.players) {
+      const fp = evening as unknown as FPEvening;
+      const playerStats = calculatePlayerStats(fp);
+      const pairStats = calculatePairStats(fp);
+
+      if (playerStats[0]) {
+        playerLeaderText = `שחקן מוביל: ${playerStats[0].player.name} · ${playerStats[0].points} נק׳`;
+      }
+
+      if (pairStats[0]) {
+        pairLeaderText = `זוג מוביל: ${pairStats[0].pair.players[0].name} & ${pairStats[0].pair.players[1].name}`;
+      }
+
+      return { playerLeaderText, pairLeaderText };
+    }
+
+    const playerStandings = computeCouplesPlayerStandings(evening as Evening);
+    const pairStandings = computeCouplesPairStandings(evening as Evening);
+
+    if (playerStandings[0] && playerStandings[0].matchesPlayed > 0) {
+      playerLeaderText = `שחקן מוביל: ${playerStandings[0].player.name} · ${playerStandings[0].points} נק׳`;
+    }
+
+    if (evening.type !== "singles" && pairStandings[0] && pairStandings[0].matchesPlayed > 0) {
+      pairLeaderText = `זוג מוביל: ${pairStandings[0].pair.players[0].name} & ${pairStandings[0].pair.players[1].name}`;
+    }
+  } catch {
+    return { playerLeaderText: "", pairLeaderText: "" };
+  }
+
+  return { playerLeaderText, pairLeaderText };
 }
 
 export default function TeamTournaments() {
@@ -342,28 +383,7 @@ export default function TeamTournaments() {
               const completed = getCompletedGames(evening);
               const total = getTotalGames(evening);
               const typeLabel = getTournamentTypeLabel(evening);
-
-              let topText = "";
-              let playerStatsText = "";
-
-              if (isFive && evening.schedule && evening.players) {
-                try {
-                  const fp = evening as unknown as FPEvening;
-                  const pairStats = calculatePairStats(fp);
-                  const playerStats = calculatePlayerStats(fp);
-
-                  if (pairStats[0]) {
-                    topText = `${pairStats[0].pair.players[0].name} & ${pairStats[0].pair.players[1].name}`;
-                  }
-
-                  if (playerStats[0]) {
-                    playerStatsText = `מוביל: ${playerStats[0].player.name} · ${playerStats[0].points} נק׳`;
-                  }
-                } catch {
-                  topText = "";
-                  playerStatsText = "";
-                }
-              }
+              const { playerLeaderText, pairLeaderText } = getTournamentLeaders(evening);
 
               return (
                 <Card
@@ -440,19 +460,19 @@ export default function TeamTournaments() {
                     </Badge>
                   </div>
 
-                  {isFive && topText && (
-                    <div className="text-sm text-muted-foreground">
-                      <Trophy className="h-3 w-3 inline text-yellow-400 ml-1" />
-                      זוג מוביל: <span className="text-foreground">{topText}</span>
-                    </div>
-                  )}
+                  {playerLeaderText && (
+  <div className="text-sm text-muted-foreground">
+    <Users className="h-3 w-3 inline text-neon-green ml-1" />
+    {playerLeaderText}
+  </div>
+)}
 
-                  {isFive && playerStatsText && (
-                    <div className="text-sm text-muted-foreground">
-                      <Users className="h-3 w-3 inline text-neon-green ml-1" />
-                      {playerStatsText}
-                    </div>
-                  )}
+{pairLeaderText && (
+  <div className="text-sm text-muted-foreground">
+    <Trophy className="h-3 w-3 inline text-yellow-400 ml-1" />
+    {pairLeaderText}
+  </div>
+)}
 
                   <p className="text-xs text-muted-foreground line-clamp-2">
                     שחקנים: {evening.players?.map((p) => p.name).join(", ")}
