@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  History, User, Users, ChevronDown, ChevronRight,
+  User, Users, ChevronDown, ChevronRight,
   Eye, Settings, UserPlus, Star, LogOut, LogIn, X, Play, Zap,
 } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -99,6 +99,7 @@ export const TeamDashboard = ({
 
   const activeTeam = teams.find((t) => t.team_id === activeTeamId);
   const hasActiveTournament = !!onResume;
+  const handleViewTournaments = onViewTeamTournaments || onViewHistory;
 
   const greetingName =
     displayName ||
@@ -341,34 +342,27 @@ export const TeamDashboard = ({
         </div>
       )}
 
-      {/* ── 4. Spectator + History ── */}
+      {/* ── 4. Tournaments ── */}
       <div className="mb-4 space-y-2">
         <p className="text-xs text-muted-foreground font-medium">
-          צפייה והיסטוריה
+          טורנירים
         </p>
-
-        {onViewTeamTournaments && (
-          <Button
-            variant="gaming"
-            size="default"
-            onClick={onViewTeamTournaments}
-            className="w-full justify-start gap-3"
-          >
-            <Eye className="h-4 w-4" />
-            צפייה בטורנירי הקבוצה
-          </Button>
-        )}
-
+      
         <Button
-          variant="secondary"
+          variant="gaming"
           size="default"
-          onClick={onViewHistory}
-          className="w-full justify-start gap-3"
+          onClick={handleViewTournaments}
+          className="w-full justify-start gap-3 h-auto py-3"
         >
-          <History className="h-4 w-4" />
-          היסטוריית טורנירים
+          <Eye className="h-4 w-4 shrink-0" />
+          <div className="text-right">
+            <p className="font-semibold leading-tight">טורנירים</p>
+            <p className="text-xs opacity-80 leading-tight">
+              צפייה, היסטוריה וניהול כל הטורנירים שלך
+            </p>
+          </div>
         </Button>
-
+      
         {onJoinEvening && isAuthed && (
           <Button
             variant="outline"
