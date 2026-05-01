@@ -166,23 +166,6 @@ function getTournamentLeaders(evening: TournamentRow) {
   return { playerLeaderText, pairLeaderText };
 }
 
-    const playerStandings = computeCouplesPlayerStandings(evening as Evening);
-    const pairStandings = computeCouplesPairStandings(evening as Evening);
-
-    if (playerStandings[0] && playerStandings[0].matchesPlayed > 0) {
-      playerLeaderText = `שחקן מוביל: ${playerStandings[0].player.name} · ${playerStandings[0].points} נק׳`;
-    }
-
-    if (evening.type !== "singles" && pairStandings[0] && pairStandings[0].matchesPlayed > 0) {
-      pairLeaderText = `זוג מוביל: ${pairStandings[0].pair.players[0].name} & ${pairStandings[0].pair.players[1].name}`;
-    }
-  } catch {
-    return { playerLeaderText: "", pairLeaderText: "" };
-  }
-
-  return { playerLeaderText, pairLeaderText };
-}
-
 export default function TeamTournaments() {
   const { teamId } = useParams<{ teamId?: string }>();
   const navigate = useNavigate();
