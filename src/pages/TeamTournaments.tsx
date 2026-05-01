@@ -97,6 +97,9 @@ function getTournamentTypeLabel(evening: TournamentRow) {
   if (evening.type === "pairs") return "טורניר זוגות";
   return "טורניר";
 }
+function joinNames(names: string[]) {
+  return names.join(" & ");
+}
 function getTournamentLeaders(evening: TournamentRow) {
   let playerLeaderText = "";
   let pairLeaderText = "";
@@ -108,15 +111,60 @@ function getTournamentLeaders(evening: TournamentRow) {
       const pairStats = calculatePairStats(fp);
 
       if (playerStats[0]) {
-        playerLeaderText = `שחקן מוביל: ${playerStats[0].player.name} · ${playerStats[0].points} נק׳`;
+        const topPoints = playerStats[0].points;
+        const alphaPlayers = playerStats.filter((s) => s.points === topPoints);
+
+        playerLeaderText = `שחקן מוביל: ${joinNames(
+          alphaPlayers.map((s) => s.player.name)
+        )} · ${topPoints} נק׳`;
       }
 
       if (pairStats[0]) {
-        pairLeaderText = `זוג מוביל: ${pairStats[0].pair.players[0].name} & ${pairStats[0].pair.players[1].name}`;
+        const topPairPoints = pairStats[0].points;
+        const topPairs = pairStats.filter((s) => s.points === topPairPoints);
+
+        pairLeaderText = `זוג מוביל: ${topPairs
+          .map((s) => `${s.pair.players[0].name} & ${s.pair.players[1].name}`)
+          .join(" / ")}`;
       }
 
       return { playerLeaderText, pairLeaderText };
     }
+
+    const playerStandings = computeCouplesPlayerStandings(evening as Evening);
+    const pairStandings = computeCouplesPairStandings(evening as Evening);
+
+    if (playerStandings[0] && playerStandings[0].matchesPlayed > 0) {
+      const topPoints = playerStandings[0].points;
+      const topPlayers = playerStandings.filter(
+        (s) => s.matchesPlayed > 0 && s.points === topPoints
+      );
+
+      playerLeaderText = `שחקן מוביל: ${joinNames(
+        topPlayers.map((s) => s.player.name)
+      )} · ${topPoints} נק׳`;
+    }
+
+    if (
+      evening.type !== "singles" &&
+      pairStandings[0] &&
+      pairStandings[0].matchesPlayed > 0
+    ) {
+      const topPairPoints = pairStandings[0].points;
+      const topPairs = pairStandings.filter(
+        (s) => s.matchesPlayed > 0 && s.points === topPairPoints
+      );
+
+      pairLeaderText = `זוג מוביל: ${topPairs
+        .map((s) => `${s.pair.players[0].name} & ${s.pair.players[1].name}`)
+        .join(" / ")}`;
+    }
+  } catch {
+    return { playerLeaderText: "", pairLeaderText: "" };
+  }
+
+  return { playerLeaderText, pairLeaderText };
+}
 
     const playerStandings = computeCouplesPlayerStandings(evening as Evening);
     const pairStandings = computeCouplesPairStandings(evening as Evening);
@@ -379,7 +427,6 @@ export default function TeamTournaments() {
         ) : (
           <div className="space-y-3">
             {filteredTournaments.map((evening) => {
-              const isFive = isFivePlayerEvening(evening);
               const completed = getCompletedGames(evening);
               const total = getTotalGames(evening);
               const typeLabel = getTournamentTypeLabel(evening);
