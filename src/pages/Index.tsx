@@ -233,7 +233,7 @@ useEffect(() => {
   };
 
   const handleViewHistory = () => {
-    goTo('history');
+    navigate("/tournaments");
   };
 
   const handleBackToHome = () => {
