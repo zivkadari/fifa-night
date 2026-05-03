@@ -227,7 +227,7 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam }: TeamsManagerProp
   };
 
   return (
-    <div className="min-h-screen bg-gaming-bg p-4 mobile-optimized">
+    <div className="min-h-screen bg-gaming-bg p-4 mobile-optimized" dir="rtl">
       <div className="max-w-md mx-auto">
         {/* Header */}
         <div className="flex items-center gap-4 mb-6">
