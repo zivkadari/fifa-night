@@ -113,8 +113,9 @@ function getTournamentLeaders(evening: TournamentRow) {
       if (playerStats[0]) {
         const topPoints = playerStats[0].points;
         const alphaPlayers = playerStats.filter((s) => s.points === topPoints);
+        const playerLabel = alphaPlayers.length > 1 ? "שחקנים מובילים" : "שחקן מוביל";
 
-        playerLeaderText = `שחקן מוביל: ${joinNames(
+        playerLeaderText = `${playerLabel}: ${joinNames(
           alphaPlayers.map((s) => s.player.name)
         )} · ${topPoints} נק׳`;
       }
@@ -122,8 +123,9 @@ function getTournamentLeaders(evening: TournamentRow) {
       if (pairStats[0]) {
         const topPairPoints = pairStats[0].points;
         const topPairs = pairStats.filter((s) => s.points === topPairPoints);
+        const pairLabel = topPairs.length > 1 ? "זוגות מובילים" : "זוג מוביל";
 
-        pairLeaderText = `זוג מוביל: ${topPairs
+        pairLeaderText = `${pairLabel}: ${topPairs
           .map((s) => `${s.pair.players[0].name} & ${s.pair.players[1].name}`)
           .join(" / ")}`;
       }
@@ -139,8 +141,9 @@ function getTournamentLeaders(evening: TournamentRow) {
       const topPlayers = playerStandings.filter(
         (s) => s.matchesPlayed > 0 && s.points === topPoints
       );
+      const playerLabel = topPlayers.length > 1 ? "שחקנים מובילים" : "שחקן מוביל";
 
-      playerLeaderText = `שחקן מוביל: ${joinNames(
+      playerLeaderText = `${playerLabel}: ${joinNames(
         topPlayers.map((s) => s.player.name)
       )} · ${topPoints} נק׳`;
     }
@@ -154,8 +157,9 @@ function getTournamentLeaders(evening: TournamentRow) {
       const topPairs = pairStandings.filter(
         (s) => s.matchesPlayed > 0 && s.points === topPairPoints
       );
+      const pairLabel = topPairs.length > 1 ? "זוגות מובילים" : "זוג מוביל";
 
-      pairLeaderText = `זוג מוביל: ${topPairs
+      pairLeaderText = `${pairLabel}: ${topPairs
         .map((s) => `${s.pair.players[0].name} & ${s.pair.players[1].name}`)
         .join(" / ")}`;
     }
