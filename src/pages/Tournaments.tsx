@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { TournamentHistory, EveningWithTeam } from "@/components/TournamentHistory";
 import { RemoteStorageService } from "@/services/remoteStorageService";
-import { StorageService } from "@/services/storageService";
 import { useToast } from "@/hooks/use-toast";
 import FitToScreen from "@/components/FitToScreen";
 import { useIsMobile } from "@/hooks/use-mobile";
