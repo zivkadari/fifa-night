@@ -222,6 +222,12 @@ function PersonalizedSpectateView({
   isCompleted, shareCode, teamId,
 }: PersonalizedViewProps) {
   const navigate = useNavigate();
+  const goBack = () => {
+  navigate("/tournaments");
+  };
+  const goHome = () => {
+    navigate("/");
+  };
   const pairStats = useMemo(() => calculatePairStats(evening), [evening]);
   const playerStats = useMemo(() => calculatePlayerStats(evening), [evening]);
   const personal = useMemo(
@@ -680,16 +686,18 @@ function PersonalizedSpectateView({
       <div className="max-w-md mx-auto space-y-3">
         {/* Navigation */}
         <div className="flex items-center justify-between">
-          <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="text-muted-foreground">
+          <Button variant="ghost" size="sm" onClick={goBack} className="text-muted-foreground">
             <ArrowLeft className="h-4 w-4 ml-1 rotate-180" />
             חזרה
           </Button>
+        
           <div className="flex items-center gap-1">
             <Button variant="ghost" size="sm" onClick={onSwitchPlayer} className="text-muted-foreground">
               <Users className="h-4 w-4 ml-1" />
               החלף שחקן
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="text-muted-foreground">
+        
+            <Button variant="ghost" size="sm" onClick={goHome} className="text-muted-foreground">
               <Home className="h-4 w-4 ml-1" />
               בית
             </Button>
