@@ -241,14 +241,22 @@ export const TeamDashboard = ({
         </div>
       )}
 
-      {/* ── 4. Spectator + History ── */}
+      {/* ── 4. Tournaments ── */}
       <div className="mb-4 space-y-2">
-        <p className="text-xs text-muted-foreground font-medium">צפייה והיסטוריה</p>
+        <p className="text-xs text-muted-foreground font-medium">טורנירים</p>
 
-        <Button variant="secondary" size="default" onClick={onViewHistory} className="w-full justify-start gap-3">
-          <History className="h-4 w-4" />
-          היסטוריית טורנירים
-        </Button>
+        <Card
+          className="bg-card border-border cursor-pointer hover:border-neon-green/30 transition-colors"
+          onClick={onViewHistory}
+        >
+          <CardContent className="p-3 flex items-center gap-3">
+            <Eye className="h-5 w-5 text-muted-foreground" />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-foreground">טורנירים</p>
+              <p className="text-[10px] text-muted-foreground">צפייה, היסטוריה וניהול כל הטורנירים שלך</p>
+            </div>
+          </CardContent>
+        </Card>
 
         {onJoinEvening && isAuthed && (
           <Button variant="outline" size="default" onClick={onJoinEvening} className="w-full justify-start gap-3 border-neon-green/20">
