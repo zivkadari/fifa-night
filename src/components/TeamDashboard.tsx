@@ -140,43 +140,13 @@ export const TeamDashboard = ({
         )}
       </div>
 
-      {/* ── 1. Active team header ── */}
+      {/* ── 1. Title + team summary (non-interactive) ── */}
       <div className="mb-4">
-        {teams.length > 1 ? (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-2 text-right w-full group">
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-muted-foreground">קבוצה פעילה</p>
-                  <h1 className="text-xl font-bold text-foreground truncate">
-                    {activeTeam?.team_name ?? "בחר קבוצה"}
-                  </h1>
-                </div>
-                <ChevronDown className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors shrink-0" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-64">
-              {teams.map((t) => (
-                <DropdownMenuItem
-                  key={t.team_id}
-                  onClick={() => setActiveTeamId(t.team_id)}
-                  className={t.team_id === activeTeamId ? "bg-secondary" : ""}
-                >
-                  {t.team_name}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        ) : activeTeam ? (
-          <div>
-            <p className="text-xs text-muted-foreground">קבוצה פעילה</p>
-            <h1 className="text-xl font-bold text-foreground">{activeTeam.team_name}</h1>
-          </div>
-        ) : (
-          <div>
-            <p className="text-xs text-muted-foreground">ברוך הבא</p>
-            <h1 className="text-xl font-bold text-foreground">EA FC 26</h1>
-          </div>
+        <h1 className="text-xl font-bold text-foreground">EA FC 26</h1>
+        {teams.length > 0 && (
+          <p className="text-xs text-muted-foreground mt-0.5">
+            הקבוצות שלי: {teams.length} {teams.length === 1 ? "קבוצה" : "קבוצות"}
+          </p>
         )}
       </div>
 
