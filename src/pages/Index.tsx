@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { TeamDashboard } from "@/components/TeamDashboard";
 import { EveningSetup } from "@/components/EveningSetup";
 import { TournamentTypeSelection } from "@/components/TournamentTypeSelection";
