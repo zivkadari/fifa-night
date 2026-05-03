@@ -10,12 +10,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { RemoteStorageService } from "@/services/remoteStorageService";
 import { useTeam } from "@/contexts/TeamContext";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -65,7 +59,7 @@ export const TeamDashboard = ({
   activeTournamentMode,
   activeTournamentProgress,
 }: TeamDashboardProps) => {
-  const { teams, activeTeamId, setActiveTeamId, activePlayer } = useTeam();
+  const { teams, activePlayer } = useTeam();
   const [manageOpen, setManageOpen] = useState(false);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const isAdmin = userEmail === "zivkad12@gmail.com";
@@ -85,7 +79,6 @@ export const TeamDashboard = ({
     return () => { mounted = false; };
   }, [isAuthed, userEmail]);
 
-  const activeTeam = teams.find((t) => t.team_id === activeTeamId);
   const hasActiveTournament = !!onResume;
   // Best-effort greeting name: profile display_name → claimed player name → email local-part
   const greetingName = displayName
