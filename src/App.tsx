@@ -13,7 +13,6 @@ import AdminClubs from "./pages/AdminClubs";
 import AdminPoolConfig from "./pages/AdminPoolConfig";
 import Spectate from "./pages/Spectate";
 import { TeamProvider } from "./contexts/TeamContext";
-import TeamTournaments from "./pages/TeamTournaments";
 
 const queryClient = new QueryClient();
 
@@ -21,13 +20,10 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <TeamProvider>
-      <div dir="rtl">
       <Toaster />
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/team/:teamId/tournaments" element={<TeamTournaments />} />
-          <Route path="/tournaments" element={<TeamTournaments />} />
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/profile" element={<Profile />} />
@@ -39,8 +35,7 @@ const App = () => (
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
-        </BrowserRouter>
-      </div>
+      </BrowserRouter>
       </TeamProvider>
     </TooltipProvider>
   </QueryClientProvider>

@@ -70,35 +70,6 @@ const Auth = () => {
     }
   };
 
-  const handleGoogleSignIn = async () => {
-    setLoading(true);
-  
-    try {
-      cleanupAuthState();
-      try {
-        await supabase.auth.signOut({ scope: "global" });
-      } catch {}
-  
-      const redirectUrl = `${window.location.origin}${redirectPath}`;
-  
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: redirectUrl,
-        },
-      });
-  
-      if (error) throw error;
-    } catch (err: any) {
-      toast({
-        title: "שגיאה בהתחברות עם Google",
-        description: err?.message || "נסה שוב",
-        variant: "destructive",
-      });
-      setLoading(false);
-    }
-  };
-
   const handleSignOut = async () => {
     try {
       cleanupAuthState();
@@ -129,62 +100,21 @@ const Auth = () => {
               <Button variant="destructive" onClick={handleSignOut}>Sign out</Button>
             </div>
           ) : (
-            <div className="space-y-4">
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                onClick={handleGoogleSignIn}
-                disabled={loading}
-              >
-                התחבר עם Google
-              </Button>
-            
-              <div className="flex items-center gap-3">
-                <div className="h-px flex-1 bg-border" />
-                <span className="text-xs text-muted-foreground">או</span>
-                <div className="h-px flex-1 bg-border" />
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
               </div>
-            
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
-                </div>
-            
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
-                </div>
-            
-                <Button type="submit" disabled={loading} className="w-full">
-                  {mode === "signin" ? "Sign in" : "Sign up"}
-                </Button>
-            
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="w-full"
-                  onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
-                >
-                  {mode === "signin"
-                    ? "Don't have an account? Sign up"
-                    : "Already have an account? Sign in"}
-                </Button>
-              </form>
-            </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+              </div>
+              <Button type="submit" disabled={loading} className="w-full">
+                {mode === "signin" ? "Sign in" : "Sign up"}
+              </Button>
+              <Button type="button" variant="secondary" className="w-full" onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
+              >{mode === "signin" ? "Don't have an account? Sign up" : "Already have an account? Sign in"}</Button>
+            </form>
           )}
         </Card>
       </div>

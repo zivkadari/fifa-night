@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  User, Users, ChevronDown, ChevronRight,
+  Trophy, History, Gamepad2, Users2, User, Users, ChevronDown, ChevronRight,
   Eye, Settings, UserPlus, Star, LogOut, LogIn, X, Play, Zap,
 } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -9,12 +9,6 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { RemoteStorageService } from "@/services/remoteStorageService";
 import { useTeam } from "@/contexts/TeamContext";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,7 +32,6 @@ interface TeamDashboardProps {
   onStartPairs: () => void;
   onStartSingles: () => void;
   onViewHistory: () => void;
-  onViewTeamTournaments?: () => void;
   onResume?: () => void;
   onCloseTournament?: () => void;
   onManageTeams?: () => void;
@@ -56,7 +49,6 @@ export const TeamDashboard = ({
   onStartPairs,
   onStartSingles,
   onViewHistory,
-  onViewTeamTournaments,
   onResume,
   onCloseTournament,
   onManageTeams,
@@ -67,44 +59,31 @@ export const TeamDashboard = ({
   activeTournamentMode,
   activeTournamentProgress,
 }: TeamDashboardProps) => {
-  const { teams, activeTeamId, setActiveTeamId, activePlayer } = useTeam();
+  const { teams, activePlayer } = useTeam();
   const [manageOpen, setManageOpen] = useState(false);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const isAdmin = userEmail === "zivkad12@gmail.com";
 
+  // Load profile display name for the greeting
   useEffect(() => {
     let mounted = true;
-
-    if (!isAuthed) {
-      setDisplayName(null);
-      return;
-    }
-
+    if (!isAuthed) { setDisplayName(null); return; }
     (async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
-
         const profile = await RemoteStorageService.getProfile(user.id);
-        if (mounted && profile?.display_name) {
-          setDisplayName(profile.display_name);
-        }
+        if (mounted && profile?.display_name) setDisplayName(profile.display_name);
       } catch {}
     })();
-
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, [isAuthed, userEmail]);
 
-  const activeTeam = teams.find((t) => t.team_id === activeTeamId);
   const hasActiveTournament = !!onResume;
-  const handleViewTournaments = onViewTeamTournaments || onViewHistory;
-
-  const greetingName =
-    displayName ||
-    activePlayer?.player_name ||
-    (userEmail ? userEmail.split("@")[0] : null);
+  // Best-effort greeting name: profile display_name → claimed player name → email local-part
+  const greetingName = displayName
+    || activePlayer?.player_name
+    || (userEmail ? userEmail.split("@")[0] : null);
 
   return (
     <div
@@ -121,18 +100,13 @@ export const TeamDashboard = ({
                   {greetingName.charAt(0).toUpperCase()}
                 </div>
               )}
-
               <div className="min-w-0">
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground leading-none mb-0.5">
-                  מחובר כ
-                </p>
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground leading-none mb-0.5">מחובר כ</p>
                 <p className="text-sm text-foreground font-semibold truncate leading-tight">
                   {greetingName || userEmail}
                 </p>
                 {greetingName && userEmail && (
-                  <p className="text-[10px] text-muted-foreground truncate leading-tight">
-                    {userEmail}
-                  </p>
+                  <p className="text-[10px] text-muted-foreground truncate leading-tight">{userEmail}</p>
                 )}
               </div>
             </div>
@@ -140,20 +114,12 @@ export const TeamDashboard = ({
             <p className="text-sm text-muted-foreground">לא מחובר</p>
           )}
         </div>
-
         {isAuthed ? (
           <div className="flex items-center gap-1 shrink-0">
             <Button asChild variant="ghost" size="sm">
               <Link to="/profile">פרופיל</Link>
             </Button>
-
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onSignOut}
-              className="text-muted-foreground h-8 w-8"
-              title="התנתק"
-            >
+            <Button variant="ghost" size="icon" onClick={onSignOut} className="text-muted-foreground h-8 w-8" title="התנתק">
               <LogOut className="h-4 w-4" />
             </Button>
           </div>
@@ -167,46 +133,13 @@ export const TeamDashboard = ({
         )}
       </div>
 
-      {/* ── 1. Active team header ── */}
+      {/* ── 1. Title + team summary (non-interactive) ── */}
       <div className="mb-4">
-        {teams.length > 1 ? (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-2 text-right w-full group">
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-muted-foreground">קבוצה פעילה</p>
-                  <h1 className="text-xl font-bold text-foreground truncate">
-                    {activeTeam?.team_name ?? "בחר קבוצה"}
-                  </h1>
-                </div>
-                <ChevronDown className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors shrink-0" />
-              </button>
-            </DropdownMenuTrigger>
-
-            <DropdownMenuContent align="start" className="w-64">
-              {teams.map((t) => (
-                <DropdownMenuItem
-                  key={t.team_id}
-                  onClick={() => setActiveTeamId(t.team_id)}
-                  className={t.team_id === activeTeamId ? "bg-secondary" : ""}
-                >
-                  {t.team_name}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        ) : activeTeam ? (
-          <div>
-            <p className="text-xs text-muted-foreground">קבוצה פעילה</p>
-            <h1 className="text-xl font-bold text-foreground">
-              {activeTeam.team_name}
-            </h1>
-          </div>
-        ) : (
-          <div>
-            <p className="text-xs text-muted-foreground">ברוך הבא</p>
-            <h1 className="text-xl font-bold text-foreground">EA FC 26</h1>
-          </div>
+        <h1 className="text-xl font-bold text-foreground">EA FC 26</h1>
+        {teams.length > 0 && (
+          <p className="text-xs text-muted-foreground mt-0.5">
+            הקבוצות שלי: {teams.length} {teams.length === 1 ? "קבוצה" : "קבוצות"}
+          </p>
         )}
       </div>
 
@@ -217,23 +150,15 @@ export const TeamDashboard = ({
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <div className="h-2 w-2 rounded-full bg-neon-green animate-glow-pulse" />
-                <span className="text-xs font-medium text-neon-green">
-                  טורניר פעיל
-                </span>
+                <span className="text-xs font-medium text-neon-green">טורניר פעיל</span>
               </div>
-
               {onCloseTournament && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                    >
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive">
                       <X className="h-4 w-4" />
                     </Button>
                   </AlertDialogTrigger>
-
                   <AlertDialogContent>
                     <AlertDialogHeader>
                       <AlertDialogTitle>לסגור את הטורניר?</AlertDialogTitle>
@@ -241,13 +166,9 @@ export const TeamDashboard = ({
                         הנתונים של הטורניר הנוכחי לא יישמרו להיסטוריה. פעולה זו לא ניתנת לביטול.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
-
                     <AlertDialogFooter>
                       <AlertDialogCancel>ביטול</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={onCloseTournament}
-                        className="bg-destructive hover:bg-destructive/90"
-                      >
+                      <AlertDialogAction onClick={onCloseTournament} className="bg-destructive hover:bg-destructive/90">
                         סגור טורניר
                       </AlertDialogAction>
                     </AlertDialogFooter>
@@ -257,23 +178,13 @@ export const TeamDashboard = ({
             </div>
 
             {activeTournamentMode && (
-              <p className="text-sm text-foreground font-semibold mb-1">
-                {activeTournamentMode}
-              </p>
+              <p className="text-sm text-foreground font-semibold mb-1">{activeTournamentMode}</p>
             )}
-
             {activeTournamentProgress && (
-              <p className="text-xs text-muted-foreground mb-3">
-                {activeTournamentProgress}
-              </p>
+              <p className="text-xs text-muted-foreground mb-3">{activeTournamentProgress}</p>
             )}
 
-            <Button
-              variant="gaming"
-              size="lg"
-              onClick={onResume}
-              className="w-full"
-            >
+            <Button variant="gaming" size="lg" onClick={onResume} className="w-full">
               <Play className="h-5 w-5" />
               המשך טורניר
             </Button>
@@ -288,16 +199,10 @@ export const TeamDashboard = ({
             <div className="h-12 w-12 rounded-lg bg-neon-green/10 border border-neon-green/20 flex items-center justify-center group-hover:bg-neon-green/20 transition-colors">
               <Zap className="h-6 w-6 text-neon-green" />
             </div>
-
             <div className="flex-1 min-w-0">
-              <h3 className="text-base font-bold text-foreground">
-                התחל ליגת 5 שחקנים
-              </h3>
-              <p className="text-xs text-muted-foreground">
-                5 שחקנים • 10 זוגות • 15/30 משחקים
-              </p>
+              <h3 className="text-base font-bold text-foreground">התחל ליגת 5 שחקנים</h3>
+              <p className="text-xs text-muted-foreground">5 שחקנים • 10 זוגות • 15/30 משחקים</p>
             </div>
-
             <ChevronRight className="h-5 w-5 text-muted-foreground rotate-180 shrink-0" />
           </CardContent>
         </Card>
@@ -306,10 +211,7 @@ export const TeamDashboard = ({
       {/* ── 3. Tournament mode launcher ── */}
       {!hasActiveTournament && (
         <div className="mb-4">
-          <p className="text-xs text-muted-foreground mb-2 font-medium">
-            מצבי משחק נוספים
-          </p>
-
+          <p className="text-xs text-muted-foreground mb-2 font-medium">מצבי משחק נוספים</p>
           <div className="grid grid-cols-2 gap-2">
             <Card
               className="bg-card border-border cursor-pointer hover:border-neon-green/30 transition-colors"
@@ -323,7 +225,6 @@ export const TeamDashboard = ({
                 </div>
               </CardContent>
             </Card>
-
             <Card
               className="bg-card border-border cursor-pointer hover:border-neon-green/30 transition-colors"
               onClick={onStartSingles}
@@ -332,9 +233,7 @@ export const TeamDashboard = ({
                 <User className="h-5 w-5 text-muted-foreground" />
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-foreground">יחידים</p>
-                  <p className="text-[10px] text-muted-foreground">
-                    קבוצות אישיות
-                  </p>
+                  <p className="text-[10px] text-muted-foreground">קבוצות אישיות</p>
                 </div>
               </CardContent>
             </Card>
@@ -342,87 +241,48 @@ export const TeamDashboard = ({
         </div>
       )}
 
-      {/* ── 4. Tournaments ── */}
+      {/* ── 4. Spectator + History ── */}
       <div className="mb-4 space-y-2">
-        <p className="text-xs text-muted-foreground font-medium">
-          טורנירים
-        </p>
-      
-        <Button
-          variant="gaming"
-          size="default"
-          onClick={handleViewTournaments}
-          className="w-full justify-start gap-3 h-auto py-3"
-        >
-          <Eye className="h-4 w-4 shrink-0" />
-          <div className="text-right">
-            <p className="font-semibold leading-tight">טורנירים</p>
-            <p className="text-xs opacity-80 leading-tight">
-              צפייה, היסטוריה וניהול כל הטורנירים שלך
-            </p>
-          </div>
+        <p className="text-xs text-muted-foreground font-medium">צפייה והיסטוריה</p>
+
+        <Button variant="secondary" size="default" onClick={onViewHistory} className="w-full justify-start gap-3">
+          <History className="h-4 w-4" />
+          היסטוריית טורנירים
         </Button>
-      
+
         {onJoinEvening && isAuthed && (
-          <Button
-            variant="outline"
-            size="default"
-            onClick={onJoinEvening}
-            className="w-full justify-start gap-3 border-neon-green/20"
-          >
+          <Button variant="outline" size="default" onClick={onJoinEvening} className="w-full justify-start gap-3 border-neon-green/20">
             <UserPlus className="h-4 w-4" />
             הצטרף לערב
           </Button>
         )}
       </div>
 
-      {/* ── 5. Team management ── */}
+      {/* ── 5. Team management (collapsible) ── */}
       <Collapsible open={manageOpen} onOpenChange={setManageOpen}>
         <CollapsibleTrigger asChild>
           <button className="flex items-center gap-2 w-full text-xs text-muted-foreground font-medium mb-2 hover:text-foreground transition-colors">
             <Settings className="h-3.5 w-3.5" />
             ניהול
-            <ChevronDown
-              className={`h-3.5 w-3.5 transition-transform ${
-                manageOpen ? "rotate-180" : ""
-              }`}
-            />
+            <ChevronDown className={`h-3.5 w-3.5 transition-transform ${manageOpen ? "rotate-180" : ""}`} />
           </button>
         </CollapsibleTrigger>
-
         <CollapsibleContent className="space-y-2">
           {onManageTeams && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onManageTeams}
-              className="w-full justify-start gap-3 text-muted-foreground"
-            >
+            <Button variant="ghost" size="sm" onClick={onManageTeams} className="w-full justify-start gap-3 text-muted-foreground">
               <Users className="h-4 w-4" />
               ניהול קבוצות
             </Button>
           )}
-
           {isAdmin && (
             <>
-              <Button
-                asChild
-                variant="ghost"
-                size="sm"
-                className="w-full justify-start gap-3 text-muted-foreground"
-              >
+              <Button asChild variant="ghost" size="sm" className="w-full justify-start gap-3 text-muted-foreground">
                 <Link to="/admin/clubs">
                   <Star className="h-4 w-4" />
                   ניהול קבוצות FIFA
                 </Link>
               </Button>
-
-              <Button
-                asChild
-                variant="ghost"
-                size="sm"
-                className="w-full justify-start gap-3 text-muted-foreground"
-              >
+              <Button asChild variant="ghost" size="sm" className="w-full justify-start gap-3 text-muted-foreground">
                 <Link to="/admin/pool-config">
                   <Settings className="h-4 w-4" />
                   הגדרת הרכב קבוצות
@@ -433,10 +293,9 @@ export const TeamDashboard = ({
         </CollapsibleContent>
       </Collapsible>
 
+      {/* Footer */}
       <div className="mt-auto pt-4 text-center">
-        <p className="text-muted-foreground text-[10px]">
-          EA FC 26 • Tournament Manager
-        </p>
+        <p className="text-muted-foreground text-[10px]">EA FC 26 • Tournament Manager</p>
       </div>
     </div>
   );
