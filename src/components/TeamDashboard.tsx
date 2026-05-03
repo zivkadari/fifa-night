@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  Trophy, History, Gamepad2, Users2, User, Users, ChevronDown, ChevronRight,
+  Trophy, Gamepad2, Users2, User, Users, ChevronDown, ChevronRight,
   Eye, Settings, UserPlus, Star, LogOut, LogIn, X, Play, Zap,
 } from "lucide-react";
 import { Link } from "react-router-dom";
