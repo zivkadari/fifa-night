@@ -40,6 +40,7 @@ type AppState = 'home' | 'setup' | 'tournament-type' | 'singles-setup' | 'single
 
 const Index = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { activeTeamId: contextTeamId } = useTeam();
   const [appState, setAppState] = useState<AppState>('home');
   const [currentEvening, setCurrentEvening] = useState<Evening | null>(null);
