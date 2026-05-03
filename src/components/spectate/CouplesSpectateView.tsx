@@ -1,10 +1,11 @@
 import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Trophy, Users, Eye, ChevronDown, ChevronUp } from "lucide-react";
+import { Trophy, Users, Eye, ChevronDown, ChevronUp, ArrowLeft, Home } from "lucide-react";
 import {
   Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription,
 } from "@/components/ui/drawer";
@@ -27,6 +28,16 @@ interface Props {
 }
 
 export default function CouplesSpectateView({ evening, selectedPlayerId, onSwitchPlayer, isCompleted }: Props) {
+  const navigate = useNavigate();
+
+  const goBack = () => {
+    navigate("/tournaments");
+  };
+
+  const goHome = () => {
+    navigate("/");
+  };
+
   const [showRecent, setShowRecent] = useState(false);
   const [teamsDrawerOpen, setTeamsDrawerOpen] = useState(false);
 
