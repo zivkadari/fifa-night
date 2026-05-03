@@ -12,6 +12,7 @@ import JoinTeam from "./pages/JoinTeam";
 import AdminClubs from "./pages/AdminClubs";
 import AdminPoolConfig from "./pages/AdminPoolConfig";
 import Spectate from "./pages/Spectate";
+import Tournaments from "./pages/Tournaments";
 import { TeamProvider } from "./contexts/TeamContext";
 
 const queryClient = new QueryClient();
