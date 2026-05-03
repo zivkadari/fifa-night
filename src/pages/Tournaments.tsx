@@ -230,18 +230,18 @@ const Tournaments = () => {
     }
   };
 
-  const handleView = (evening: TournamentRow) => {
-    const code = getShareCode(evening);
-
+  const handleView = async (evening: TournamentRow) => {
+    const code = getShareCode(evening) || await RemoteStorageService.getShareCode(evening.id);
+  
     if (!code) {
       toast({
         title: "אין קישור צפייה לטורניר הזה",
-        description: "אפשר עדיין לראות אותו בהיסטוריה, אבל לא נמצא קוד צפייה ציבורי.",
+        description: "לא נמצא קוד צפייה ציבורי לטורניר הזה.",
         variant: "destructive",
       });
       return;
     }
-
+  
     navigate(`/spectate/${code}`);
   };
 
