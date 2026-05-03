@@ -19,8 +19,7 @@ const Tournaments = () => {
         const remote = await RemoteStorageService.loadEveningsWithTeams();
         setTournamentHistory(remote);
       } catch {
-        const local = StorageService.loadHistory();
-        setTournamentHistory(local.map(e => ({ ...e, team_id: null, team_name: null })));
+        setTournamentHistory([]);
       }
     })();
   }, []);
