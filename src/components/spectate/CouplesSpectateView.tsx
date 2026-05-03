@@ -86,7 +86,27 @@ export default function CouplesSpectateView({ evening, selectedPlayerId, onSwitc
   return (
     <div className="min-h-[100svh] bg-gaming-bg p-3 pb-[max(1rem,env(safe-area-inset-bottom))]" dir="rtl">
       <div className="max-w-md mx-auto space-y-3">
-        {/* Header */}
+  {/* Navigation */}
+  <div className="flex items-center justify-between">
+    <Button variant="ghost" size="sm" onClick={goBack} className="text-muted-foreground">
+      <ArrowLeft className="h-4 w-4 ml-1 rotate-180" />
+      חזרה
+    </Button>
+
+    <div className="flex items-center gap-1">
+      <Button variant="ghost" size="sm" onClick={onSwitchPlayer} className="text-muted-foreground">
+        <Users className="h-4 w-4 ml-1" />
+        החלף שחקן
+      </Button>
+
+      <Button variant="ghost" size="sm" onClick={goHome} className="text-muted-foreground">
+        <Home className="h-4 w-4 ml-1" />
+        בית
+      </Button>
+    </div>
+  </div>
+
+  {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Eye className="h-5 w-5 text-neon-green" />
