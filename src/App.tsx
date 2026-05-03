@@ -12,6 +12,7 @@ import JoinTeam from "./pages/JoinTeam";
 import AdminClubs from "./pages/AdminClubs";
 import AdminPoolConfig from "./pages/AdminPoolConfig";
 import Spectate from "./pages/Spectate";
+import Tournaments from "./pages/Tournaments";
 import { TeamProvider } from "./contexts/TeamContext";
 
 const queryClient = new QueryClient();
@@ -31,6 +32,7 @@ const App = () => (
           <Route path="/join-team/:code" element={<JoinTeam />} />
           <Route path="/admin/clubs" element={<AdminClubs />} />
           <Route path="/admin/pool-config" element={<AdminPoolConfig />} />
+          <Route path="/tournaments" element={<Tournaments />} />
           <Route path="/spectate/:code" element={<Spectate />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
