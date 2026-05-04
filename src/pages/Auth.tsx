@@ -75,6 +75,7 @@ const Auth = () => {
 
   try {
     cleanupAuthState();
+
     try {
       await supabase.auth.signOut({ scope: "global" });
     } catch {}
@@ -95,6 +96,7 @@ const Auth = () => {
       description: err?.message || "נסה שוב",
       variant: "destructive",
     });
+
     setLoading(false);
   }
 };
@@ -112,7 +114,9 @@ const Auth = () => {
     <div className="min-h-screen bg-gaming-bg flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <Card className={`bg-gradient-card border-neon-green/20 p-8 shadow-card ${mode === "signup" ? "ring-2 ring-primary/40" : ""}`}>
-          <h1 className="text-2xl font-bold text-foreground mb-2 text-center">{mode === "signin" ? "Sign in" : "Create account"}</h1>
+          <h1 className="text-2xl font-bold text-foreground mb-2 text-center">
+            {mode === "signin" ? "התחברות" : "יצירת חשבון"}
+          </h1>
           
           {redirectPath !== "/" && (
             <p className="text-sm text-muted-foreground text-center mb-4">
@@ -122,22 +126,22 @@ const Auth = () => {
 
           {isAuthed ? (
             <div className="space-y-4 text-center"> 
-              <p className="text-muted-foreground">You are signed in. You can start and save history to the cloud.</p>
+              <p className="text-muted-foreground">אתה כבר מחובר.</p> in. You can start and save history to the cloud.</p>
               <Button variant="secondary" onClick={() => (window.location.href = redirectPath)}>
-                {redirectPath !== "/" ? "המשך להצטרפות" : "Back to Home"}
+                {redirectPath !== "/" ? "המשך" : "חזרה לבית"}
               </Button>
-              <Button variant="destructive" onClick={handleSignOut}>Sign out</Button>
+              <Button variant="destructive" onClick={handleSignOut}>התנתק</Button>
             </div>
           ) : (
             <div className="space-y-4">
               <Button
                 type="button"
                 variant="outline"
-                className="w-full"
+                className="w-full bg-background border-border"
                 onClick={handleGoogleSignIn}
                 disabled={loading}
               >
-                התחבר עם Google
+                המשך עם Google
               </Button>
             
               <div className="flex items-center gap-3">
@@ -170,7 +174,7 @@ const Auth = () => {
                 </div>
             
                 <Button type="submit" disabled={loading} className="w-full">
-                  {mode === "signin" ? "Sign in" : "Sign up"}
+                  {mode === "signin" ? "התחבר" : "צור חשבון"}
                 </Button>
             
                 <Button
@@ -180,8 +184,8 @@ const Auth = () => {
                   onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
                 >
                   {mode === "signin"
-                    ? "Don't have an account? Sign up"
-                    : "Already have an account? Sign in"}
+                    ? "אין לך חשבון? צור חשבון"
+: "כבר יש לך חשבון? התחבר"}
                 </Button>
               </form>
             </div>
