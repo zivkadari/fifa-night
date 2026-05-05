@@ -70,24 +70,24 @@ const Auth = () => {
     }
   };
   
-  const handleGoogleSignIn = async () => {
-  setLoading(true);
-
-  try {
-    cleanupAuthState();
-
+    const handleGoogleSignIn = async () => {
+    setLoading(true);
+  
     try {
-      await supabase.auth.signOut({ scope: "global" });
-    } catch {}
-
-    const redirectUrl = `${window.location.origin}${redirectPath}`;
-
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: redirectUrl,
-      },
-    });
+      cleanupAuthState();
+  
+      try {
+        await supabase.auth.signOut({ scope: "global" });
+      } catch {}
+  
+      const redirectUrl = `${window.location.origin}${redirectPath}`;
+  
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: redirectUrl,
+        },
+      });
 
     if (error) throw error;
   } catch (err: any) {
@@ -126,7 +126,7 @@ const Auth = () => {
 
           {isAuthed ? (
             <div className="space-y-4 text-center"> 
-              <p className="text-muted-foreground">אתה כבר מחובר.</p> in. You can start and save history to the cloud.</p>
+              <p className="text-muted-foreground">אתה כבר מחובר.</p>
               <Button variant="secondary" onClick={() => (window.location.href = redirectPath)}>
                 {redirectPath !== "/" ? "המשך" : "חזרה לבית"}
               </Button>
