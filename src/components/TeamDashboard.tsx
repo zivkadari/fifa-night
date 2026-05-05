@@ -287,7 +287,7 @@ export const TeamDashboard = ({
               <Button asChild variant="ghost" size="sm" className="w-full justify-start gap-3 text-muted-foreground">
                 <Link to="/admin/clubs">
                   <Star className="h-4 w-4" />
-                  ניהול קבוצות FIFA
+                  ניהול מאגר קבוצות
                 </Link>
               </Button>
               <Button asChild variant="ghost" size="sm" className="w-full justify-start gap-3 text-muted-foreground">
