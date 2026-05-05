@@ -135,7 +135,7 @@ export const TeamDashboard = ({
 
       {/* ── 1. Title + team summary (non-interactive) ── */}
       <div className="mb-4">
-        <h1 className="text-xl font-bold text-foreground">EA FC 26</h1>
+        <h1 className="text-xl font-bold text-foreground">Soccer Night</h1>
         {teams.length > 0 && (
           <p className="text-xs text-muted-foreground mt-0.5">
             הקבוצות שלי: {teams.length} {teams.length === 1 ? "קבוצה" : "קבוצות"}
@@ -303,7 +303,7 @@ export const TeamDashboard = ({
 
       {/* Footer */}
       <div className="mt-auto pt-4 text-center">
-        <p className="text-muted-foreground text-[10px]">EA FC 26 • Tournament Manager</p>
+        <p className="text-muted-foreground text-[10px]">Soccer Night</p>
       </div>
     </div>
   );

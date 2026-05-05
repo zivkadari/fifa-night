@@ -427,7 +427,7 @@ export default function FPHub() {
 
         {/* Footer */}
         <p className="text-center text-xs text-muted-foreground/50 pt-4">
-          FIFA Night · צפייה ציבורית
+          Soccer Night · צפייה ציבורית
         </p>
       </div>
     </div>
