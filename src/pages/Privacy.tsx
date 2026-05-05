@@ -5,10 +5,18 @@ import { Button } from "@/components/ui/button";
 const Privacy = () => {
   const navigate = useNavigate();
 
+  const goBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate("/");
+    }
+  };
+
   return (
     <div dir="rtl" className="min-h-screen bg-background text-foreground p-4 max-w-2xl mx-auto">
       <div className="flex items-center gap-2 mb-6">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
+        <Button variant="ghost" size="icon" onClick={goBack}>
           <ArrowLeft className="h-5 w-5 rotate-180" />
         </Button>
         <h1 className="text-2xl font-bold">מדיניות פרטיות – Soccer Night</h1>
