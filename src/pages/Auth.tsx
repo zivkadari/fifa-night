@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { Checkbox } from "@/components/ui/checkbox";
 
 // Utility to aggressively clean local auth state and prevent limbo
 const cleanupAuthState = () => {
@@ -35,6 +36,7 @@ const Auth = () => {
 
   const [loading, setLoading] = useState(false);
   const [isAuthed, setIsAuthed] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   useEffect(() => {
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -48,8 +50,22 @@ const Auth = () => {
     return () => listener.subscription.unsubscribe();
   }, []);
 
+  useEffect(() => {
+    setAcceptedTerms(false);
+  }, [mode]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (mode === "signup" && !acceptedTerms) {
+      toast({
+        title: "נדרש אישור תנאים",
+        description: "כדי ליצור חשבון צריך לאשר את תנאי השימוש ומדיניות הפרטיות.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -141,6 +157,8 @@ const Auth = () => {
     }
   };
 
+  const isSignupBlocked = mode === "signup" && !acceptedTerms;
+
   return (
     <div
       className="min-h-screen bg-gaming-bg flex items-center justify-center p-4"
@@ -191,6 +209,18 @@ const Auth = () => {
                 המשך עם Google
               </Button>
 
+              <p className="text-[11px] text-muted-foreground text-center leading-relaxed">
+                בהמשך עם Google אתה מאשר את{" "}
+                <Link to="/terms" className="text-neon-green underline">
+                  תנאי השימוש
+                </Link>{" "}
+                ואת{" "}
+                <Link to="/privacy" className="text-neon-green underline">
+                  מדיניות הפרטיות
+                </Link>
+                .
+              </p>
+
               <div className="flex items-center gap-3">
                 <div className="h-px flex-1 bg-border" />
                 <span className="text-xs text-muted-foreground">או</span>
@@ -222,7 +252,39 @@ const Auth = () => {
                   />
                 </div>
 
-                <Button type="submit" disabled={loading} className="w-full">
+                {mode === "signup" && (
+                  <div className="flex items-start gap-2 rounded-lg border border-border/60 bg-gaming-surface/50 p-3">
+                    <Checkbox
+                      id="accept-terms"
+                      checked={acceptedTerms}
+                      onCheckedChange={(checked) => {
+                        setAcceptedTerms(checked === true);
+                      }}
+                      className="mt-0.5"
+                    />
+
+                    <label
+                      htmlFor="accept-terms"
+                      className="text-xs text-muted-foreground leading-relaxed cursor-pointer"
+                    >
+                      אני מאשר/ת שקראתי והסכמתי ל{" "}
+                      <Link to="/terms" className="text-neon-green underline">
+                        תנאי השימוש
+                      </Link>{" "}
+                      ול{" "}
+                      <Link to="/privacy" className="text-neon-green underline">
+                        מדיניות הפרטיות
+                      </Link>
+                      .
+                    </label>
+                  </div>
+                )}
+
+                <Button
+                  type="submit"
+                  disabled={loading || isSignupBlocked}
+                  className="w-full"
+                >
                   {mode === "signin" ? "התחבר" : "צור חשבון"}
                 </Button>
 
