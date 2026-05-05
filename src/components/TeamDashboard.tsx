@@ -282,6 +282,12 @@ export const TeamDashboard = ({
               ניהול קבוצות
             </Button>
           )}
+            <Button asChild variant="ghost" size="sm" className="w-full justify-start gap-3 text-muted-foreground">
+              <Link to="/settings">
+                <Settings className="h-4 w-4" />
+                הגדרות ומידע משפטי
+              </Link>
+            </Button>
           {isAdmin && (
             <>
               <Button asChild variant="ghost" size="sm" className="w-full justify-start gap-3 text-muted-foreground">
