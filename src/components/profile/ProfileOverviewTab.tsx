@@ -75,7 +75,7 @@ export const ProfileOverviewTab = ({ stats, loading }: Props) => {
           <BarChart3 className="h-5 w-5 text-neon-green" />
           <h3 className="text-base font-semibold text-foreground">סיכום אישי – כל הקבוצות</h3>
         </div>
-        <div className="grid grid-cols-3 gap-2 mb-3">
+        <div className="grid grid-cols-3 gap-2 mb-3" dir="rtl">
           <div className="text-center p-3 bg-gaming-surface rounded-lg">
             <div className="text-2xl font-bold text-neon-green">{stats.tournamentsPlayed}</div>
             <div className="text-xs text-muted-foreground">טורנירים</div>
@@ -89,12 +89,12 @@ export const ProfileOverviewTab = ({ stats, loading }: Props) => {
             <div className="text-xs text-muted-foreground">אחוז ניצחון</div>
           </div>
         </div>
-        <div className="grid grid-cols-3 gap-2 mb-3">
+        <div className="grid grid-cols-3 gap-2 mb-3" dir="rtl">
           <StatTile value={stats.wins} label="ניצחונות" color="bg-neon-green/10 border-neon-green/30 text-neon-green" />
           <StatTile value={stats.draws} label="תיקו" color="bg-muted border-border text-foreground" />
           <StatTile value={stats.losses} label="הפסדים" color="bg-destructive/10 border-destructive/30 text-destructive" />
         </div>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-3 gap-2" dir="rtl">
           <StatTile value={stats.goalsFor} label="שערי זכות" color="bg-gaming-surface border-border text-foreground" />
           <StatTile value={stats.goalsAgainst} label="שערי חובה" color="bg-gaming-surface border-border text-foreground" />
           <StatTile
@@ -111,7 +111,7 @@ export const ProfileOverviewTab = ({ stats, loading }: Props) => {
           <Trophy className="h-5 w-5 text-neon-green" />
           <h3 className="text-base font-semibold text-foreground">סיומים לפי דרג</h3>
         </div>
-        <div className="grid grid-cols-5 gap-2">
+        <div className="grid grid-cols-5 gap-2" dir="rtl">
           <StatTile value={stats.alpha} label="אלפא" color="bg-yellow-500/10 border-yellow-500/30 text-yellow-500" />
           <StatTile value={stats.beta} label="בטא" color="bg-slate-400/10 border-slate-400/30 text-slate-300" />
           <StatTile value={stats.gamma} label="גמא" color="bg-amber-500/10 border-amber-500/30 text-amber-500" />
