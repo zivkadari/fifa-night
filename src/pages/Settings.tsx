@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 
 const VIBRATION_SETTING_KEY = "settings-vibration-enabled";
 const ONBOARDING_SETTING_KEY = "settings-show-new-user-tips";
@@ -107,22 +108,11 @@ const SettingsPage = () => {
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={toggleVibration}
-                className={`relative h-7 w-12 rounded-full border transition-colors shrink-0 ${
-                  vibrationEnabled
-                    ? "bg-neon-green/30 border-neon-green"
-                    : "bg-muted border-border"
-                }`}
+              <Switch
+                checked={vibrationEnabled}
+                onCheckedChange={toggleVibration}
                 aria-label="toggle vibration"
-              >
-                <span
-                  className={`absolute top-0.5 h-5 w-5 rounded-full bg-foreground transition-transform ${
-                    vibrationEnabled ? "translate-x-[-20px]" : "translate-x-[-2px]"
-                  }`}
-                />
-              </button>
+              />
             </div>
 
             <div className="flex items-center justify-between gap-3 rounded-lg bg-gaming-surface/60 border border-border/50 p-3">
@@ -136,22 +126,11 @@ const SettingsPage = () => {
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={toggleNewUserTips}
-                className={`relative h-7 w-12 rounded-full border transition-colors shrink-0 ${
-                  showNewUserTips
-                    ? "bg-neon-green/30 border-neon-green"
-                    : "bg-muted border-border"
-                }`}
+              <Switch
+                checked={showNewUserTips}
+                onCheckedChange={toggleNewUserTips}
                 aria-label="toggle new user tips"
-              >
-                <span
-                  className={`absolute top-0.5 h-5 w-5 rounded-full bg-foreground transition-transform ${
-                    showNewUserTips ? "translate-x-[-20px]" : "translate-x-[-2px]"
-                  }`}
-                />
-              </button>
+              />
             </div>
           </CardContent>
         </Card>
