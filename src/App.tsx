@@ -37,6 +37,8 @@ const App = () => (
           <Route path="/admin/pool-config" element={<AdminPoolConfig />} />
           <Route path="/tournaments" element={<Tournaments />} />
           <Route path="/spectate/:code" element={<Spectate />} />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/privacy" element={<Privacy />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
