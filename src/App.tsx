@@ -15,6 +15,7 @@ import Spectate from "./pages/Spectate";
 import Tournaments from "./pages/Tournaments";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
+import SettingsPage from "./pages/Settings";
 import { TeamProvider } from "./contexts/TeamContext";
 
 const queryClient = new QueryClient();
@@ -39,6 +40,7 @@ const App = () => (
           <Route path="/spectate/:code" element={<Spectate />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/privacy" element={<Privacy />} />
+          <Route path="/settings" element={<SettingsPage />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
