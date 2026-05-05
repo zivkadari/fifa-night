@@ -71,8 +71,8 @@ export const TournamentHome = ({
             className="w-full rounded-xl shadow-lg border border-neon-green/30"
           />
         </div>
-        <h1 className="text-3xl font-bold text-foreground">EA FC 26</h1>
-        <h2 className="text-xl font-semibold text-neon-green">Tournament Manager</h2>
+        <h1 className="text-3xl font-bold text-foreground">Soccer Night</h1>
+        <h2 className="text-xl font-semibold text-neon-green">ניהול טורנירי כדורגל עם חברים</h2>
       </div>
 
       {/* Action Buttons */}
@@ -162,7 +162,7 @@ export const TournamentHome = ({
       {/* Footer */}
       <div className="text-center py-2">
         <p className="text-muted-foreground text-sm">
-          EA FC 26 • Ranking Tracking • Bragging Rights
+          Soccer Night • Ranking Tracking • Bragging Rights
         </p>
       </div>
     </div>
