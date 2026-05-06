@@ -80,6 +80,7 @@ export const TeamDashboard = ({
   }, [isAuthed, userEmail]);
 
   const hasActiveTournament = !!onResume;
+  const showNewUserOnboarding = !!isAuthed && teams.length === 0 && !hasActiveTournament;
   // Best-effort greeting name: profile display_name → claimed player name → email local-part
   const greetingName = displayName
     || activePlayer?.player_name
@@ -142,9 +143,56 @@ export const TeamDashboard = ({
           </p>
         )}
       </div>
+      {showNewUserOnboarding && (
+        <Card className="bg-gradient-card border-neon-green/30 shadow-card mb-4">
+          <CardContent className="p-4 space-y-4">
+            <div className="space-y-1">
+              <p className="text-xs text-neon-green font-semibold">ברוך הבא</p>
+              <h2 className="text-xl font-bold text-foreground">
+                בוא ניצור את הקבוצה הראשונה שלך
+              </h2>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                כדי להתחיל טורניר צריך קודם ליצור קבוצה ולהוסיף אליה שחקנים.
+                אחרי שתהיה לך קבוצה, תוכל להתחיל ליגת 5 שחקנים, זוגות או יחידים.
+              </p>
+            </div>
+  
+            <div className="rounded-lg bg-gaming-surface/60 border border-border/50 p-3 space-y-2">
+              <p className="text-sm font-semibold text-foreground">איך מתחילים?</p>
+              <ol className="text-xs text-muted-foreground leading-relaxed space-y-1 list-decimal list-inside">
+                <li>צור קבוצה חדשה.</li>
+                <li>הוסף את החברים שלך כשחקנים.</li>
+                <li>שלח להם קישור הצטרפות כדי שיקשרו את עצמם לשחקן שלהם.</li>
+                <li>חזור לעמוד הבית והתחל טורניר.</li>
+              </ol>
+            </div>
+  
+            {onManageTeams && (
+              <Button variant="gaming" size="lg" onClick={onManageTeams} className="w-full gap-2">
+                <Users className="h-5 w-5" />
+                צור קבוצה ראשונה
+              </Button>
+            )}
+  
+            <div className="rounded-lg bg-gaming-surface/40 border border-border/40 p-3">
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                קיבלת קישור הזמנה לקבוצה קיימת? פתח את הקישור שקיבלת מהחבר,
+                התחבר, ואז תוכל לבחור מי אתה מתוך שחקני הקבוצה.
+              </p>
+            </div>
+  
+            <Button asChild variant="outline" size="sm" className="w-full gap-2">
+              <Link to="/settings">
+                <Settings className="h-4 w-4" />
+                הגדרות ומידע משפטי
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
-      {/* ── 2. Primary card: active tournament or start new ── */}
-      {hasActiveTournament ? (
+            {/* ── 2. Primary card: active tournament or start new ── */}
+      {!showNewUserOnboarding && (hasActiveTournament ? (
         <Card className="bg-gradient-card border-neon-green/30 shadow-glow mb-4 overflow-hidden">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
@@ -206,10 +254,10 @@ export const TeamDashboard = ({
             <ChevronRight className="h-5 w-5 text-muted-foreground rotate-180 shrink-0" />
           </CardContent>
         </Card>
-      )}
+      ))}
 
       {/* ── 3. Tournament mode launcher ── */}
-      {!hasActiveTournament && (
+      {!hasActiveTournament && !showNewUserOnboarding && (
         <div className="mb-4">
           <p className="text-xs text-muted-foreground mb-2 font-medium">מצבי משחק נוספים</p>
           <div className="grid grid-cols-2 gap-2">
