@@ -156,7 +156,7 @@ export const TeamDashboard = ({
                 אחרי שתהיה לך קבוצה, תוכל להתחיל ליגת 5 שחקנים, זוגות או יחידים.
               </p>
             </div>
-  
+
             <div className="rounded-lg bg-gaming-surface/60 border border-border/50 p-3 space-y-2">
               <p className="text-sm font-semibold text-foreground">איך מתחילים?</p>
               <ol className="text-xs text-muted-foreground leading-relaxed space-y-1 list-decimal list-inside">
@@ -173,7 +173,7 @@ export const TeamDashboard = ({
                 צור קבוצה ראשונה
               </Button>
             )}
-  
+
             <div className="rounded-lg bg-gaming-surface/40 border border-border/40 p-3">
               <p className="text-xs text-muted-foreground leading-relaxed">
                 קיבלת קישור הזמנה לקבוצה קיימת? פתח את הקישור שקיבלת מהחבר,
@@ -191,7 +191,7 @@ export const TeamDashboard = ({
         </Card>
       )}
 
-            {/* ── 2. Primary card: active tournament or start new ── */}
+      {/* ── 2. Primary card: active tournament or start new ── */}
       {!showNewUserOnboarding && (hasActiveTournament ? (
         <Card className="bg-gradient-card border-neon-green/30 shadow-glow mb-4 overflow-hidden">
           <CardContent className="p-4">
