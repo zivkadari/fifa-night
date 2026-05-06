@@ -179,6 +179,50 @@ export class RemoteStorageService {
       throw new Error(error.message);
     }
     return true;
+
+    static async leaveTeam(teamId: string): Promise<boolean> {
+      if (!supabase) return false;
+    
+      const { data: { user }, error: userErr } = await supabase.auth.getUser();
+      if (userErr || !user) return false;
+    
+      try {
+        // Remove claimed player links for this user inside this team, if possible.
+        const { data: teamPlayerRows } = await supabase
+          .from(TEAM_PLAYERS_TABLE)
+          .select("player_id")
+          .eq("team_id", teamId);
+    
+        const playerIds = (teamPlayerRows || [])
+          .map((row: any) => row.player_id)
+          .filter(Boolean);
+    
+        if (playerIds.length > 0) {
+          await supabase
+            .from(PLAYER_ACCOUNTS_TABLE)
+            .delete()
+            .eq("user_id", user.id)
+            .in("player_id", playerIds);
+        }
+    
+        // Remove the current user's membership in the team.
+        const { error } = await supabase
+          .from(TEAM_MEMBERS_TABLE)
+          .delete()
+          .eq("team_id", teamId)
+          .eq("user_id", user.id);
+    
+        if (error) {
+          console.error("leaveTeam error:", error.message);
+          return false;
+        }
+    
+        return true;
+      } catch (error) {
+        console.error("leaveTeam unexpected error:", error);
+        return false;
+      }
+    }
   }
 
   // Link an existing evening to a team and recalculate stats
