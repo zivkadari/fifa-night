@@ -8,6 +8,7 @@ import { RemoteStorageService } from "@/services/remoteStorageService";
 import { ArrowLeft, Users, Plus, Trash2, Trophy, RefreshCw, UserPlus, Pencil, Check, X, Link2, Copy } from "lucide-react";
 import { validateTeamName, validatePlayerName } from "@/lib/validation";
 import { SelectExistingPlayerDialog } from "./SelectExistingPlayerDialog";
+import { useTeam } from "@/contexts/TeamContext";
 
 interface TeamLeaderboardEntry {
   player_id: string;
@@ -31,6 +32,7 @@ interface TeamsManagerProps {
 
 export const TeamsManager = ({ onBack, onStartEveningForTeam }: TeamsManagerProps) => {
   const { toast } = useToast();
+  const { refresh: refreshTeamsContext, setActiveTeamId } = useTeam();
   const [teams, setTeams] = useState<Array<{ id: string; name: string }>>([]);
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [teamPlayers, setTeamPlayers] = useState<Array<{ id: string; name: string }>>([]);
@@ -175,19 +177,42 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam }: TeamsManagerProp
     }
   };
 
-  const deleteTeam = async (teamId: string) => {
-    if (!window.confirm("אתה בטוח שברצונך למחוק את הקבוצה? הפעולה לא ניתנת לביטול.")) return;
-    const ok = await RemoteStorageService.deleteTeam(teamId);
+  const leaveTeam = async (teamId: string, teamName?: string) => {
+    if (
+      !window.confirm(
+        `להסיר את ${teamName || "הקבוצה"} מהקבוצות שלך? הקבוצה לא תימחק לשאר המשתמשים.`
+      )
+    ) {
+      return;
+    }
+    
+    const ok = await RemoteStorageService.leaveTeam(teamId);
+    
     if (ok) {
-      setTeams((prev) => prev.filter((t) => t.id !== teamId));
-      if (selectedTeamId === teamId) {
-        setSelectedTeamId(null);
+      const freshTeams = await RemoteStorageService.listTeams();
+      setTeams(freshTeams);
+    
+      const nextTeamId = freshTeams[0]?.id ?? null;
+      setSelectedTeamId(nextTeamId);
+      setActiveTeamId(nextTeamId);
+    
+      if (!nextTeamId) {
         setTeamPlayers([]);
         setLeaderboard([]);
+        setInviteCode(null);
       }
-      toast({ title: "קבוצה נמחקה", description: "הקבוצה נמחקה בהצלחה" });
+    
+      await refreshTeamsContext();
+    
+      toast({
+        title: "הקבוצה הוסרה",
+        description: "הקבוצה הוסרה מרשימת הקבוצות שלך",
+      });
     } else {
-      toast({ title: "שגיאה במחיקת קבוצה", variant: "destructive" });
+      toast({
+        title: "שגיאה בהסרת הקבוצה",
+        variant: "destructive",
+      });
     }
   };
 
@@ -300,7 +325,7 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam }: TeamsManagerProp
                     <Button 
                       variant="outline" 
                       size="icon" 
-                      onClick={() => deleteTeam(t.id)}
+                      onClick={() => leaveTeam(t.id, t.name)}
                       className="text-destructive hover:text-destructive"
                     >
                       <Trash2 className="h-4 w-4" />
