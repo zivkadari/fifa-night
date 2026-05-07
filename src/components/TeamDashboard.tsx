@@ -409,6 +409,19 @@ export const TeamDashboard = ({
               ניהול קבוצות
             </Button>
           )}
+
+            {onFindTeam && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onFindTeam}
+                className="w-full justify-start gap-3 text-muted-foreground"
+              >
+                <UserPlus className="h-4 w-4" />
+                מצא קבוצה קיימת
+              </Button>
+            )}
+
             <Button asChild variant="ghost" size="sm" className="w-full justify-start gap-3 text-muted-foreground">
               <Link to="/settings">
                 <Settings className="h-4 w-4" />
