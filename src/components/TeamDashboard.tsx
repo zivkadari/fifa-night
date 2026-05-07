@@ -155,6 +155,52 @@ export const TeamDashboard = ({
         </Card>
       )}
 
+      {showSignedOutOnboarding && (
+        <Card className="bg-gradient-card border-neon-green/30 shadow-card mb-4">
+          <CardContent className="p-4 space-y-4">
+            <div className="space-y-1">
+              <p className="text-xs text-neon-green font-semibold">ברוך הבא</p>
+              <h2 className="text-xl font-bold text-foreground">
+                ברוך הבא ל־Soccer Night
+              </h2>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                נהל טורנירי כדורגל עם החברים שלך: קבוצות, שחקנים, תוצאות, היסטוריה וסטטיסטיקות — הכל במקום אחד.
+              </p>
+            </div>
+
+            <div className="rounded-lg bg-gaming-surface/60 border border-border/50 p-3 space-y-2">
+              <p className="text-sm font-semibold text-foreground">איך מתחילים?</p>
+              <ol className="text-xs text-muted-foreground leading-relaxed space-y-1 list-decimal list-inside">
+                <li>התחבר או צור חשבון.</li>
+                <li>צור קבוצה או הצטרף לקבוצה קיימת.</li>
+                <li>הוסף חברים ושחקנים.</li>
+                <li>התחל טורניר וצפה בסטטיסטיקות.</li>
+              </ol>
+            </div>
+
+            <Button asChild variant="gaming" size="lg" className="w-full gap-2">
+              <Link to="/auth">
+                <LogIn className="h-5 w-5" />
+                התחבר / צור חשבון
+              </Link>
+            </Button>
+
+            <div className="rounded-lg bg-gaming-surface/40 border border-border/40 p-3">
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                קיבלת קישור הזמנה מחבר? פתח את הקישור שקיבלת, התחבר, ואנחנו נחזיר אותך אוטומטית להצטרפות לקבוצה.
+              </p>
+            </div>
+
+            <Button asChild variant="outline" size="sm" className="w-full gap-2">
+              <Link to="/settings">
+                <Settings className="h-4 w-4" />
+                הגדרות ומידע משפטי
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       {showNewUserOnboarding && (
         <Card className="bg-gradient-card border-neon-green/30 shadow-card mb-4">
           <CardContent className="p-4 space-y-4">
