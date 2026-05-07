@@ -35,6 +35,7 @@ interface TeamDashboardProps {
   onResume?: () => void;
   onCloseTournament?: () => void;
   onManageTeams?: () => void;
+  onFindTeam?: () => void;
   onJoinEvening?: () => void;
   isAuthed?: boolean;
   userEmail?: string | null;
@@ -52,6 +53,7 @@ export const TeamDashboard = ({
   onResume,
   onCloseTournament,
   onManageTeams,
+  onFindTeam,
   onJoinEvening,
   isAuthed,
   userEmail,
@@ -229,6 +231,13 @@ export const TeamDashboard = ({
               <Button variant="gaming" size="lg" onClick={onManageTeams} className="w-full gap-2">
                 <Users className="h-5 w-5" />
                 צור קבוצה ראשונה
+              </Button>
+            )}
+
+            {onFindTeam && (
+              <Button variant="outline" size="lg" onClick={onFindTeam} className="w-full gap-2">
+                <UserPlus className="h-5 w-5" />
+                מצא קבוצה קיימת
               </Button>
             )}
 
