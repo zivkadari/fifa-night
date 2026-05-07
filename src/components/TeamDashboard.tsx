@@ -62,7 +62,7 @@ export const TeamDashboard = ({
   activeTournamentMode,
   activeTournamentProgress,
 }: TeamDashboardProps) => {
-  const { teams, activeTeamId, activePlayer, loading: teamsLoading } = useTeam();
+  const { teams, activeTeamId, setActiveTeamId, activePlayer, loading: teamsLoading } = useTeam();
   const [manageOpen, setManageOpen] = useState(false);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const isAdmin = userEmail === "zivkad12@gmail.com";
@@ -141,13 +141,44 @@ export const TeamDashboard = ({
         )}
       </div>
 
-      {/* ── 1. Title + team summary (non-interactive) ── */}
+      {/* ── 1. Title + active team summary ── */}
       <div className="mb-4">
         <h1 className="text-xl font-bold text-foreground">Soccer Night</h1>
+      
         {teams.length > 0 && (
           <p className="text-xs text-muted-foreground mt-0.5">
             הקבוצות שלי: {teams.length} {teams.length === 1 ? "קבוצה" : "קבוצות"}
           </p>
+        )}
+      
+        {isAuthed && !teamsLoading && teams.length > 0 && (
+          <Card className="bg-gaming-surface/50 border-border/50 mt-3">
+            <CardContent className="p-3 space-y-2">
+              <p className="text-xs text-muted-foreground">קבוצה פעילה</p>
+      
+              {teams.length === 1 ? (
+                <p className="text-sm font-semibold text-foreground">
+                  {teams[0].team_name}
+                </p>
+              ) : (
+                <select
+                  value={activeTeamId || ""}
+                  onChange={(e) => setActiveTeamId(e.target.value)}
+                  className="w-full rounded-md border border-border bg-gaming-bg px-3 py-2 text-sm text-foreground"
+                >
+                  {teams.map((team) => (
+                    <option key={team.team_id} value={team.team_id}>
+                      {team.team_name}
+                    </option>
+                  ))}
+                </select>
+              )}
+      
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                הפעולות והזהות במסך הבית מתייחסות לקבוצה הזו.
+              </p>
+            </CardContent>
+          </Card>
         )}
       </div>
 
