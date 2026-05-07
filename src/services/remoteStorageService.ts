@@ -341,7 +341,7 @@ export class RemoteStorageService {
     if (teamIds.length > 0) {
       const { data: teams } = await supabase
         .from(TEAMS_TABLE)
-        .select("id, display_name")
+        .select("id, name")
         .in("id", teamIds);
       if (teams) {
         teamMap = Object.fromEntries(teams.map((t: any) => [t.id, t.name]));
@@ -525,7 +525,7 @@ export class RemoteStorageService {
     const { data, error } = await supabase
       .from(TEAMS_TABLE)
       .insert({ name: validation.value, owner_id: user.id })
-      .select("id, display_name")
+      .select("id, name")
       .maybeSingle();
     if (error) {
       console.error("createTeam error:", error.message);
@@ -648,62 +648,62 @@ export class RemoteStorageService {
   // List all players the user has access to, with their team memberships
   static async listAllMyPlayers(): Promise<Array<{ id: string; name: string; teams: Array<{ id: string; name: string }> }>> {
     if (!supabase) return [];
+  
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return [];
-
-    // Get all players the user can see (via RLS - created by them or in their teams)
-    const { data: player, error: playerError } = await supabase
+  
+    const { data: players, error: playerError } = await supabase
       .from(PLAYERS_TABLE)
       .select("id, display_name")
-      .eq("display_name", validation.value)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    
-    if (playerError || !player) {
-      console.error("createAndClaimPlayerForTeam player lookup error:", playerError?.message);
-      return false;
+      .order("display_name", { ascending: true });
+  
+    if (playerError || !players || players.length === 0) {
+      if (playerError) {
+        console.error("listAllMyPlayers players error:", playerError.message);
+      }
+      return [];
     }
-    
-    return this.claimPlayerForTeam(teamId, (player as any).id);
-    }
-
-    // Get all team_players links for these players
+  
     const playerIds = players.map((p: any) => p.id);
+  
     const { data: links, error: linksErr } = await supabase
       .from(TEAM_PLAYERS_TABLE)
       .select("player_id, team_id")
       .in("player_id", playerIds);
-    
+  
     if (linksErr) {
       console.error("listAllMyPlayers links error:", linksErr.message);
     }
-
-    // Get team names for the linked teams
+  
     const teamIds = [...new Set((links || []).map((l: any) => l.team_id))] as string[];
     let teamMap: Record<string, string> = {};
-    
+  
     if (teamIds.length > 0) {
       const { data: teams } = await supabase
         .from(TEAMS_TABLE)
-        .select("id, display_name")
+        .select("id, name")
         .in("id", teamIds);
+  
       if (teams) {
         teamMap = Object.fromEntries(teams.map((t: any) => [t.id, t.name]));
       }
     }
-
-    // Build player list with teams
+  
     const linksByPlayer: Record<string, Array<{ id: string; name: string }>> = {};
+  
     for (const link of (links || []) as any[]) {
       if (!linksByPlayer[link.player_id]) {
         linksByPlayer[link.player_id] = [];
       }
+  
       if (teamMap[link.team_id]) {
-        linksByPlayer[link.player_id].push({ id: link.team_id, name: teamMap[link.team_id] });
+        linksByPlayer[link.player_id].push({
+          id: link.team_id,
+          name: teamMap[link.team_id],
+        });
       }
     }
-
+  
     return players.map((p: any) => ({
       id: p.id as string,
       name: p.display_name as string,
@@ -771,7 +771,7 @@ export class RemoteStorageService {
     
     const { data: teams, error: tErr } = await supabase
       .from(TEAMS_TABLE)
-      .select("id, display_name");
+      .select("id, name")
     if (tErr) {
       console.error("ensureTeamForPlayers teams fetch error:", tErr.message);
       return null;
@@ -952,6 +952,156 @@ export class RemoteStorageService {
     return { player_id: data.player_id, player_name: player?.display_name || data.player_id };
   }
 
+  static async getMyTeamMemberStatus(teamId: string): Promise<{
+    role: string;
+    member_mode: "unset" | "player" | "spectator";
+    linked_player_id: string | null;
+    linked_player_name: string | null;
+  } | null> {
+    if (!supabase) return null;
+  
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+  
+    const { data: membership, error: membershipError } = await supabase
+      .from(TEAM_MEMBERS_TABLE)
+      .select("role, member_mode")
+      .eq("team_id", teamId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+  
+    if (membershipError || !membership) {
+      console.error("getMyTeamMemberStatus membership error:", membershipError?.message);
+      return null;
+    }
+  
+    const claimed = await this.getClaimedPlayerForTeam(teamId);
+  
+    return {
+      role: (membership as any).role,
+      member_mode: ((membership as any).member_mode || "unset") as "unset" | "player" | "spectator",
+      linked_player_id: claimed?.player_id || null,
+      linked_player_name: claimed?.player_name || null,
+    };
+  }
+  
+  static async getAvailablePlayersForClaim(teamId: string): Promise<Array<{
+    id: string;
+    name: string;
+    claimed: boolean;
+  }>> {
+    if (!supabase) return [];
+  
+    const { data: teamPlayerRows, error: teamPlayersError } = await supabase
+      .from(TEAM_PLAYERS_TABLE)
+      .select("player_id")
+      .eq("team_id", teamId);
+  
+    if (teamPlayersError) {
+      console.error("getAvailablePlayersForClaim teamPlayers error:", teamPlayersError.message);
+      return [];
+    }
+  
+    const playerIds = (teamPlayerRows || [])
+      .map((row: any) => row.player_id)
+      .filter(Boolean);
+  
+    if (playerIds.length === 0) return [];
+  
+    const [{ data: players }, { data: claimedRows }] = await Promise.all([
+      supabase
+        .from(PLAYERS_TABLE)
+        .select("id, display_name")
+        .in("id", playerIds),
+      supabase
+        .from(PLAYER_ACCOUNTS_TABLE)
+        .select("player_id")
+        .eq("team_id", teamId)
+        .in("player_id", playerIds),
+    ]);
+  
+    const claimedIds = new Set((claimedRows || []).map((row: any) => row.player_id));
+  
+    return (players || [])
+      .map((player: any) => ({
+        id: player.id,
+        name: player.display_name,
+        claimed: claimedIds.has(player.id),
+      }))
+      .sort((a: any, b: any) => a.name.localeCompare(b.name, "he"));
+  }
+  
+  static async createAndClaimPlayerForTeam(teamId: string, playerName: string): Promise<{ ok: boolean; error?: string }> {
+    if (!supabase) return { ok: false, error: "אין חיבור לשרת" };
+  
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { ok: false, error: "יש להתחבר כדי ליצור שחקן" };
+  
+    const validation = validatePlayerName(playerName);
+    if (!validation.valid) {
+      return { ok: false, error: validation.error };
+    }
+  
+    const playerId = `player-${slugify(validation.value)}`;
+  
+    const { error: playerError } = await supabase
+      .from(PLAYERS_TABLE)
+      .upsert(
+        {
+          id: playerId,
+          display_name: validation.value,
+          created_by: user.id,
+        },
+        { onConflict: "id" }
+      );
+  
+    if (playerError) {
+      console.error("createAndClaimPlayerForTeam player error:", playerError.message);
+      return { ok: false, error: "שגיאה ביצירת שחקן" };
+    }
+  
+    const { error: teamPlayerError } = await supabase
+      .from(TEAM_PLAYERS_TABLE)
+      .insert({
+        team_id: teamId,
+        player_id: playerId,
+      });
+  
+    if (teamPlayerError && teamPlayerError.code !== "23505") {
+      console.error("createAndClaimPlayerForTeam team player error:", teamPlayerError.message);
+      return { ok: false, error: "שגיאה בהוספת השחקן לקבוצה" };
+    }
+  
+    return this.claimPlayerForTeam(playerId, teamId);
+  }
+  
+  static async setSpectatorModeForTeam(teamId: string): Promise<boolean> {
+    if (!supabase) return false;
+  
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return false;
+  
+    // If the user was linked to a player in this team, remove that link.
+    await supabase
+      .from(PLAYER_ACCOUNTS_TABLE)
+      .delete()
+      .eq("user_id", user.id)
+      .eq("team_id", teamId);
+  
+    const { error } = await supabase
+      .from(TEAM_MEMBERS_TABLE)
+      .update({ member_mode: "spectator" })
+      .eq("team_id", teamId)
+      .eq("user_id", user.id);
+  
+    if (error) {
+      console.error("setSpectatorModeForTeam error:", error.message);
+      return false;
+    }
+  
+    return true;
+  }
+
   /** Team-scoped claim. Returns { ok, error } where error is a user-friendly Hebrew message. */
   static async claimPlayerForTeam(
     playerId: string,
@@ -993,6 +1143,16 @@ export class RemoteStorageService {
       }
 
       return { ok: false, error: error.message || "שגיאה בקישור השחקן" };
+    }
+    const { error: memberModeError } = await supabase
+      .from(TEAM_MEMBERS_TABLE)
+      .update({ member_mode: "player" })
+      .eq("team_id", teamId)
+      .eq("user_id", user.id);
+    
+    if (memberModeError) {
+      console.error("claimPlayerForTeam member_mode error:", memberModeError.message);
+      return { ok: false, error: "השחקן קושר, אבל לא הצלחנו לעדכן את מצב החברות בקבוצה" };
     }
     return { ok: true };
   }
@@ -1066,7 +1226,7 @@ export class RemoteStorageService {
 
     const { data: teams } = await supabase
       .from(TEAMS_TABLE)
-      .select("id, display_name")
+      .select("id, name")
       .in("id", teamIds);
 
     const teamMap = new Map((teams || []).map(t => [t.id, t.name]));
@@ -1216,7 +1376,7 @@ export class RemoteStorageService {
     const teamIds = data.map(s => s.team_id);
     const { data: teams } = await supabase
       .from(TEAMS_TABLE)
-      .select("id, display_name")
+      .select("id, name")
       .in("id", teamIds);
 
     const teamMap = new Map((teams || []).map(t => [t.id, t.name]));
@@ -1435,6 +1595,7 @@ export class RemoteStorageService {
         team_id: (req as any).team_id,
         user_id: (req as any).user_id,
         role: "member",
+        member_mode: "unset",
       });
   
     if (membershipError && membershipError.code !== "23505") {
