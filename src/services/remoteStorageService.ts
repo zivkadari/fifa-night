@@ -1367,6 +1367,7 @@ export class RemoteStorageService {
     message: string | null;
     created_at: string;
     user_display_name?: string | null;
+    user_email?: string | null;
   }>> {
     if (!supabase) return [];
     const { data, error } = await supabase
