@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { RemoteStorageService } from "@/services/remoteStorageService";
 import { useTeam } from "@/contexts/TeamContext";
+import { TeamMemberIdentityCard } from "@/components/TeamMemberIdentityCard";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -61,10 +62,13 @@ export const TeamDashboard = ({
   activeTournamentMode,
   activeTournamentProgress,
 }: TeamDashboardProps) => {
-  const { teams, activePlayer, loading: teamsLoading } = useTeam();
+  const { teams, activeTeamId, activePlayer, loading: teamsLoading } = useTeam();
   const [manageOpen, setManageOpen] = useState(false);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const isAdmin = userEmail === "zivkad12@gmail.com";
+  const activeTeam = activeTeamId
+    ? teams.find((team) => team.team_id === activeTeamId)
+    : null;
 
   // Load profile display name for the greeting
   useEffect(() => {
@@ -155,6 +159,13 @@ export const TeamDashboard = ({
             </p>
           </CardContent>
         </Card>
+      )}
+      
+      {isAuthed && !teamsLoading && activeTeamId && activeTeam && (
+        <TeamMemberIdentityCard
+          teamId={activeTeamId}
+          teamName={activeTeam.team_name}
+        />
       )}
 
       {showSignedOutOnboarding && (
