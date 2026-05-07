@@ -1234,5 +1234,177 @@ export class RemoteStorageService {
       return false;
     }
   }
+
+  // ========== Discoverable Teams & Join Requests ==========
+
+  static async searchDiscoverableTeams(query: string): Promise<Array<{
+    id: string;
+    name: string;
+    description: string | null;
+    visibility: string;
+    owner_id: string;
+  }>> {
+    if (!supabase) return [];
+    const cleanQuery = (query || "").trim();
+    if (!cleanQuery) return [];
+    const { data, error } = await supabase
+      .from(TEAMS_TABLE)
+      .select("id, name, description, visibility, owner_id")
+      .in("visibility", ["searchable", "public"])
+      .ilike("name", `%${cleanQuery}%`)
+      .limit(10);
+    if (error) {
+      console.error("searchDiscoverableTeams error:", error.message);
+      return [];
+    }
+    return (data || []) as any;
+  }
+
+  static async requestToJoinTeam(teamId: string, message?: string): Promise<boolean> {
+    if (!supabase) return false;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return false;
+    const { error } = await supabase
+      .from(TEAM_JOIN_REQUESTS_TABLE)
+      .insert({
+        team_id: teamId,
+        user_id: user.id,
+        status: "pending",
+        message: message?.trim() || null,
+      });
+    if (error) {
+      // duplicate pending request — treat as success
+      if (error.code === "23505") return true;
+      console.error("requestToJoinTeam error:", error.message);
+      return false;
+    }
+    return true;
+  }
+
+  static async listMyJoinRequests(): Promise<Array<{
+    id: string;
+    team_id: string;
+    team_name: string;
+    status: string;
+    message: string | null;
+    created_at: string;
+  }>> {
+    if (!supabase) return [];
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+    const { data, error } = await supabase
+      .from(TEAM_JOIN_REQUESTS_TABLE)
+      .select("id, team_id, status, message, created_at, teams:team_id(name)")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
+    if (error) {
+      console.error("listMyJoinRequests error:", error.message);
+      return [];
+    }
+    return (data || []).map((r: any) => ({
+      id: r.id,
+      team_id: r.team_id,
+      team_name: (r.teams as any)?.name || "",
+      status: r.status,
+      message: r.message,
+      created_at: r.created_at,
+    }));
+  }
+
+  static async listTeamJoinRequests(teamId: string): Promise<Array<{
+    id: string;
+    team_id: string;
+    user_id: string;
+    status: string;
+    message: string | null;
+    created_at: string;
+    user_display_name?: string | null;
+  }>> {
+    if (!supabase) return [];
+    const { data, error } = await supabase
+      .from(TEAM_JOIN_REQUESTS_TABLE)
+      .select("id, team_id, user_id, status, message, created_at")
+      .eq("team_id", teamId)
+      .eq("status", "pending")
+      .order("created_at", { ascending: false });
+    if (error) {
+      console.error("listTeamJoinRequests error:", error.message);
+      return [];
+    }
+    const rows = data || [];
+    if (rows.length === 0) return [];
+    // Fetch display names
+    const userIds = rows.map((r: any) => r.user_id);
+    const { data: profiles } = await supabase
+      .from(PROFILES_TABLE)
+      .select("id, display_name")
+      .in("id", userIds);
+    const nameMap = new Map((profiles || []).map((p: any) => [p.id, p.display_name]));
+    return rows.map((r: any) => ({
+      id: r.id,
+      team_id: r.team_id,
+      user_id: r.user_id,
+      status: r.status,
+      message: r.message,
+      created_at: r.created_at,
+      user_display_name: nameMap.get(r.user_id) || null,
+    }));
+  }
+
+  static async approveJoinRequest(requestId: string): Promise<boolean> {
+    if (!supabase) return false;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return false;
+    // Fetch the request
+    const { data: req, error: fetchErr } = await supabase
+      .from(TEAM_JOIN_REQUESTS_TABLE)
+      .select("id, team_id, user_id, status")
+      .eq("id", requestId)
+      .single();
+    if (fetchErr || !req) {
+      console.error("approveJoinRequest fetch error:", fetchErr?.message);
+      return false;
+    }
+    if ((req as any).status !== "pending") return false;
+    // Add membership
+    await supabase
+      .from(TEAM_MEMBERS_TABLE)
+      .insert({ team_id: (req as any).team_id, user_id: (req as any).user_id, role: "member" })
+      .then(() => {});
+    // Update request
+    const { error: upErr } = await supabase
+      .from(TEAM_JOIN_REQUESTS_TABLE)
+      .update({
+        status: "approved",
+        reviewed_by: user.id,
+        reviewed_at: new Date().toISOString(),
+      })
+      .eq("id", requestId);
+    if (upErr) {
+      console.error("approveJoinRequest update error:", upErr.message);
+      return false;
+    }
+    return true;
+  }
+
+  static async rejectJoinRequest(requestId: string): Promise<boolean> {
+    if (!supabase) return false;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return false;
+    const { error } = await supabase
+      .from(TEAM_JOIN_REQUESTS_TABLE)
+      .update({
+        status: "rejected",
+        reviewed_by: user.id,
+        reviewed_at: new Date().toISOString(),
+      })
+      .eq("id", requestId)
+      .eq("status", "pending");
+    if (error) {
+      console.error("rejectJoinRequest error:", error.message);
+      return false;
+    }
+    return true;
+  }
 }
 
