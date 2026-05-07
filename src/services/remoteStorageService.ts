@@ -341,7 +341,7 @@ export class RemoteStorageService {
     if (teamIds.length > 0) {
       const { data: teams } = await supabase
         .from(TEAMS_TABLE)
-        .select("id, name")
+        .select("id, display_name")
         .in("id", teamIds);
       if (teams) {
         teamMap = Object.fromEntries(teams.map((t: any) => [t.id, t.name]));
@@ -525,7 +525,7 @@ export class RemoteStorageService {
     const { data, error } = await supabase
       .from(TEAMS_TABLE)
       .insert({ name: validation.value, owner_id: user.id })
-      .select("id, name")
+      .select("id, display_name")
       .maybeSingle();
     if (error) {
       console.error("createTeam error:", error.message);
@@ -652,14 +652,20 @@ export class RemoteStorageService {
     if (!user) return [];
 
     // Get all players the user can see (via RLS - created by them or in their teams)
-    const { data: players, error: playersErr } = await supabase
+    const { data: player, error: playerError } = await supabase
       .from(PLAYERS_TABLE)
       .select("id, display_name")
-      .order("display_name", { ascending: true });
+      .eq("display_name", validation.value)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
     
-    if (playersErr || !players || players.length === 0) {
-      if (playersErr) console.error("listAllMyPlayers players error:", playersErr.message);
-      return [];
+    if (playerError || !player) {
+      console.error("createAndClaimPlayerForTeam player lookup error:", playerError?.message);
+      return false;
+    }
+    
+    return this.claimPlayerForTeam(teamId, (player as any).id);
     }
 
     // Get all team_players links for these players
@@ -680,7 +686,7 @@ export class RemoteStorageService {
     if (teamIds.length > 0) {
       const { data: teams } = await supabase
         .from(TEAMS_TABLE)
-        .select("id, name")
+        .select("id, display_name")
         .in("id", teamIds);
       if (teams) {
         teamMap = Object.fromEntries(teams.map((t: any) => [t.id, t.name]));
@@ -765,7 +771,7 @@ export class RemoteStorageService {
     
     const { data: teams, error: tErr } = await supabase
       .from(TEAMS_TABLE)
-      .select("id, name");
+      .select("id, display_name");
     if (tErr) {
       console.error("ensureTeamForPlayers teams fetch error:", tErr.message);
       return null;
@@ -1060,7 +1066,7 @@ export class RemoteStorageService {
 
     const { data: teams } = await supabase
       .from(TEAMS_TABLE)
-      .select("id, name")
+      .select("id, display_name")
       .in("id", teamIds);
 
     const teamMap = new Map((teams || []).map(t => [t.id, t.name]));
@@ -1210,7 +1216,7 @@ export class RemoteStorageService {
     const teamIds = data.map(s => s.team_id);
     const { data: teams } = await supabase
       .from(TEAMS_TABLE)
-      .select("id, name")
+      .select("id, display_name")
       .in("id", teamIds);
 
     const teamMap = new Map((teams || []).map(t => [t.id, t.name]));
