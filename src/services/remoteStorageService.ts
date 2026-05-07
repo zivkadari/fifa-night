@@ -194,33 +194,67 @@ export class RemoteStorageService {
     if (userErr || !user) return false;
   
     try {
-      // Remove claimed player links for this user inside this team, if possible.
-      const { data: teamPlayerRows } = await supabase
+      // Get all players that belong to this team.
+      const { data: teamPlayerRows, error: teamPlayersError } = await supabase
         .from(TEAM_PLAYERS_TABLE)
         .select("player_id")
         .eq("team_id", teamId);
+  
+      if (teamPlayersError) {
+        console.error("leaveTeam teamPlayers error:", teamPlayersError.message);
+        return false;
+      }
   
       const playerIds = (teamPlayerRows || [])
         .map((row: any) => row.player_id)
         .filter(Boolean);
   
+      // Remove claimed player links for this user inside this team.
       if (playerIds.length > 0) {
-        await supabase
+        const { error: playerAccountsError } = await supabase
           .from(PLAYER_ACCOUNTS_TABLE)
           .delete()
           .eq("user_id", user.id)
           .in("player_id", playerIds);
+  
+        if (playerAccountsError) {
+          console.error("leaveTeam playerAccounts error:", playerAccountsError.message);
+          return false;
+        }
       }
   
       // Remove the current user's membership in the team.
-      const { error } = await supabase
+      const { data: deletedMemberships, error: membershipDeleteError } = await supabase
         .from(TEAM_MEMBERS_TABLE)
         .delete()
         .eq("team_id", teamId)
-        .eq("user_id", user.id);
+        .eq("user_id", user.id)
+        .select("team_id,user_id");
   
-      if (error) {
-        console.error("leaveTeam error:", error.message);
+      if (membershipDeleteError) {
+        console.error("leaveTeam membership delete error:", membershipDeleteError.message);
+        return false;
+      }
+  
+      if (!deletedMemberships || deletedMemberships.length === 0) {
+        console.warn("leaveTeam: no membership row was deleted");
+      }
+  
+      // Verify membership is gone.
+      const { data: remainingMembership, error: verifyError } = await supabase
+        .from(TEAM_MEMBERS_TABLE)
+        .select("team_id")
+        .eq("team_id", teamId)
+        .eq("user_id", user.id)
+        .maybeSingle();
+  
+      if (verifyError) {
+        console.error("leaveTeam verify error:", verifyError.message);
+        return false;
+      }
+  
+      if (remainingMembership) {
+        console.error("leaveTeam: membership still exists after delete");
         return false;
       }
   
