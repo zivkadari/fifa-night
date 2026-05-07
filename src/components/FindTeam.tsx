@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, Search, Send } from "lucide-react";
+import { ArrowLeft, Search, Send, KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -24,10 +24,15 @@ export const FindTeam = ({ onBack }: FindTeamProps) => {
   const [results, setResults] = useState<DiscoverableTeam[]>([]);
   const [loading, setLoading] = useState(false);
   const [requestingTeamId, setRequestingTeamId] = useState<string | null>(null);
+  const [joiningByCode, setJoiningByCode] = useState(false);
+
+  const cleanQuery = query.trim();
+  const looksLikeInviteCode =
+    cleanQuery.length >= 6 &&
+    cleanQuery.length <= 20 &&
+    /^[A-Za-z0-9-]+$/.test(cleanQuery);
 
   const searchTeams = async () => {
-    const cleanQuery = query.trim();
-
     if (!cleanQuery) {
       setResults([]);
       return;
@@ -66,6 +71,39 @@ export const FindTeam = ({ onBack }: FindTeamProps) => {
     }
   };
 
+  const joinWithCode = async () => {
+    if (!cleanQuery) return;
+
+    setJoiningByCode(true);
+
+    try {
+      const joined = await RemoteStorageService.joinTeamByCode(cleanQuery);
+
+      if (joined) {
+        toast({
+          title: "הצטרפת לקבוצה",
+          description: `הצטרפת לקבוצה ${joined.team_name}`,
+        });
+
+        onBack();
+      } else {
+        toast({
+          title: "לא נמצאה קבוצה עם הקוד הזה",
+          description: "בדוק שהקוד נכון ונסה שוב",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "שגיאה בהצטרפות עם קוד",
+        description: error?.message || "בדוק שהקוד נכון ונסה שוב",
+        variant: "destructive",
+      });
+    } finally {
+      setJoiningByCode(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gaming-bg p-4 mobile-optimized" dir="rtl">
       <div className="max-w-md mx-auto">
@@ -77,7 +115,7 @@ export const FindTeam = ({ onBack }: FindTeamProps) => {
           <div>
             <h1 className="text-2xl font-bold text-foreground">מצא קבוצה קיימת</h1>
             <p className="text-muted-foreground text-sm">
-              חפש קבוצה לפי שם ושלח בקשת הצטרפות
+              חפש לפי שם קבוצה או הזן קוד הזמנה שקיבלת מחבר
             </p>
           </div>
         </div>
@@ -85,7 +123,7 @@ export const FindTeam = ({ onBack }: FindTeamProps) => {
         <Card className="bg-gradient-card border-neon-green/20 p-4 shadow-card mb-4">
           <div className="space-y-3">
             <label className="text-sm font-medium text-foreground">
-              שם קבוצה
+              שם קבוצה או קוד הזמנה
             </label>
 
             <div className="flex gap-2">
@@ -95,7 +133,7 @@ export const FindTeam = ({ onBack }: FindTeamProps) => {
                 onKeyDown={(e) => {
                   if (e.key === "Enter") searchTeams();
                 }}
-                placeholder="לדוגמה: Hard level"
+                placeholder="לדוגמה: Alphot B או C7E3AAC1"
                 className="bg-gaming-surface border-border"
               />
 
@@ -105,9 +143,21 @@ export const FindTeam = ({ onBack }: FindTeamProps) => {
             </div>
 
             <p className="text-xs text-muted-foreground leading-relaxed">
-              יוצגו רק קבוצות שהמנהלים שלהן הגדירו כניתנות לחיפוש.
-              אם קיבלת קישור הזמנה ישיר, עדיף לפתוח את הקישור שקיבלת.
+              חיפוש לפי שם יציג קבוצות שהמנהלים שלהן הגדירו כניתנות לחיפוש.
+              אם קיבלת קוד הזמנה, אפשר להצטרף ישירות גם לקבוצה פרטית.
             </p>
+
+            {looksLikeInviteCode && (
+              <Button
+                variant="outline"
+                onClick={joinWithCode}
+                disabled={joiningByCode}
+                className="w-full gap-2"
+              >
+                <KeyRound className="h-4 w-4" />
+                {joiningByCode ? "מצטרף עם קוד..." : "הצטרף עם קוד הזמנה"}
+              </Button>
+            )}
           </div>
         </Card>
 
@@ -117,10 +167,10 @@ export const FindTeam = ({ onBack }: FindTeamProps) => {
           </Card>
         )}
 
-        {!loading && query.trim() && results.length === 0 && (
+        {!loading && cleanQuery && results.length === 0 && (
           <Card className="bg-gaming-surface/50 border-border/50 p-4 mb-4">
             <p className="text-sm text-muted-foreground">
-              לא נמצאו קבוצות מתאימות. נסה לחפש בשם קצר יותר או בדוק שקיבלת את השם הנכון.
+              לא נמצאו קבוצות מתאימות לפי שם. אם זה קוד הזמנה, נסה ללחוץ על “הצטרף עם קוד הזמנה”.
             </p>
           </Card>
         )}
