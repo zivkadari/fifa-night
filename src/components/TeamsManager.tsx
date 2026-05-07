@@ -33,6 +33,7 @@ interface TeamJoinRequest {
   message: string | null;
   created_at: string;
   user_display_name?: string | null;
+  user_email?: string | null;
 }
 
 interface TeamsManagerProps {
@@ -592,16 +593,34 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam }: TeamsManagerProp
                       >
                         <div>
                           <p className="text-sm font-semibold text-foreground">
-                            {request.user_display_name || "משתמש חדש"}
+                            {request.user_display_name ||
+                              request.user_email ||
+                              `משתמש ${request.user_id.slice(0, 8)}`}
                           </p>
-            
-                          {request.message && (
+                        
+                          {request.user_display_name && request.user_email && (
                             <p className="text-xs text-muted-foreground mt-1">
-                              {request.message}
+                              {request.user_email}
                             </p>
                           )}
-            
+                        
+                          {!request.user_display_name && !request.user_email && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              מזהה משתמש: {request.user_id.slice(0, 8)}
+                            </p>
+                          )}
+                        
+                          {request.message && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              הודעה: {request.message}
+                            </p>
+                          )}
+                        
                           <p className="text-xs text-muted-foreground mt-1">
+                            נשלחה: {new Date(request.created_at).toLocaleString("he-IL")}
+                          </p>
+                        
+                          <p className="text-xs text-neon-green mt-1">
                             ממתין לאישור
                           </p>
                         </div>
