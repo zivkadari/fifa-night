@@ -46,6 +46,9 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam }: TeamsManagerProp
   const [editingTeamName, setEditingTeamName] = useState("");
   const [inviteCode, setInviteCode] = useState<string | null>(null);
   const [loadingInvite, setLoadingInvite] = useState(false);
+  const [teamVisibility, setTeamVisibility] = useState<"private" | "searchable" | "public">("private");
+  const [teamDescription, setTeamDescription] = useState("");
+  const [savingDiscovery, setSavingDiscovery] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -59,18 +62,30 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam }: TeamsManagerProp
   }, []);
 
   useEffect(() => {
-    if (!selectedTeamId) { setInviteCode(null); return; }
+    if (!selectedTeamId) {setInviteCode(null);
+      setTeamVisibility("private");
+      setTeamDescription("");
+      return;
+    }
     const loadTeam = async () => {
       setLoading(true);
       try {
-        const [players, stats, code] = await Promise.all([
+        const [players, stats, code, discovery] = await Promise.all([
           RemoteStorageService.listTeamPlayers(selectedTeamId),
           RemoteStorageService.getTeamLeaderboard(selectedTeamId),
           RemoteStorageService.getTeamInviteCode(selectedTeamId),
+          RemoteStorageService.getTeamDiscoverySettings(selectedTeamId),
         ]);
         setTeamPlayers(players);
         setLeaderboard(stats);
         setInviteCode(code);
+        if (discovery) {
+          setTeamVisibility(discovery.visibility);
+          setTeamDescription(discovery.description || "");
+        } else {
+          setTeamVisibility("private");
+          setTeamDescription("");
+        }
       } finally {
         setLoading(false);
       }
@@ -213,6 +228,37 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam }: TeamsManagerProp
         title: "שגיאה בהסרת הקבוצה",
         variant: "destructive",
       });
+    }
+  };
+
+  const saveDiscoverySettings = async () => {
+    if (!selectedTeamId) return;
+  
+    setSavingDiscovery(true);
+  
+    try {
+      const ok = await RemoteStorageService.updateTeamDiscoverySettings(
+        selectedTeamId,
+        teamVisibility,
+        teamDescription
+      );
+  
+      if (ok) {
+        toast({
+          title: "הגדרות החיפוש נשמרו",
+          description:
+            teamVisibility === "private"
+              ? "הקבוצה פרטית ותהיה זמינה רק דרך קישור הזמנה"
+              : "הקבוצה תהיה ניתנת לחיפוש על ידי משתמשים אחרים",
+        });
+      } else {
+        toast({
+          title: "שגיאה בשמירת הגדרות החיפוש",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setSavingDiscovery(false);
     }
   };
 
@@ -365,6 +411,65 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam }: TeamsManagerProp
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">שתף את הקישור כדי שחברים יצטרפו לקבוצה</p>
+              </Card>
+            )}
+
+            {/* Team discovery settings */}
+            {selectedTeamId && (
+              <Card className="bg-gradient-card border-neon-green/20 p-4 shadow-card mb-6">
+                <div className="space-y-3">
+                  <div>
+                    <h3 className="text-lg font-semibold text-foreground">גילוי והצטרפות</h3>
+                    <p className="text-sm text-muted-foreground">
+                      בחר האם משתמשים אחרים יוכלו למצוא את הקבוצה ולבקש להצטרף.
+                    </p>
+                  </div>
+            
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-foreground">
+                      נראות הקבוצה
+                    </label>
+            
+                    <select
+                      value={teamVisibility}
+                      onChange={(e) =>
+                        setTeamVisibility(e.target.value as "private" | "searchable" | "public")
+                      }
+                      className="w-full rounded-md border border-border bg-gaming-surface px-3 py-2 text-sm text-foreground"
+                    >
+                      <option value="private">פרטית — רק עם קישור הזמנה</option>
+                      <option value="searchable">ניתנת לחיפוש — אפשר לבקש להצטרף</option>
+                      <option value="public">ציבורית — תופיע בחיפוש</option>
+                    </select>
+                  </div>
+            
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-foreground">
+                      תיאור קצר לקבוצה
+                    </label>
+            
+                    <Input
+                      value={teamDescription}
+                      onChange={(e) => setTeamDescription(e.target.value)}
+                      placeholder="לדוגמה: טורנירי שישי בערב עם חברים"
+                      className="bg-gaming-surface border-border"
+                    />
+                  </div>
+            
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    במצב פרטי, רק מי שקיבל קישור הזמנה יוכל להצטרף.
+                    במצב ניתנת לחיפוש, משתמשים יוכלו למצוא את הקבוצה לפי שם ולשלוח בקשת הצטרפות.
+                  </p>
+            
+                  <Button
+                    variant="outline"
+                    onClick={saveDiscoverySettings}
+                    disabled={savingDiscovery}
+                    className="w-full"
+                  >
+                    {savingDiscovery ? "שומר..." : "שמור הגדרות חיפוש"}
+                  </Button>
+                </div>
               </Card>
             )}
 
