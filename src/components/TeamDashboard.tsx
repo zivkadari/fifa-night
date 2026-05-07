@@ -59,7 +59,7 @@ export const TeamDashboard = ({
   activeTournamentMode,
   activeTournamentProgress,
 }: TeamDashboardProps) => {
-  const { teams, activePlayer } = useTeam();
+  const { teams, activePlayer, loading: teamsLoading } = useTeam();
   const [manageOpen, setManageOpen] = useState(false);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const isAdmin = userEmail === "zivkad12@gmail.com";
@@ -80,7 +80,7 @@ export const TeamDashboard = ({
   }, [isAuthed, userEmail]);
 
   const hasActiveTournament = !!onResume;
-  const showNewUserOnboarding = !!isAuthed && teams.length === 0 && !hasActiveTournament;
+  const showNewUserOnboarding = !!isAuthed && !teamsLoading && teams.length === 0 && !hasActiveTournament;
   // Best-effort greeting name: profile display_name → claimed player name → email local-part
   const greetingName = displayName
     || activePlayer?.player_name
@@ -143,6 +143,17 @@ export const TeamDashboard = ({
           </p>
         )}
       </div>
+
+      {isAuthed && teamsLoading && (
+        <Card className="bg-gradient-card border-border shadow-card mb-4">
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">
+              טוען את הקבוצות שלך...
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       {showNewUserOnboarding && (
         <Card className="bg-gradient-card border-neon-green/30 shadow-card mb-4">
           <CardContent className="p-4 space-y-4">
