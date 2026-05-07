@@ -134,30 +134,77 @@ export const TeamMemberIdentityCard = ({
     }
   };
 
+  const resetIdentity = async () => {
+    setSaving(true);
+  
+    try {
+      const ok = await RemoteStorageService.resetTeamMemberMode(teamId);
+  
+      if (ok) {
+        toast({
+          title: "אפשר לבחור זהות מחדש",
+          description: "בחר אם אתה שחקן קיים, שחקן חדש או צופה",
+        });
+  
+        await refresh();
+        await load();
+      } else {
+        toast({
+          title: "שגיאה בשינוי הזהות",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading) return null;
 
   if (memberMode === "player") {
-    return linkedPlayerName ? (
+    return (
       <Card className="bg-gaming-surface/50 border-border/50 shadow-card mb-4">
-        <CardContent className="p-4">
-          <p className="text-sm text-muted-foreground">
-            אתה מחובר בקבוצה הזו כשחקן:
-          </p>
-          <p className="text-lg font-semibold text-foreground mt-1">
-            {linkedPlayerName}
-          </p>
+        <CardContent className="p-4 space-y-3">
+          <div>
+            <p className="text-sm text-muted-foreground">
+              אתה מחובר בקבוצה הזו כשחקן:
+            </p>
+            <p className="text-lg font-semibold text-foreground mt-1">
+              {linkedPlayerName || "שחקן מקושר"}
+            </p>
+          </div>
+  
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={saving}
+            onClick={resetIdentity}
+            className="w-full"
+          >
+            שנה זהות בקבוצה
+          </Button>
         </CardContent>
       </Card>
-    ) : null;
+    );
   }
 
   if (memberMode === "spectator") {
     return (
       <Card className="bg-gaming-surface/50 border-border/50 shadow-card mb-4">
-        <CardContent className="p-4">
+        <CardContent className="p-4 space-y-3">
           <p className="text-sm text-muted-foreground">
             אתה מוגדר כצופה בקבוצה הזו.
           </p>
+  
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={saving}
+            onClick={resetIdentity}
+            className="w-full"
+          >
+            שנה זהות בקבוצה
+          </Button>
         </CardContent>
       </Card>
     );
