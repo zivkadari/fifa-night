@@ -1102,6 +1102,32 @@ export class RemoteStorageService {
     return true;
   }
 
+  static async resetTeamMemberMode(teamId: string): Promise<boolean> {
+    if (!supabase) return false;
+  
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return false;
+  
+    await supabase
+      .from(PLAYER_ACCOUNTS_TABLE)
+      .delete()
+      .eq("user_id", user.id)
+      .eq("team_id", teamId);
+  
+    const { error } = await supabase
+      .from(TEAM_MEMBERS_TABLE)
+      .update({ member_mode: "unset" })
+      .eq("team_id", teamId)
+      .eq("user_id", user.id);
+  
+    if (error) {
+      console.error("resetTeamMemberMode error:", error.message);
+      return false;
+    }
+  
+    return true;
+  }
+
   /** Team-scoped claim. Returns { ok, error } where error is a user-friendly Hebrew message. */
   static async claimPlayerForTeam(
     playerId: string,
