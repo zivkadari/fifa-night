@@ -81,6 +81,7 @@ export const TeamDashboard = ({
 
   const hasActiveTournament = !!onResume;
   const showNewUserOnboarding = !!isAuthed && !teamsLoading && teams.length === 0 && !hasActiveTournament;
+  const showSignedOutOnboarding = !isAuthed;
   // Best-effort greeting name: profile display_name → claimed player name → email local-part
   const greetingName = displayName
     || activePlayer?.player_name
