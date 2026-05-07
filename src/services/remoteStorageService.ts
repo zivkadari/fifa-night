@@ -303,53 +303,6 @@ export class RemoteStorageService {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return [];
 
-  static async getTeamDiscoverySettings(teamId: string): Promise<{
-    visibility: "private" | "searchable" | "public";
-    description: string | null;
-  } | null> {
-    if (!supabase) return null;
-  
-    const { data, error } = await supabase
-      .from(TEAMS_TABLE)
-      .select("visibility, description")
-      .eq("id", teamId)
-      .maybeSingle();
-  
-    if (error) {
-      console.error("getTeamDiscoverySettings error:", error.message);
-      return null;
-    }
-  
-    return {
-      visibility: (data?.visibility || "private") as "private" | "searchable" | "public",
-      description: data?.description || null,
-    };
-  }
-  
-  static async updateTeamDiscoverySettings(
-    teamId: string,
-    visibility: "private" | "searchable" | "public",
-    description?: string | null
-  ): Promise<boolean> {
-    if (!supabase) return false;
-  
-    const { error } = await supabase
-      .from(TEAMS_TABLE)
-      .update({
-        visibility,
-        description: description?.trim() || null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", teamId);
-  
-    if (error) {
-      console.error("updateTeamDiscoverySettings error:", error.message);
-      return false;
-    }
-  
-    return true;
-  }
-
     // Try with JOIN first
     const { data, error } = await supabase
       .from(EVENINGS_TABLE)
@@ -402,6 +355,53 @@ export class RemoteStorageService {
       _updatedAt: r.updated_at || undefined,
       _createdAt: r.created_at || undefined,
     }));
+  }
+
+  static async getTeamDiscoverySettings(teamId: string): Promise<{
+    visibility: "private" | "searchable" | "public";
+    description: string | null;
+  } | null> {
+    if (!supabase) return null;
+  
+    const { data, error } = await supabase
+      .from(TEAMS_TABLE)
+      .select("visibility, description")
+      .eq("id", teamId)
+      .maybeSingle();
+  
+    if (error) {
+      console.error("getTeamDiscoverySettings error:", error.message);
+      return null;
+    }
+  
+    return {
+      visibility: (data?.visibility || "private") as "private" | "searchable" | "public",
+      description: data?.description || null,
+    };
+  }
+  
+  static async updateTeamDiscoverySettings(
+    teamId: string,
+    visibility: "private" | "searchable" | "public",
+    description?: string | null
+  ): Promise<boolean> {
+    if (!supabase) return false;
+  
+    const { error } = await supabase
+      .from(TEAMS_TABLE)
+      .update({
+        visibility,
+        description: description?.trim() || null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", teamId);
+  
+    if (error) {
+      console.error("updateTeamDiscoverySettings error:", error.message);
+      return false;
+    }
+  
+    return true;
   }
 
   // Subscribe to realtime changes for a specific evening id
