@@ -1400,26 +1400,40 @@ export class RemoteStorageService {
 
   static async approveJoinRequest(requestId: string): Promise<boolean> {
     if (!supabase) return false;
-    const { data: { user } } = await supabase.auth.getUser();
+  
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+  
     if (!user) return false;
-    // Fetch the request
+  
     const { data: req, error: fetchErr } = await supabase
       .from(TEAM_JOIN_REQUESTS_TABLE)
       .select("id, team_id, user_id, status")
       .eq("id", requestId)
-      .single();
+      .maybeSingle();
+  
     if (fetchErr || !req) {
       console.error("approveJoinRequest fetch error:", fetchErr?.message);
       return false;
     }
+  
     if ((req as any).status !== "pending") return false;
-    // Add membership
-    await supabase
+  
+    const { error: membershipError } = await supabase
       .from(TEAM_MEMBERS_TABLE)
-      .insert({ team_id: (req as any).team_id, user_id: (req as any).user_id, role: "member" })
-      .then(() => {});
-    // Update request
-    const { error: upErr } = await supabase
+      .insert({
+        team_id: (req as any).team_id,
+        user_id: (req as any).user_id,
+        role: "member",
+      });
+  
+    if (membershipError && membershipError.code !== "23505") {
+      console.error("approveJoinRequest membership error:", membershipError.message);
+      return false;
+    }
+  
+    const { error: updateError } = await supabase
       .from(TEAM_JOIN_REQUESTS_TABLE)
       .update({
         status: "approved",
@@ -1427,10 +1441,12 @@ export class RemoteStorageService {
         reviewed_at: new Date().toISOString(),
       })
       .eq("id", requestId);
-    if (upErr) {
-      console.error("approveJoinRequest update error:", upErr.message);
+  
+    if (updateError) {
+      console.error("approveJoinRequest update error:", updateError.message);
       return false;
     }
+  
     return true;
   }
 
