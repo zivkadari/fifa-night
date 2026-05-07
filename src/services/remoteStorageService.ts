@@ -430,15 +430,36 @@ export class RemoteStorageService {
   // ========== Teams ==========
   static async listTeams(): Promise<Array<{ id: string; name: string }>> {
     if (!supabase) return [];
+  
+    const {
+      data: { user },
+      error: userErr,
+    } = await supabase.auth.getUser();
+  
+    if (userErr || !user) return [];
+  
     const { data, error } = await supabase
-      .from(TEAMS_TABLE)
-      .select("id, name")
-      .order("created_at", { ascending: false });
+      .from(TEAM_MEMBERS_TABLE)
+      .select(`
+        team_id,
+        teams!inner (
+          id,
+          name
+        )
+      `)
+      .eq("user_id", user.id);
+  
     if (error) {
       console.error("listTeams error:", error.message);
       return [];
     }
-    return data as Array<{ id: string; name: string }>;
+  
+    return (data || [])
+      .map((row: any) => ({
+        id: row.team_id,
+        name: row.teams?.name || "קבוצה ללא שם",
+      }))
+      .filter((team) => team.id && team.name);
   }
 
   static async createTeam(name: string): Promise<{ id: string; name: string } | null> {
