@@ -9,6 +9,7 @@ const PLAYERS_TABLE = "players";
 const PROFILES_TABLE = "profiles";
 const PLAYER_ACCOUNTS_TABLE = "player_accounts";
 const TEAM_MEMBERS_TABLE = "team_members";
+const TEAM_JOIN_REQUESTS_TABLE = "team_join_requests";
 
 function slugify(s: string) {
   return s.toLowerCase().trim().replace(/[^a-z0-9\u0590-\u05FF]+/g, "-").replace(/^-+|-+$/g, "");
