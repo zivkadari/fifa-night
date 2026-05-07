@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { TeamsManager } from "@/components/TeamsManager";
+import { FindTeam } from "@/components/FindTeam";
 import { TournamentEngine } from "@/services/tournamentEngine";
 import { SinglesClubAssignment } from "@/components/SinglesClubAssignment";
 import { SinglesMatchSchedule } from "@/components/SinglesMatchSchedule";
@@ -36,7 +37,7 @@ import { createFPEvening } from "@/services/fivePlayerEngine";
 import { FPBankOverview } from "@/components/FPBankOverview";
 import { useTeam } from "@/contexts/TeamContext";
 
-type AppState = 'home' | 'setup' | 'tournament-type' | 'singles-setup' | 'singles-clubs' | 'singles-schedule' | 'game' | 'summary' | 'history' | 'teams' | 'join' | 'pairs-mode-selection' | 'tier-question-flow' | 'fp-setup' | 'fp-bank-overview' | 'fp-game' | 'fp-summary';
+type AppState = 'home' | 'setup' | 'tournament-type' | 'singles-setup' | 'singles-clubs' | 'singles-schedule' | 'game' | 'summary' | 'history' | 'teams' | 'find-team' | 'join' | 'pairs-mode-selection' | 'tier-question-flow' | 'fp-setup' | 'fp-bank-overview' | 'fp-game' | 'fp-summary';
 
 const Index = () => {
   const location = useLocation();
@@ -503,6 +504,7 @@ const handleGoHome = () => {
                   : undefined
             }
             onManageTeams={() => goTo('teams')}
+            onFindTeam={() => goTo('find-team')}
             onJoinEvening={isAuthed ? () => goTo('join') : undefined}
             isAuthed={isAuthed}
             userEmail={userEmail}
@@ -812,6 +814,9 @@ const handleGoHome = () => {
             />
           ) : null;
         
+        case 'find-team':
+          return <FindTeam onBack={handleBackToHome} />;
+
         case 'fp-summary':
           return fpEvening ? (
             <FPSummary
