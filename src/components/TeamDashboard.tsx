@@ -250,7 +250,7 @@ export const TeamDashboard = ({
       )}
 
       {/* ── 2. Primary card: active tournament or start new ── */}
-      {!teamsLoading && !showNewUserOnboarding && (hasActiveTournament ? (
+      {!teamsLoading && !showSignedOutOnboarding && !showNewUserOnboarding && (hasActiveTournament ? (
         <Card className="bg-gradient-card border-neon-green/30 shadow-glow mb-4 overflow-hidden">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
