@@ -81,6 +81,7 @@ export const TeamDashboard = ({
 
   const hasActiveTournament = !!onResume;
   const showNewUserOnboarding = !!isAuthed && !teamsLoading && teams.length === 0 && !hasActiveTournament;
+  const showSignedOutOnboarding = !isAuthed;
   // Best-effort greeting name: profile display_name → claimed player name → email local-part
   const greetingName = displayName
     || activePlayer?.player_name
@@ -154,6 +155,52 @@ export const TeamDashboard = ({
         </Card>
       )}
 
+      {showSignedOutOnboarding && (
+        <Card className="bg-gradient-card border-neon-green/30 shadow-card mb-4">
+          <CardContent className="p-4 space-y-4">
+            <div className="space-y-1">
+              <p className="text-xs text-neon-green font-semibold">ברוך הבא</p>
+              <h2 className="text-xl font-bold text-foreground">
+                ברוך הבא ל־Soccer Night
+              </h2>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                נהל טורנירי כדורגל עם החברים שלך: קבוצות, שחקנים, תוצאות, היסטוריה וסטטיסטיקות — הכל במקום אחד.
+              </p>
+            </div>
+
+            <div className="rounded-lg bg-gaming-surface/60 border border-border/50 p-3 space-y-2">
+              <p className="text-sm font-semibold text-foreground">איך מתחילים?</p>
+              <ol className="text-xs text-muted-foreground leading-relaxed space-y-1 list-decimal list-inside">
+                <li>התחבר או צור חשבון.</li>
+                <li>צור קבוצה או הצטרף לקבוצה קיימת.</li>
+                <li>הוסף חברים ושחקנים.</li>
+                <li>התחל טורניר וצפה בסטטיסטיקות.</li>
+              </ol>
+            </div>
+
+            <Button asChild variant="gaming" size="lg" className="w-full gap-2">
+              <Link to="/auth">
+                <LogIn className="h-5 w-5" />
+                התחבר / צור חשבון
+              </Link>
+            </Button>
+
+            <div className="rounded-lg bg-gaming-surface/40 border border-border/40 p-3">
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                קיבלת קישור הזמנה מחבר? פתח את הקישור שקיבלת, התחבר, ואנחנו נחזיר אותך אוטומטית להצטרפות לקבוצה.
+              </p>
+            </div>
+
+            <Button asChild variant="outline" size="sm" className="w-full gap-2">
+              <Link to="/settings">
+                <Settings className="h-4 w-4" />
+                הגדרות ומידע משפטי
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       {showNewUserOnboarding && (
         <Card className="bg-gradient-card border-neon-green/30 shadow-card mb-4">
           <CardContent className="p-4 space-y-4">
@@ -203,7 +250,7 @@ export const TeamDashboard = ({
       )}
 
       {/* ── 2. Primary card: active tournament or start new ── */}
-      {!teamsLoading && !showNewUserOnboarding && (hasActiveTournament ? (
+      {!teamsLoading && !showSignedOutOnboarding && !showNewUserOnboarding && (hasActiveTournament ? (
         <Card className="bg-gradient-card border-neon-green/30 shadow-glow mb-4 overflow-hidden">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
@@ -268,7 +315,7 @@ export const TeamDashboard = ({
       ))}
 
       {/* ── 3. Tournament mode launcher ── */}
-      {!teamsLoading && !hasActiveTournament && !showNewUserOnboarding && (
+      {!teamsLoading && !hasActiveTournament && !showNewUserOnboarding && !showSignedOutOnboarding && (
         <div className="mb-4">
           <p className="text-xs text-muted-foreground mb-2 font-medium">מצבי משחק נוספים</p>
           <div className="grid grid-cols-2 gap-2">
@@ -300,7 +347,7 @@ export const TeamDashboard = ({
         </div>
       )}
 
-      {/* ── 4. Tournaments ── */}
+      {!showSignedOutOnboarding && (
       <div className="mb-4 space-y-2">
         <p className="text-xs text-muted-foreground font-medium">טורנירים</p>
 
@@ -324,8 +371,9 @@ export const TeamDashboard = ({
           </Button>
         )}
       </div>
+      )}
 
-      {/* ── 5. Team management (collapsible) ── */}
+      {!showSignedOutOnboarding && (
       <Collapsible open={manageOpen} onOpenChange={setManageOpen}>
         <CollapsibleTrigger asChild>
           <button className="flex items-center gap-2 w-full text-xs text-muted-foreground font-medium mb-2 hover:text-foreground transition-colors">
@@ -365,6 +413,7 @@ export const TeamDashboard = ({
           )}
         </CollapsibleContent>
       </Collapsible>
+      )}
 
       {/* Footer */}
       <div className="mt-auto pt-4 text-center">
