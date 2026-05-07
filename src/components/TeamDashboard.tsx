@@ -315,7 +315,7 @@ export const TeamDashboard = ({
       ))}
 
       {/* ── 3. Tournament mode launcher ── */}
-      {!teamsLoading && !hasActiveTournament && !showNewUserOnboarding && (
+      {!teamsLoading && !hasActiveTournament && !showNewUserOnboarding && !showSignedOutOnboarding && (
         <div className="mb-4">
           <p className="text-xs text-muted-foreground mb-2 font-medium">מצבי משחק נוספים</p>
           <div className="grid grid-cols-2 gap-2">
@@ -347,7 +347,7 @@ export const TeamDashboard = ({
         </div>
       )}
 
-      {/* ── 4. Tournaments ── */}
+      {!showSignedOutOnboarding && (
       <div className="mb-4 space-y-2">
         <p className="text-xs text-muted-foreground font-medium">טורנירים</p>
 
@@ -371,8 +371,9 @@ export const TeamDashboard = ({
           </Button>
         )}
       </div>
+      )}
 
-      {/* ── 5. Team management (collapsible) ── */}
+      {!showSignedOutOnboarding && (
       <Collapsible open={manageOpen} onOpenChange={setManageOpen}>
         <CollapsibleTrigger asChild>
           <button className="flex items-center gap-2 w-full text-xs text-muted-foreground font-medium mb-2 hover:text-foreground transition-colors">
@@ -412,6 +413,7 @@ export const TeamDashboard = ({
           )}
         </CollapsibleContent>
       </Collapsible>
+      )}
 
       {/* Footer */}
       <div className="mt-auto pt-4 text-center">
