@@ -203,7 +203,7 @@ export const TeamDashboard = ({
       )}
 
       {/* ── 2. Primary card: active tournament or start new ── */}
-      {!showNewUserOnboarding && (hasActiveTournament ? (
+      {!teamsLoading && !showNewUserOnboarding && (hasActiveTournament ? (
         <Card className="bg-gradient-card border-neon-green/30 shadow-glow mb-4 overflow-hidden">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
@@ -268,7 +268,7 @@ export const TeamDashboard = ({
       ))}
 
       {/* ── 3. Tournament mode launcher ── */}
-      {!hasActiveTournament && !showNewUserOnboarding && (
+      {!teamsLoading && !hasActiveTournament && !showNewUserOnboarding && (
         <div className="mb-4">
           <p className="text-xs text-muted-foreground mb-2 font-medium">מצבי משחק נוספים</p>
           <div className="grid grid-cols-2 gap-2">
