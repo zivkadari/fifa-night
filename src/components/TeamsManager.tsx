@@ -25,6 +25,16 @@ interface TeamLeaderboardEntry {
   delta_count: number;
 }
 
+interface TeamJoinRequest {
+  id: string;
+  team_id: string;
+  user_id: string;
+  status: string;
+  message: string | null;
+  created_at: string;
+  user_display_name?: string | null;
+}
+
 interface TeamsManagerProps {
   onBack: () => void;
   onStartEveningForTeam: (teamId: string) => void;
@@ -49,6 +59,8 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam }: TeamsManagerProp
   const [teamVisibility, setTeamVisibility] = useState<"private" | "searchable" | "public">("private");
   const [teamDescription, setTeamDescription] = useState("");
   const [savingDiscovery, setSavingDiscovery] = useState(false);
+  const [joinRequests, setJoinRequests] = useState<TeamJoinRequest[]>([]);
+  const [handlingRequestId, setHandlingRequestId] = useState<string | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -65,20 +77,23 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam }: TeamsManagerProp
     if (!selectedTeamId) {setInviteCode(null);
       setTeamVisibility("private");
       setTeamDescription("");
+      setJoinRequests([]);
       return;
     }
     const loadTeam = async () => {
       setLoading(true);
       try {
-        const [players, stats, code, discovery] = await Promise.all([
+        const [players, stats, code, discovery, requests] = await Promise.all([
           RemoteStorageService.listTeamPlayers(selectedTeamId),
           RemoteStorageService.getTeamLeaderboard(selectedTeamId),
           RemoteStorageService.getTeamInviteCode(selectedTeamId),
           RemoteStorageService.getTeamDiscoverySettings(selectedTeamId),
+          RemoteStorageService.listTeamJoinRequests(selectedTeamId),
         ]);
         setTeamPlayers(players);
         setLeaderboard(stats);
         setInviteCode(code);
+        setJoinRequests(requests);
         if (discovery) {
           setTeamVisibility(discovery.visibility);
           setTeamDescription(discovery.description || "");
@@ -259,6 +274,52 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam }: TeamsManagerProp
       }
     } finally {
       setSavingDiscovery(false);
+    }
+  };
+
+  const approveRequest = async (requestId: string) => {
+    setHandlingRequestId(requestId);
+  
+    try {
+      const ok = await RemoteStorageService.approveJoinRequest(requestId);
+  
+      if (ok) {
+        setJoinRequests((prev) => prev.filter((req) => req.id !== requestId));
+        toast({
+          title: "בקשת ההצטרפות אושרה",
+          description: "המשתמש נוסף לקבוצה",
+        });
+      } else {
+        toast({
+          title: "שגיאה באישור הבקשה",
+          description: "ייתכן שאין לך הרשאה לאשר בקשות לקבוצה הזו",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setHandlingRequestId(null);
+    }
+  };
+
+  const rejectRequest = async (requestId: string) => {
+    setHandlingRequestId(requestId);
+  
+    try {
+      const ok = await RemoteStorageService.rejectJoinRequest(requestId);
+  
+      if (ok) {
+        setJoinRequests((prev) => prev.filter((req) => req.id !== requestId));
+        toast({
+          title: "בקשת ההצטרפות נדחתה",
+        });
+      } else {
+        toast({
+          title: "שגיאה בדחיית הבקשה",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setHandlingRequestId(null);
     }
   };
 
@@ -511,6 +572,69 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam }: TeamsManagerProp
                 {!teamPlayers.length && <p className="text-sm text-muted-foreground">אין שחקנים עדיין</p>}
               </div>
             </Card>
+
+            {/* Team join requests */}
+            {selectedTeamId && joinRequests.length > 0 && (
+              <Card className="bg-gradient-card border-neon-green/20 p-4 shadow-card mb-6">
+                <div className="space-y-3">
+                  <div>
+                    <h3 className="text-lg font-semibold text-foreground">בקשות הצטרפות</h3>
+                    <p className="text-sm text-muted-foreground">
+                      משתמשים שביקשו להצטרף לקבוצה הזו.
+                    </p>
+                  </div>
+            
+                  <div className="space-y-2">
+                    {joinRequests.map((request) => (
+                      <div
+                        key={request.id}
+                        className="rounded-lg border border-border/50 bg-gaming-surface/50 p-3 space-y-2"
+                      >
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">
+                            {request.user_display_name || "משתמש חדש"}
+                          </p>
+            
+                          {request.message && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {request.message}
+                            </p>
+                          )}
+            
+                          <p className="text-xs text-muted-foreground mt-1">
+                            ממתין לאישור
+                          </p>
+                        </div>
+            
+                        <div className="flex gap-2">
+                          <Button
+                            variant="gaming"
+                            size="sm"
+                            className="flex-1 gap-1"
+                            disabled={handlingRequestId === request.id}
+                            onClick={() => approveRequest(request.id)}
+                          >
+                            <Check className="h-4 w-4" />
+                            אשר
+                          </Button>
+            
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 gap-1"
+                            disabled={handlingRequestId === request.id}
+                            onClick={() => rejectRequest(request.id)}
+                          >
+                            <X className="h-4 w-4" />
+                            דחה
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </Card>
+            )}
 
             {/* Team leaderboard */}
             <Card className="bg-gradient-card border-neon-green/20 p-6 shadow-card">
