@@ -1316,6 +1316,7 @@ export class RemoteStorageService {
       .insert({
         team_id: teamId,
         user_id: user.id,
+        requester_email: user.email || null,
         status: "pending",
         message: message?.trim() || null,
       });
@@ -1370,7 +1371,7 @@ export class RemoteStorageService {
     if (!supabase) return [];
     const { data, error } = await supabase
       .from(TEAM_JOIN_REQUESTS_TABLE)
-      .select("id, team_id, user_id, status, message, created_at")
+      .select("id, team_id, user_id, requester_email, status, message, created_at")
       .eq("team_id", teamId)
       .eq("status", "pending")
       .order("created_at", { ascending: false });
@@ -1395,6 +1396,7 @@ export class RemoteStorageService {
       message: r.message,
       created_at: r.created_at,
       user_display_name: nameMap.get(r.user_id) || null,
+      user_email: r.requester_email || null,
     }));
   }
 
