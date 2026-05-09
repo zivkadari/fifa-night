@@ -163,26 +163,28 @@ export const TeamMemberIdentityCard = ({
 
   if (memberMode === "player") {
     return (
-      <Card className="bg-gaming-surface/50 border-border/50 shadow-card mb-4">
-        <CardContent className="p-4 space-y-3">
-          <div>
-            <p className="text-sm text-muted-foreground">
-              אתה מחובר בקבוצה הזו כשחקן:
-            </p>
-            <p className="text-lg font-semibold text-foreground mt-1">
-              {linkedPlayerName || "שחקן מקושר"}
-            </p>
-          </div>
+      <Card className="bg-gaming-surface/40 border-border/50 shadow-card mb-3">
+        <CardContent className="p-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">
+                הזהות שלך בקבוצה הזו
+              </p>
+              <p className="text-sm font-semibold text-foreground truncate">
+                {linkedPlayerName || "שחקן מקושר"} · שחקן
+              </p>
+            </div>
   
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={saving}
-            onClick={resetIdentity}
-            className="w-full"
-          >
-            שנה זהות בקבוצה
-          </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={saving}
+              onClick={resetIdentity}
+              className="shrink-0"
+            >
+              שנה
+            </Button>
+          </div>
         </CardContent>
       </Card>
     );
@@ -190,21 +192,28 @@ export const TeamMemberIdentityCard = ({
 
   if (memberMode === "spectator") {
     return (
-      <Card className="bg-gaming-surface/50 border-border/50 shadow-card mb-4">
-        <CardContent className="p-4 space-y-3">
-          <p className="text-sm text-muted-foreground">
-            אתה מוגדר כצופה בקבוצה הזו.
-          </p>
+      <Card className="bg-gaming-surface/40 border-border/50 shadow-card mb-3">
+        <CardContent className="p-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">
+                הזהות שלך בקבוצה הזו
+              </p>
+              <p className="text-sm font-semibold text-foreground truncate">
+                צופה
+              </p>
+            </div>
   
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={saving}
-            onClick={resetIdentity}
-            className="w-full"
-          >
-            שנה זהות בקבוצה
-          </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={saving}
+              onClick={resetIdentity}
+              className="shrink-0"
+            >
+              שנה
+            </Button>
+          </div>
         </CardContent>
       </Card>
     );
