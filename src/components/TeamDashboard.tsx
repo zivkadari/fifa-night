@@ -9,7 +9,6 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { RemoteStorageService } from "@/services/remoteStorageService";
 import { useTeam } from "@/contexts/TeamContext";
-import { TeamMemberIdentityCard } from "@/components/TeamMemberIdentityCard";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -62,13 +61,10 @@ export const TeamDashboard = ({
   activeTournamentMode,
   activeTournamentProgress,
 }: TeamDashboardProps) => {
-  const { teams, activeTeamId, setActiveTeamId, activePlayer, loading: teamsLoading } = useTeam();
+  const { teams, activePlayer, loading: teamsLoading } = useTeam();
   const [manageOpen, setManageOpen] = useState(false);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const isAdmin = userEmail === "zivkad12@gmail.com";
-  const activeTeam = activeTeamId
-    ? teams.find((team) => team.team_id === activeTeamId)
-    : null;
 
   // Load profile display name for the greeting
   useEffect(() => {
@@ -151,35 +147,6 @@ export const TeamDashboard = ({
           </p>
         )}
       
-        {isAuthed && !teamsLoading && teams.length > 0 && (
-          <Card className="bg-gaming-surface/50 border-border/50 mt-3">
-            <CardContent className="p-3 space-y-2">
-              <p className="text-xs text-muted-foreground">קבוצה פעילה</p>
-      
-              {teams.length === 1 ? (
-                <p className="text-sm font-semibold text-foreground">
-                  {teams[0].team_name}
-                </p>
-              ) : (
-                <select
-                  value={activeTeamId || ""}
-                  onChange={(e) => setActiveTeamId(e.target.value)}
-                  className="w-full rounded-md border border-border bg-gaming-bg px-3 py-2 text-sm text-foreground"
-                >
-                  {teams.map((team) => (
-                    <option key={team.team_id} value={team.team_id}>
-                      {team.team_name}
-                    </option>
-                  ))}
-                </select>
-              )}
-      
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                הפעולות והזהות במסך הבית מתייחסות לקבוצה הזו.
-              </p>
-            </CardContent>
-          </Card>
-        )}
       </div>
 
       {isAuthed && teamsLoading && (
@@ -190,13 +157,6 @@ export const TeamDashboard = ({
             </p>
           </CardContent>
         </Card>
-      )}
-      
-      {isAuthed && !teamsLoading && activeTeamId && activeTeam && (
-        <TeamMemberIdentityCard
-          teamId={activeTeamId}
-          teamName={activeTeam.team_name}
-        />
       )}
 
       {showSignedOutOnboarding && (
@@ -437,7 +397,7 @@ export const TeamDashboard = ({
           {onManageTeams && (
             <Button variant="ghost" size="sm" onClick={onManageTeams} className="w-full justify-start gap-3 text-muted-foreground">
               <Users className="h-4 w-4" />
-              ניהול קבוצות
+              הקבוצות שלי
             </Button>
           )}
 
