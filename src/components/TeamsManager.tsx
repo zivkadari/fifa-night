@@ -451,12 +451,6 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam }: TeamsManagerProp
 
         {selectedTeamId && (
           <>
-            {/* Identity in this team */}
-            <TeamMemberIdentityCard
-              teamId={selectedTeamId}
-              teamName={teams.find((t) => t.id === selectedTeamId)?.name}
-            />
-
             {/* Team invite link */}
             {inviteCode && (
               <Card className="bg-gaming-surface/50 border-border/50 p-4 mb-4">
@@ -541,6 +535,12 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam }: TeamsManagerProp
                 </div>
               </Card>
             )}
+
+            {/* Identity in this team */}
+            <TeamMemberIdentityCard
+              teamId={selectedTeamId}
+              teamName={teams.find((t) => t.id === selectedTeamId)?.name}
+            />
 
             {/* Players management */}
             <Card className="bg-gaming-surface/50 border-border/50 p-4 mb-6">
