@@ -1665,5 +1665,101 @@ export class RemoteStorageService {
     }
     return true;
   }
+
+  // ========== Active team evenings (home dashboard) ==========
+  /**
+   * List active (non-completed) evenings across all teams the current user belongs to.
+   * Returns can_edit=true if the user is owner/admin OR is linked via player_accounts
+   * to a player that participates in the evening.
+   */
+  static async listActiveEveningsForMyTeams(): Promise<Array<{
+    evening: Evening;
+    evening_id: string;
+    team_id: string | null;
+    team_name: string | null;
+    can_edit: boolean;
+    my_player_name: string | null;
+    reason: "owner_admin" | "playing" | "view_only";
+  }>> {
+    if (!supabase) return [];
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return [];
+
+      // 1) my team memberships
+      const { data: memberships, error: mErr } = await supabase
+        .from(TEAM_MEMBERS_TABLE)
+        .select("team_id, role")
+        .eq("user_id", user.id);
+      if (mErr) {
+        console.error("listActiveEveningsForMyTeams memberships error:", mErr.message);
+        return [];
+      }
+      const teamIds = (memberships || []).map((m: any) => m.team_id).filter(Boolean);
+      if (teamIds.length === 0) return [];
+      const roleByTeam = new Map<string, string>();
+      (memberships || []).forEach((m: any) => roleByTeam.set(m.team_id, m.role || "member"));
+
+      // 2) active evenings for those teams
+      const { data: rows, error: eErr } = await supabase
+        .from(EVENINGS_TABLE)
+        .select("id, data, team_id, updated_at")
+        .in("team_id", teamIds);
+      if (eErr) {
+        console.error("listActiveEveningsForMyTeams evenings error:", eErr.message);
+        return [];
+      }
+      const active = (rows || []).filter((r: any) => {
+        const ev = r.data as Evening | undefined;
+        return ev && (ev as any).completed !== true;
+      });
+      if (active.length === 0) return [];
+
+      // 3) team names
+      const { data: teamsData } = await supabase
+        .from(TEAMS_TABLE)
+        .select("id, name")
+        .in("id", teamIds);
+      const teamNameById = new Map<string, string>();
+      (teamsData || []).forEach((t: any) => teamNameById.set(t.id, t.name));
+
+      // 4) my player_accounts for those teams
+      const { data: pa } = await supabase
+        .from(PLAYER_ACCOUNTS_TABLE)
+        .select("player_id, team_id")
+        .eq("user_id", user.id)
+        .in("team_id", teamIds);
+      const myPlayerIdByTeam = new Map<string, string>();
+      (pa || []).forEach((row: any) => {
+        if (row.team_id && row.player_id) myPlayerIdByTeam.set(row.team_id, row.player_id);
+      });
+
+      return active.map((r: any) => {
+        const ev = r.data as Evening;
+        const teamId: string | null = r.team_id ?? null;
+        const role = teamId ? roleByTeam.get(teamId) : undefined;
+        const isOwnerAdmin = role === "owner" || role === "admin";
+        const myPid = teamId ? myPlayerIdByTeam.get(teamId) : undefined;
+        const players = Array.isArray((ev as any).players) ? (ev as any).players as Player[] : [];
+        const myPlayer = myPid ? players.find(p => p.id === myPid) : undefined;
+        const isPlaying = !!myPlayer;
+        const can_edit = isOwnerAdmin || isPlaying;
+        const reason: "owner_admin" | "playing" | "view_only" =
+          isOwnerAdmin ? "owner_admin" : isPlaying ? "playing" : "view_only";
+        return {
+          evening: ev,
+          evening_id: r.id,
+          team_id: teamId,
+          team_name: teamId ? (teamNameById.get(teamId) ?? null) : null,
+          can_edit,
+          my_player_name: myPlayer?.name ?? null,
+          reason,
+        };
+      });
+    } catch (e: any) {
+      console.error("listActiveEveningsForMyTeams unexpected error:", e?.message || e);
+      return [];
+    }
+  }
 }
 
