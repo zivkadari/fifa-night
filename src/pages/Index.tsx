@@ -64,6 +64,7 @@ const Index = () => {
   const [fpDeadlockPlayers, setFpDeadlockPlayers] = useState<Player[] | null>(null);
   const [showFpDeadlock, setShowFpDeadlock] = useState(false);
   const [teamPlayersForFP, setTeamPlayersForFP] = useState<Player[] | null>(null);
+  const [activeTeamEvenings, setActiveTeamEvenings] = useState<Awaited<ReturnType<typeof RemoteStorageService.listActiveEveningsForMyTeams>>>([]);
 
    // Navigation helper that also pushes into browser history so Back goes to previous screen
   function goTo(next: AppState) {
