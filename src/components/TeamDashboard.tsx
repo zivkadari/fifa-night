@@ -389,13 +389,93 @@ export const TeamDashboard = ({
           </CardContent>
         </Card>
 
-        {onJoinEvening && isAuthed && (
-          <Button variant="outline" size="default" onClick={onJoinEvening} className="w-full justify-start gap-3 border-neon-green/20">
-            <UserPlus className="h-4 w-4" />
-            הצטרף לערב
-          </Button>
-        )}
       </div>
+      )}
+
+      {/* Active tournaments across my teams */}
+      {!showSignedOutOnboarding && isAuthed && (
+        <div className="mb-4 space-y-2">
+          <p className="text-xs text-muted-foreground font-medium">טורנירים פעילים בקבוצות שלי</p>
+          {activeTeamEvenings && activeTeamEvenings.length > 0 ? (
+            activeTeamEvenings.map((entry) => {
+              const ev: any = entry.evening;
+              const isFP = Array.isArray(ev?.schedule);
+              const mode = isFP
+                ? "ליגת 5 שחקנים"
+                : ev?.type === "singles"
+                  ? "טורניר יחידים"
+                  : "טורניר זוגות";
+              let progress: string | null = null;
+              if (isFP) {
+                const total = ev.schedule.length;
+                const done = ev.schedule.filter((m: any) => m.scoreA !== undefined).length;
+                progress = `${done} / ${total} משחקים`;
+              } else if (Array.isArray(ev?.rounds)) {
+                const done = ev.rounds.reduce(
+                  (s: number, r: any) => s + (r.matches?.filter((m: any) => m.completed).length || 0),
+                  0,
+                );
+                progress = `${done} משחקים שהושלמו`;
+              }
+              const permissionText =
+                entry.reason === "owner_admin"
+                  ? "יש לך הרשאת ניהול ועדכון תוצאות"
+                  : entry.reason === "playing"
+                    ? `אתה משתתף כשחקן: ${entry.my_player_name ?? ""}`
+                    : "אתה חבר בקבוצה, לצפייה בלבד";
+              return (
+                <Card
+                  key={entry.evening_id}
+                  className="bg-card border-border hover:border-neon-green/30 transition-colors"
+                >
+                  <CardContent className="p-3 space-y-2">
+                    <div className="flex items-start gap-3">
+                      <Trophy className="h-5 w-5 text-neon-green shrink-0 mt-0.5" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-foreground break-words">
+                          {entry.team_name || "קבוצה"}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground">{mode}</p>
+                        {progress && (
+                          <p className="text-[10px] text-muted-foreground">{progress}</p>
+                        )}
+                        <p className="text-[10px] text-muted-foreground mt-1 break-words">
+                          {permissionText}
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      variant={entry.can_edit ? "gaming" : "outline"}
+                      size="sm"
+                      className="w-full"
+                      onClick={() => onOpenTeamEvening?.(entry)}
+                    >
+                      {entry.can_edit ? (
+                        <>
+                          <Play className="h-4 w-4" />
+                          פתח ועדכן תוצאות
+                        </>
+                      ) : (
+                        <>
+                          <Eye className="h-4 w-4" />
+                          צפה בטורניר
+                        </>
+                      )}
+                    </Button>
+                  </CardContent>
+                </Card>
+              );
+            })
+          ) : (
+            <Card className="bg-card border-border">
+              <CardContent className="p-3">
+                <p className="text-xs text-muted-foreground">
+                  אין טורנירים פעילים בקבוצות שלך כרגע
+                </p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       )}
 
       {!showSignedOutOnboarding && (
