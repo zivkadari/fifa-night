@@ -536,6 +536,12 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam }: TeamsManagerProp
               </Card>
             )}
 
+            {/* Identity in this team */}
+            <TeamMemberIdentityCard
+              teamId={selectedTeamId}
+              teamName={teams.find((t) => t.id === selectedTeamId)?.name}
+            />
+
             {/* Players management */}
             <Card className="bg-gaming-surface/50 border-border/50 p-4 mb-6">
               <div className="flex items-center justify-between mb-3">
