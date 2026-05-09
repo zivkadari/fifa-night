@@ -8,6 +8,7 @@ import { RemoteStorageService } from "@/services/remoteStorageService";
 import { ArrowLeft, Users, Plus, Trash2, Trophy, RefreshCw, UserPlus, Pencil, Check, X, Link2, Copy } from "lucide-react";
 import { validateTeamName, validatePlayerName } from "@/lib/validation";
 import { SelectExistingPlayerDialog } from "./SelectExistingPlayerDialog";
+import { TeamMemberIdentityCard } from "./TeamMemberIdentityCard";
 import { useTeam } from "@/contexts/TeamContext";
 
 interface TeamLeaderboardEntry {
@@ -450,6 +451,12 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam }: TeamsManagerProp
 
         {selectedTeamId && (
           <>
+            {/* Identity in this team */}
+            <TeamMemberIdentityCard
+              teamId={selectedTeamId}
+              teamName={teams.find((t) => t.id === selectedTeamId)?.name}
+            />
+
             {/* Team invite link */}
             {inviteCode && (
               <Card className="bg-gaming-surface/50 border-border/50 p-4 mb-4">
