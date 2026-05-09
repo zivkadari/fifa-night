@@ -72,6 +72,8 @@ export const TeamDashboard = ({
   onSignOut,
   activeTournamentMode,
   activeTournamentProgress,
+  activeTeamEvenings,
+  onOpenTeamEvening,
 }: TeamDashboardProps) => {
   const { teams, activePlayer, loading: teamsLoading } = useTeam();
   const [manageOpen, setManageOpen] = useState(false);
