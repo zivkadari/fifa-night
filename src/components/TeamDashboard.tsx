@@ -26,6 +26,16 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 
+interface ActiveTeamEveningEntry {
+  evening: any;
+  evening_id: string;
+  team_id: string | null;
+  team_name: string | null;
+  can_edit: boolean;
+  my_player_name: string | null;
+  reason: "owner_admin" | "playing" | "view_only";
+}
+
 interface TeamDashboardProps {
   onStartNew: () => void;
   onStartFivePlayer: () => void;
@@ -42,6 +52,8 @@ interface TeamDashboardProps {
   onSignOut?: () => void;
   activeTournamentMode?: string | null;
   activeTournamentProgress?: string | null;
+  activeTeamEvenings?: ActiveTeamEveningEntry[];
+  onOpenTeamEvening?: (entry: ActiveTeamEveningEntry) => void;
 }
 
 export const TeamDashboard = ({
