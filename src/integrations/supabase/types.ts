@@ -445,6 +445,7 @@ export type Database = {
           created_at: string
           id: string
           message: string | null
+          requester_email: string | null
           reviewed_at: string | null
           reviewed_by: string | null
           status: string
@@ -455,6 +456,7 @@ export type Database = {
           created_at?: string
           id?: string
           message?: string | null
+          requester_email?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: string
@@ -465,6 +467,7 @@ export type Database = {
           created_at?: string
           id?: string
           message?: string | null
+          requester_email?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: string
@@ -484,18 +487,21 @@ export type Database = {
       team_members: {
         Row: {
           joined_at: string
+          member_mode: string
           role: string
           team_id: string
           user_id: string
         }
         Insert: {
           joined_at?: string
+          member_mode?: string
           role?: string
           team_id: string
           user_id: string
         }
         Update: {
           joined_at?: string
+          member_mode?: string
           role?: string
           team_id?: string
           user_id?: string
