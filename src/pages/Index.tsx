@@ -528,12 +528,13 @@ const handleGoHome = () => {
             }
             onManageTeams={() => goTo('teams')}
             onFindTeam={() => goTo('find-team')}
-            onJoinEvening={isAuthed ? () => goTo('join') : undefined}
             isAuthed={isAuthed}
             userEmail={userEmail}
             onSignOut={handleSignOut}
             activeTournamentMode={tournamentMode}
             activeTournamentProgress={tournamentProgress}
+            activeTeamEvenings={activeTeamEvenings}
+            onOpenTeamEvening={handleOpenTeamEvening}
           />
         );
       }
