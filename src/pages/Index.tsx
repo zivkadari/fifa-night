@@ -161,6 +161,28 @@ useEffect(() => {
     return () => listener.subscription.unsubscribe();
   }, []);
 
+  // Load active tournaments across the user's teams when on home
+  useEffect(() => {
+    if (!isAuthed || appState !== 'home') return;
+    let mounted = true;
+    RemoteStorageService.listActiveEveningsForMyTeams()
+      .then((list) => { if (mounted) setActiveTeamEvenings(list); })
+      .catch(() => { if (mounted) setActiveTeamEvenings([]); });
+    return () => { mounted = false; };
+  }, [isAuthed, appState, currentEvening?.id, fpEvening?.id]);
+
+  const handleOpenTeamEvening = (entry: typeof activeTeamEvenings[number]) => {
+    if (entry.can_edit) {
+      setCurrentEvening(entry.evening);
+      setCurrentTeamId(entry.team_id);
+      goTo('game');
+    } else {
+      // TODO: dedicated read-only spectator view inside the app.
+      // For now, route to the public spectator page for this evening.
+      navigate(`/spectate?evening=${encodeURIComponent(entry.evening_id)}`);
+    }
+  };
+
   // Realtime sync: subscribe to current evening when in game state
   useEffect(() => {
     if (appState !== 'game' || !currentEvening) return;
