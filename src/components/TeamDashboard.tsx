@@ -83,8 +83,8 @@ export const TeamDashboard = ({
   onOpenTeamEvening,
 }: TeamDashboardProps) => {
   const { teams, activePlayer, loading: teamsLoading } = useTeam();
-  const [manageOpen, setManageOpen] = useState(false);
   const [displayName, setDisplayName] = useState<string | null>(null);
+  const [startDialogOpen, setStartDialogOpen] = useState(false);
   const isAdmin = userEmail === "zivkad12@gmail.com";
 
   // Load profile display name for the greeting
