@@ -61,6 +61,9 @@ interface TeamDashboardProps {
   activeTournamentProgress?: string | null;
   activeTeamEvenings?: ActiveTeamEveningEntry[];
   onOpenTeamEvening?: (entry: ActiveTeamEveningEntry) => void;
+  currentActiveEveningId?: string | null;
+  hasActiveLocalTournament?: boolean;
+  authLoading?: boolean;
 }
 
 export const TeamDashboard = ({
