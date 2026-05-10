@@ -500,7 +500,7 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam }: TeamsManagerProp
                   <Button
                     variant="outline"
                     size="icon"
-                    onClick={() => startEditingTeam(selectedTeam)}
+                    onClick={() => selectedTeam && startEditingTeam(selectedTeam)}
                     aria-label="ערוך שם קבוצה"
                   >
                     <Pencil className="h-4 w-4" />
