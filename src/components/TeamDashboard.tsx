@@ -501,7 +501,7 @@ export const TeamDashboard = ({
       )}
 
       {/* Quick actions */}
-      {!showSignedOutOnboarding && (
+      {!authLoading && !showSignedOutOnboarding && (
         <div className="mb-4 space-y-2">
           <p className="text-xs text-muted-foreground font-medium">פעולות</p>
           <div className="grid grid-cols-2 gap-2">
