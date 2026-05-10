@@ -158,6 +158,9 @@ useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       setIsAuthed(!!data.session?.user);
       setUserEmail(data.session?.user?.email ?? null);
+      setAuthLoading(false);
+    }).catch(() => {
+      setAuthLoading(false);
     });
     return () => listener.subscription.unsubscribe();
   }, []);
