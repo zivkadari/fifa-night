@@ -476,7 +476,7 @@ export class RemoteStorageService {
   }
 
   // ========== Teams ==========
-  static async listTeams(): Promise<Array<{ id: string; name: string }>> {
+  static async listTeams(): Promise<Array<{ id: string; name: string; role: string }>> {
     if (!supabase) return [];
   
     const {
@@ -490,6 +490,7 @@ export class RemoteStorageService {
       .from(TEAM_MEMBERS_TABLE)
       .select(`
         team_id,
+        role,
         teams!inner (
           id,
           name
@@ -506,6 +507,7 @@ export class RemoteStorageService {
       .map((row: any) => ({
         id: row.team_id,
         name: row.teams?.name || "קבוצה ללא שם",
+        role: row.role || "member",
       }))
       .filter((team) => team.id && team.name);
   }
