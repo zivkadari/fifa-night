@@ -49,6 +49,7 @@ const Index = () => {
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const [isAuthed, setIsAuthed] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [currentTeamId, setCurrentTeamId] = useState<string | null>(null);
   const [singlesFlowState, setSinglesFlowState] = useState<'club-assignment' | 'match-schedule' | 'game'>('club-assignment');
@@ -157,6 +158,9 @@ useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       setIsAuthed(!!data.session?.user);
       setUserEmail(data.session?.user?.email ?? null);
+      setAuthLoading(false);
+    }).catch(() => {
+      setAuthLoading(false);
     });
     return () => listener.subscription.unsubscribe();
   }, []);
@@ -477,12 +481,13 @@ const handleGoHome = () => {
         if (activeFP && fpEvening) {
           tournamentMode = "ליגת 5 שחקנים";
           const completed = fpEvening.schedule.filter(m => m.scoreA !== undefined).length;
-          tournamentProgress = `${completed} / ${fpEvening.schedule.length} משחקים`;
+          tournamentProgress = `${completed} מתוך ${fpEvening.schedule.length} משחקים`;
         } else if (activeRegular && currentEvening) {
           tournamentMode = currentEvening.type === 'singles' ? "טורניר יחידים" : "טורניר זוגות";
           const completedMatches = currentEvening.rounds.reduce((s, r) => s + r.matches.filter(m => m.completed).length, 0);
           tournamentProgress = `${completedMatches} משחקים שהושלמו`;
         }
+        const currentActiveEveningId = activeFP ? fpEvening?.id : activeRegular ? currentEvening?.id : null;
 
         return (
           <TeamDashboard
@@ -534,6 +539,9 @@ const handleGoHome = () => {
             activeTournamentMode={tournamentMode}
             activeTournamentProgress={tournamentProgress}
             activeTeamEvenings={activeTeamEvenings}
+            currentActiveEveningId={currentActiveEveningId ?? null}
+            hasActiveLocalTournament={!!(activeFP || activeRegular)}
+            authLoading={authLoading}
             onOpenTeamEvening={handleOpenTeamEvening}
           />
         );

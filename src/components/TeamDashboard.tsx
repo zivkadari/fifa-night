@@ -61,6 +61,9 @@ interface TeamDashboardProps {
   activeTournamentProgress?: string | null;
   activeTeamEvenings?: ActiveTeamEveningEntry[];
   onOpenTeamEvening?: (entry: ActiveTeamEveningEntry) => void;
+  currentActiveEveningId?: string | null;
+  hasActiveLocalTournament?: boolean;
+  authLoading?: boolean;
 }
 
 export const TeamDashboard = ({
@@ -81,6 +84,9 @@ export const TeamDashboard = ({
   activeTournamentProgress,
   activeTeamEvenings,
   onOpenTeamEvening,
+  currentActiveEveningId,
+  hasActiveLocalTournament,
+  authLoading,
 }: TeamDashboardProps) => {
   const { teams, activePlayer, loading: teamsLoading } = useTeam();
   const [displayName, setDisplayName] = useState<string | null>(null);
@@ -103,8 +109,14 @@ export const TeamDashboard = ({
   }, [isAuthed, userEmail]);
 
   const hasActiveTournament = !!onResume;
-  const showNewUserOnboarding = !!isAuthed && !teamsLoading && teams.length === 0 && !hasActiveTournament;
-  const showSignedOutOnboarding = !isAuthed;
+  const showNewUserOnboarding = !authLoading && !!isAuthed && !teamsLoading && teams.length === 0 && !hasActiveTournament;
+  const showSignedOutOnboarding = !authLoading && !isAuthed;
+  const filteredTeamEvenings = (activeTeamEvenings || []).filter(
+    (e) => !currentActiveEveningId || e.evening_id !== currentActiveEveningId,
+  );
+  const showTeamEveningsSection = !authLoading && !!isAuthed && (
+    hasActiveLocalTournament ? filteredTeamEvenings.length > 0 : true
+  );
   // Best-effort greeting name: profile display_name → claimed player name → email local-part
   const greetingName = displayName
     || activePlayer?.player_name
@@ -170,7 +182,17 @@ export const TeamDashboard = ({
       
       </div>
 
-      {isAuthed && teamsLoading && (
+      {authLoading && (
+        <Card className="bg-gradient-card border-border shadow-card mb-4">
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">
+              טוען את החשבון שלך...
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {!authLoading && isAuthed && teamsLoading && (
         <Card className="bg-gradient-card border-border shadow-card mb-4">
           <CardContent className="p-4">
             <p className="text-sm text-muted-foreground">
@@ -282,7 +304,7 @@ export const TeamDashboard = ({
       )}
 
       {/* ── 2. Primary card: active tournament or start new ── */}
-      {!teamsLoading && !showSignedOutOnboarding && !showNewUserOnboarding && (hasActiveTournament ? (
+      {!authLoading && !teamsLoading && !showSignedOutOnboarding && !showNewUserOnboarding && (hasActiveTournament ? (
         <Card className="bg-gradient-card border-neon-green/30 shadow-glow mb-4 overflow-hidden">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
@@ -393,11 +415,11 @@ export const TeamDashboard = ({
       ))}
 
       {/* Active tournaments across my teams */}
-      {!showSignedOutOnboarding && isAuthed && (
+      {showTeamEveningsSection && (
         <div className="mb-4 space-y-2">
           <p className="text-xs text-muted-foreground font-medium">טורנירים פעילים בקבוצות שלי</p>
-          {activeTeamEvenings && activeTeamEvenings.length > 0 ? (
-            activeTeamEvenings.map((entry) => {
+          {filteredTeamEvenings.length > 0 ? (
+            filteredTeamEvenings.map((entry) => {
               const ev: any = entry.evening;
               const isFP = Array.isArray(ev?.schedule);
               const mode = isFP
@@ -409,7 +431,7 @@ export const TeamDashboard = ({
               if (isFP) {
                 const total = ev.schedule.length;
                 const done = ev.schedule.filter((m: any) => m.scoreA !== undefined).length;
-                progress = `${done} / ${total} משחקים`;
+                progress = `${done} מתוך ${total} משחקים`;
               } else if (Array.isArray(ev?.rounds)) {
                 const done = ev.rounds.reduce(
                   (s: number, r: any) => s + (r.matches?.filter((m: any) => m.completed).length || 0),
@@ -479,7 +501,7 @@ export const TeamDashboard = ({
       )}
 
       {/* Quick actions */}
-      {!showSignedOutOnboarding && (
+      {!authLoading && !showSignedOutOnboarding && (
         <div className="mb-4 space-y-2">
           <p className="text-xs text-muted-foreground font-medium">פעולות</p>
           <div className="grid grid-cols-2 gap-2">
@@ -527,7 +549,7 @@ export const TeamDashboard = ({
       )}
 
       {/* Admin */}
-      {!showSignedOutOnboarding && isAdmin && (
+      {!authLoading && !showSignedOutOnboarding && isAdmin && (
         <div className="mb-4 space-y-2">
           <p className="text-xs text-muted-foreground font-medium">Admin</p>
           <Button asChild variant="ghost" size="sm" className="w-full justify-start gap-3 text-muted-foreground">
