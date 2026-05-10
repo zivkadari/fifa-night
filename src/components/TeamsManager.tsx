@@ -45,7 +45,7 @@ interface TeamsManagerProps {
 export const TeamsManager = ({ onBack, onStartEveningForTeam }: TeamsManagerProps) => {
   const { toast } = useToast();
   const { refresh: refreshTeamsContext, setActiveTeamId } = useTeam();
-  const [teams, setTeams] = useState<Array<{ id: string; name: string }>>([]);
+  const [teams, setTeams] = useState<Array<{ id: string; name: string; role?: string }>>([]);
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [teamPlayers, setTeamPlayers] = useState<Array<{ id: string; name: string }>>([]);
   const [newTeamName, setNewTeamName] = useState("");
@@ -63,6 +63,10 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam }: TeamsManagerProp
   const [savingDiscovery, setSavingDiscovery] = useState(false);
   const [joinRequests, setJoinRequests] = useState<TeamJoinRequest[]>([]);
   const [handlingRequestId, setHandlingRequestId] = useState<string | null>(null);
+  const selectedTeam = teams.find((t) => t.id === selectedTeamId) || null;
+  const selectedTeamRole = selectedTeam?.role || "member";
+  const canManageSelectedTeam =
+    selectedTeamRole === "owner" || selectedTeamRole === "admin";
 
   useEffect(() => {
     const load = async () => {
@@ -76,30 +80,48 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam }: TeamsManagerProp
   }, []);
 
   useEffect(() => {
-    if (!selectedTeamId) {setInviteCode(null);
+    if (!selectedTeamId) {
+      setInviteCode(null);
       setTeamVisibility("private");
       setTeamDescription("");
       setJoinRequests([]);
+      setTeamPlayers([]);
+      setLeaderboard([]);
       return;
     }
+  
     const loadTeam = async () => {
       setLoading(true);
+  
       try {
-        const [players, stats, code, discovery, requests] = await Promise.all([
+        const [players, stats] = await Promise.all([
           RemoteStorageService.listTeamPlayers(selectedTeamId),
           RemoteStorageService.getTeamLeaderboard(selectedTeamId),
-          RemoteStorageService.getTeamInviteCode(selectedTeamId),
-          RemoteStorageService.getTeamDiscoverySettings(selectedTeamId),
-          RemoteStorageService.listTeamJoinRequests(selectedTeamId),
         ]);
+  
         setTeamPlayers(players);
         setLeaderboard(stats);
-        setInviteCode(code);
-        setJoinRequests(requests);
-        if (discovery) {
-          setTeamVisibility(discovery.visibility);
-          setTeamDescription(discovery.description || "");
+  
+        if (canManageSelectedTeam) {
+          const [code, discovery, requests] = await Promise.all([
+            RemoteStorageService.getTeamInviteCode(selectedTeamId),
+            RemoteStorageService.getTeamDiscoverySettings(selectedTeamId),
+            RemoteStorageService.listTeamJoinRequests(selectedTeamId),
+          ]);
+  
+          setInviteCode(code);
+          setJoinRequests(requests);
+  
+          if (discovery) {
+            setTeamVisibility(discovery.visibility);
+            setTeamDescription(discovery.description || "");
+          } else {
+            setTeamVisibility("private");
+            setTeamDescription("");
+          }
         } else {
+          setInviteCode(null);
+          setJoinRequests([]);
           setTeamVisibility("private");
           setTeamDescription("");
         }
@@ -107,8 +129,9 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam }: TeamsManagerProp
         setLoading(false);
       }
     };
+  
     loadTeam();
-  }, [selectedTeamId]);
+  }, [selectedTeamId, canManageSelectedTeam]);
 
   const handleSyncStats = async () => {
     setSyncing(true);
@@ -369,8 +392,8 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam }: TeamsManagerProp
             <ArrowLeft className="h-5 w-5 rotate-180" />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">ניהול קבוצות</h1>
-            <p className="text-muted-foreground text-sm">יצירה, הוספה וניהול שחקנים בקבוצה</p>
+            <h1 className="text-2xl font-bold text-foreground">הקבוצות שלי</h1>
+            <p className="text-muted-foreground text-sm">הקבוצות שבהן אתה חבר, שחקנים וסטטיסטיקות</p>
           </div>
         </div>
 
@@ -424,13 +447,15 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam }: TeamsManagerProp
                     >
                       {t.name}
                     </Button>
-                    <Button 
-                      variant="outline" 
-                      size="icon" 
-                      onClick={() => startEditingTeam(t)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
+                    {(t.role === "owner" || t.role === "admin") && (
+                      <Button 
+                        variant="outline" 
+                        size="icon" 
+                        onClick={() => startEditingTeam(t)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    )}
                     <Button 
                       variant="outline" 
                       size="icon" 
@@ -452,7 +477,7 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam }: TeamsManagerProp
         {selectedTeamId && (
           <>
             {/* Team invite link */}
-            {inviteCode && (
+            {canManageSelectedTeam && inviteCode && (
               <Card className="bg-gaming-surface/50 border-border/50 p-4 mb-4">
                 <div className="flex items-center gap-2 mb-2">
                   <Link2 className="h-4 w-4 text-neon-green" />
@@ -478,7 +503,7 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam }: TeamsManagerProp
             )}
 
             {/* Team discovery settings */}
-            {selectedTeamId && (
+            {canManageSelectedTeam && selectedTeamId && (
               <Card className="bg-gradient-card border-neon-green/20 p-4 shadow-card mb-6">
                 <div className="space-y-3">
                   <div>
@@ -546,33 +571,41 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam }: TeamsManagerProp
             <Card className="bg-gaming-surface/50 border-border/50 p-4 mb-6">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-semibold text-foreground">שחקני הקבוצה</h3>
-                <Button variant="gaming" size="sm" onClick={() => onStartEveningForTeam(selectedTeamId!)}>
-                  התחל ערב לקבוצה זו
-                </Button>
+                {canManageSelectedTeam && (
+                  <Button variant="gaming" size="sm" onClick={() => onStartEveningForTeam(selectedTeamId!)}>
+                    התחל ערב לקבוצה זו
+                  </Button>
+                )}
               </div>
-              <div className="flex gap-2 mb-3">
-                <Input
-                  placeholder="שם שחקן חדש"
-                  value={newPlayerName}
-                  onChange={(e) => setNewPlayerName(e.target.value)}
-                  className="bg-gaming-surface border-border flex-1"
-                />
-                <Button variant="outline" onClick={addPlayer} title="הוסף שחקן חדש">
-                  <Plus className="h-4 w-4" />
-                </Button>
-                <Button 
-                  variant="outline" 
-                  onClick={() => setSelectPlayerOpen(true)}
-                  title="בחר שחקן קיים"
-                >
-                  <UserPlus className="h-4 w-4" />
-                </Button>
-              </div>
+              {canManageSelectedTeam && (
+                <div className="flex gap-2 mb-3">
+                  <Input
+                    placeholder="שם שחקן חדש"
+                    value={newPlayerName}
+                    onChange={(e) => setNewPlayerName(e.target.value)}
+                    className="bg-gaming-surface border-border flex-1"
+                  />
+                  <Button variant="outline" onClick={addPlayer} title="הוסף שחקן חדש">
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setSelectPlayerOpen(true)}
+                    title="בחר שחקן קיים"
+                  >
+                    <UserPlus className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
               <div className="space-y-2 max-h-48 overflow-y-auto">
                 {teamPlayers.map((p) => (
                   <div key={p.id} className="flex items-center justify-between border-b border-border/50 py-1">
                     <span className="text-foreground">{p.name}</span>
-                    <Button variant="ghost" size="icon" onClick={() => removePlayer(p.id)} aria-label="הסר">
+                    {canManageSelectedTeam && (
+                      <Button variant="ghost" size="icon" onClick={() => removePlayer(p.id)} aria-label="הסר">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
@@ -582,7 +615,7 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam }: TeamsManagerProp
             </Card>
 
             {/* Team join requests */}
-            {selectedTeamId && joinRequests.length > 0 && (
+            {canManageSelectedTeam && selectedTeamId && joinRequests.length > 0 && (
               <Card className="bg-gradient-card border-neon-green/20 p-4 shadow-card mb-6">
                 <div className="space-y-3">
                   <div>
