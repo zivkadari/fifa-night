@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { RemoteStorageService } from "@/services/remoteStorageService";
-import { ArrowLeft, Users, Plus, Trash2, Trophy, RefreshCw, UserPlus, Pencil, Check, X, Link2, Copy } from "lucide-react";
+import { ArrowLeft, Users, Plus, Trash2, Trophy, RefreshCw, UserPlus, Pencil, Check, X, Copy } from "lucide-react";
 import { validateTeamName, validatePlayerName } from "@/lib/validation";
 import { SelectExistingPlayerDialog } from "./SelectExistingPlayerDialog";
 import { TeamMemberIdentityCard } from "./TeamMemberIdentityCard";
@@ -57,12 +57,15 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam }: TeamsManagerProp
   const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
   const [editingTeamName, setEditingTeamName] = useState("");
   const [inviteCode, setInviteCode] = useState<string | null>(null);
-  const [loadingInvite, setLoadingInvite] = useState(false);
   const [teamVisibility, setTeamVisibility] = useState<"private" | "searchable" | "public">("private");
   const [teamDescription, setTeamDescription] = useState("");
   const [savingDiscovery, setSavingDiscovery] = useState(false);
   const [joinRequests, setJoinRequests] = useState<TeamJoinRequest[]>([]);
   const [handlingRequestId, setHandlingRequestId] = useState<string | null>(null);
+  const [showCreateTeam, setShowCreateTeam] = useState(false);
+  const [showPlayers, setShowPlayers] = useState(false);
+  const [showFullLeaderboard, setShowFullLeaderboard] = useState(false);
+  const [showAdminSettings, setShowAdminSettings] = useState(false);
   const selectedTeam = teams.find((t) => t.id === selectedTeamId) || null;
   const selectedTeamRole = selectedTeam?.role || "member";
   const canManageSelectedTeam =
@@ -382,372 +385,457 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam }: TeamsManagerProp
     }
   };
 
+  const selectedTeamName = selectedTeam?.name || "קבוצה";
+  const roleLabel =
+    selectedTeamRole === "owner"
+      ? "מנהל הקבוצה"
+      : selectedTeamRole === "admin"
+        ? "אדמין"
+        : "חבר קבוצה";
+  
+  const playerNames = teamPlayers.map((p) => p.name);
+  const playerPreview =
+    playerNames.length <= 3
+      ? playerNames.join(", ")
+      : `${playerNames.slice(0, 3).join(", ")} ועוד ${playerNames.length - 3}`;
+  
+  const topLeaderboard = leaderboard.slice(0, 3);
+
   return (
     <div className="min-h-screen bg-gaming-bg p-4 mobile-optimized">
       <div className="max-w-md mx-auto">
         {/* Header */}
-        <div className="flex items-center gap-4 mb-6">
+        <div className="flex items-center gap-4 mb-5">
           <Button variant="ghost" size="icon" onClick={onBack} aria-label="חזרה">
             <ArrowLeft className="h-5 w-5 rotate-180" />
           </Button>
-          <div>
+  
+          <div className="min-w-0">
             <h1 className="text-2xl font-bold text-foreground">הקבוצות שלי</h1>
-            <p className="text-muted-foreground text-sm">הקבוצות שבהן אתה חבר, שחקנים וסטטיסטיקות</p>
+            <p className="text-muted-foreground text-sm">
+              זהות בקבוצה, טבלה ופעולות מהירות
+            </p>
           </div>
         </div>
-
-        {/* Teams list and create */}
-        <Card className="bg-gradient-card border-neon-green/20 p-6 shadow-card mb-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Users className="h-5 w-5 text-neon-green" />
-            <h2 className="text-lg font-semibold text-foreground">הקבוצות שלי</h2>
-          </div>
-          <div className="flex gap-2 mb-3">
-            <Input
-              placeholder="שם קבוצה חדשה"
-              value={newTeamName}
-              onChange={(e) => setNewTeamName(e.target.value)}
-              className="bg-gaming-surface border-border"
-            />
-            <Button variant="outline" onClick={createTeam}>
+  
+        {/* Team selector */}
+        <Card className="bg-gradient-card border-neon-green/20 p-4 shadow-card mb-4">
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <Users className="h-5 w-5 text-neon-green shrink-0" />
+              <div className="min-w-0">
+                <h2 className="text-lg font-semibold text-foreground">בחר קבוצה</h2>
+                <p className="text-xs text-muted-foreground">
+                  {teams.length} {teams.length === 1 ? "קבוצה" : "קבוצות"}
+                </p>
+              </div>
+            </div>
+  
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowCreateTeam((v) => !v)}
+            >
               <Plus className="h-4 w-4" />
               צור
             </Button>
           </div>
-          <div className="space-y-2">
+  
+          {showCreateTeam && (
+            <div className="flex gap-2 mb-3">
+              <Input
+                placeholder="שם קבוצה חדשה"
+                value={newTeamName}
+                onChange={(e) => setNewTeamName(e.target.value)}
+                className="bg-gaming-surface border-border"
+              />
+              <Button variant="outline" onClick={createTeam}>
+                צור
+              </Button>
+            </div>
+          )}
+  
+          <div className="flex gap-2 overflow-x-auto pb-1">
             {teams.map((t) => (
-              <div key={t.id} className="flex items-center gap-2">
-                {editingTeamId === t.id ? (
-                  <>
-                    <Input
-                      value={editingTeamName}
-                      onChange={(e) => setEditingTeamName(e.target.value)}
-                      className="bg-gaming-surface border-border flex-1"
-                      autoFocus
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") saveTeamName();
-                        if (e.key === "Escape") cancelEditingTeam();
-                      }}
-                    />
-                    <Button variant="outline" size="icon" onClick={saveTeamName} className="text-neon-green">
-                      <Check className="h-4 w-4" />
-                    </Button>
-                    <Button variant="outline" size="icon" onClick={cancelEditingTeam}>
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    <Button
-                      variant={t.id === selectedTeamId ? "secondary" : "outline"}
-                      size="sm"
-                      onClick={() => setSelectedTeamId(t.id)}
-                      className="flex-1"
-                    >
-                      {t.name}
-                    </Button>
-                    {(t.role === "owner" || t.role === "admin") && (
-                      <Button 
-                        variant="outline" 
-                        size="icon" 
-                        onClick={() => startEditingTeam(t)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                    )}
-                    <Button 
-                      variant="outline" 
-                      size="icon" 
-                      onClick={() => leaveTeam(t.id, t.name)}
-                      className="text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </>
-                )}
-              </div>
+              <Button
+                key={t.id}
+                variant={t.id === selectedTeamId ? "secondary" : "outline"}
+                size="sm"
+                onClick={() => {
+                  setSelectedTeamId(t.id);
+                  setShowPlayers(false);
+                  setShowFullLeaderboard(false);
+                  setShowAdminSettings(false);
+                }}
+                className="shrink-0"
+              >
+                {t.name}
+              </Button>
             ))}
-            {!teams.length && (
-              <p className="text-sm text-muted-foreground">אין קבוצות עדיין</p>
-            )}
           </div>
+  
+          {!teams.length && (
+            <p className="text-sm text-muted-foreground mt-2">אין קבוצות עדיין</p>
+          )}
         </Card>
-
+  
         {selectedTeamId && (
           <>
-            {/* Team invite link */}
-            {canManageSelectedTeam && inviteCode && (
-              <Card className="bg-gaming-surface/50 border-border/50 p-4 mb-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Link2 className="h-4 w-4 text-neon-green" />
-                  <h3 className="font-semibold text-foreground text-sm">קישור הזמנה לקבוצה</h3>
+            {/* Selected team summary */}
+            <Card className="bg-gaming-surface/50 border-border/50 p-4 mb-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs text-neon-green font-semibold mb-1">
+                    {roleLabel}
+                  </p>
+                  <h2 className="text-xl font-bold text-foreground truncate">
+                    {selectedTeamName}
+                  </h2>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {teamPlayers.length} שחקנים · {leaderboard.length ? "יש נתוני טבלה" : "אין נתוני טבלה עדיין"}
+                  </p>
                 </div>
-                <div className="flex gap-2 items-center">
-                  <code className="bg-gaming-bg border border-border rounded px-3 py-1.5 text-sm text-foreground flex-1 overflow-hidden text-ellipsis">
-                    {`${window.location.origin}/join-team/${inviteCode}`}
-                  </code>
+  
+                {canManageSelectedTeam && (
                   <Button
                     variant="outline"
                     size="icon"
-                    onClick={() => {
-                      navigator.clipboard.writeText(`${window.location.origin}/join-team/${inviteCode}`);
-                      toast({ title: "הקישור הועתק!" });
-                    }}
+                    onClick={() => startEditingTeam(selectedTeam)}
+                    aria-label="ערוך שם קבוצה"
                   >
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground mt-2">שתף את הקישור כדי שחברים יצטרפו לקבוצה</p>
-              </Card>
-            )}
-
-            {/* Team discovery settings */}
-            {canManageSelectedTeam && selectedTeamId && (
-              <Card className="bg-gradient-card border-neon-green/20 p-4 shadow-card mb-6">
-                <div className="space-y-3">
-                  <div>
-                    <h3 className="text-lg font-semibold text-foreground">גילוי והצטרפות</h3>
-                    <p className="text-sm text-muted-foreground">
-                      בחר האם משתמשים אחרים יוכלו למצוא את הקבוצה ולבקש להצטרף.
-                    </p>
-                  </div>
-            
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-foreground">
-                      נראות הקבוצה
-                    </label>
-            
-                    <select
-                      value={teamVisibility}
-                      onChange={(e) =>
-                        setTeamVisibility(e.target.value as "private" | "searchable" | "public")
-                      }
-                      className="w-full rounded-md border border-border bg-gaming-surface px-3 py-2 text-sm text-foreground"
-                    >
-                      <option value="private">פרטית — רק עם קישור הזמנה</option>
-                      <option value="searchable">ניתנת לחיפוש — אפשר לבקש להצטרף</option>
-                      <option value="public">ציבורית — תופיע בחיפוש</option>
-                    </select>
-                  </div>
-            
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-foreground">
-                      תיאור קצר לקבוצה
-                    </label>
-            
-                    <Input
-                      value={teamDescription}
-                      onChange={(e) => setTeamDescription(e.target.value)}
-                      placeholder="לדוגמה: טורנירי שישי בערב עם חברים"
-                      className="bg-gaming-surface border-border"
-                    />
-                  </div>
-            
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    במצב פרטי, רק מי שקיבל קישור הזמנה יוכל להצטרף.
-                    במצב ניתנת לחיפוש, משתמשים יוכלו למצוא את הקבוצה לפי שם ולשלוח בקשת הצטרפות.
-                  </p>
-            
-                  <Button
-                    variant="outline"
-                    onClick={saveDiscoverySettings}
-                    disabled={savingDiscovery}
-                    className="w-full"
-                  >
-                    {savingDiscovery ? "שומר..." : "שמור הגדרות חיפוש"}
-                  </Button>
-                </div>
-              </Card>
-            )}
-
-            {/* Identity in this team */}
-            <TeamMemberIdentityCard
-              teamId={selectedTeamId}
-              teamName={teams.find((t) => t.id === selectedTeamId)?.name}
-            />
-
-            {/* Players management */}
-            <Card className="bg-gaming-surface/50 border-border/50 p-4 mb-6">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold text-foreground">שחקני הקבוצה</h3>
-                {canManageSelectedTeam && (
-                  <Button variant="gaming" size="sm" onClick={() => onStartEveningForTeam(selectedTeamId!)}>
-                    התחל ערב לקבוצה זו
+                    <Pencil className="h-4 w-4" />
                   </Button>
                 )}
               </div>
-              {canManageSelectedTeam && (
-                <div className="flex gap-2 mb-3">
+  
+              {editingTeamId === selectedTeamId && (
+                <div className="flex gap-2 mt-3">
                   <Input
-                    placeholder="שם שחקן חדש"
-                    value={newPlayerName}
-                    onChange={(e) => setNewPlayerName(e.target.value)}
+                    value={editingTeamName}
+                    onChange={(e) => setEditingTeamName(e.target.value)}
                     className="bg-gaming-surface border-border flex-1"
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") saveTeamName();
+                      if (e.key === "Escape") cancelEditingTeam();
+                    }}
                   />
-                  <Button variant="outline" onClick={addPlayer} title="הוסף שחקן חדש">
-                    <Plus className="h-4 w-4" />
+                  <Button variant="outline" size="icon" onClick={saveTeamName} className="text-neon-green">
+                    <Check className="h-4 w-4" />
                   </Button>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setSelectPlayerOpen(true)}
-                    title="בחר שחקן קיים"
-                  >
-                    <UserPlus className="h-4 w-4" />
+                  <Button variant="outline" size="icon" onClick={cancelEditingTeam}>
+                    <X className="h-4 w-4" />
                   </Button>
                 </div>
               )}
-              <div className="space-y-2 max-h-48 overflow-y-auto">
-                {teamPlayers.map((p) => (
-                  <div
-                    key={p.id}
-                    className="flex items-center justify-between border-b border-border/50 py-1"
-                  >
-                    <span className="text-foreground">{p.name}</span>
-              
-                    {canManageSelectedTeam && (
+            </Card>
+  
+            {/* Identity */}
+            <TeamMemberIdentityCard
+              teamId={selectedTeamId}
+              teamName={selectedTeamName}
+            />
+  
+            {/* Quick team overview */}
+            <Card className="bg-gaming-surface/50 border-border/50 p-4 mb-4">
+              <div className="space-y-4">
+                {/* Players summary */}
+                <div>
+                  <div className="flex items-center justify-between gap-3 mb-1">
+                    <div>
+                      <h3 className="font-semibold text-foreground">שחקני הקבוצה</h3>
+                      <p className="text-xs text-muted-foreground">
+                        {teamPlayers.length
+                          ? `${teamPlayers.length} שחקנים · ${playerPreview}`
+                          : "אין שחקנים עדיין"}
+                      </p>
+                    </div>
+  
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowPlayers((v) => !v)}
+                    >
+                      {showPlayers ? "הסתר" : "הצג"}
+                    </Button>
+                  </div>
+  
+                  {showPlayers && (
+                    <div className="mt-3 rounded-lg border border-border/50 bg-gaming-bg/40 p-3 space-y-2">
+                      {canManageSelectedTeam && (
+                        <div className="flex gap-2 mb-3">
+                          <Input
+                            placeholder="שם שחקן חדש"
+                            value={newPlayerName}
+                            onChange={(e) => setNewPlayerName(e.target.value)}
+                            className="bg-gaming-surface border-border flex-1"
+                          />
+                          <Button variant="outline" onClick={addPlayer} title="הוסף שחקן חדש">
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            onClick={() => setSelectPlayerOpen(true)}
+                            title="בחר שחקן קיים"
+                          >
+                            <UserPlus className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
+  
+                      {teamPlayers.map((p) => (
+                        <div
+                          key={p.id}
+                          className="flex items-center justify-between border-b border-border/50 py-2 last:border-b-0"
+                        >
+                          <span className="text-foreground">{p.name}</span>
+  
+                          {canManageSelectedTeam && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => removePlayer(p.id)}
+                              aria-label="הסר"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+  
+                      {!teamPlayers.length && (
+                        <p className="text-sm text-muted-foreground">אין שחקנים עדיין</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+  
+                <Separator />
+  
+                {/* Leaderboard summary */}
+                <div>
+                  <div className="flex items-center justify-between gap-3 mb-2">
+                    <div>
+                      <h3 className="font-semibold text-foreground">טבלת הקבוצה</h3>
+                      <p className="text-xs text-muted-foreground">
+                        תקציר ביצועים מכל הערבים בקבוצה
+                      </p>
+                    </div>
+  
+                    <div className="flex items-center gap-1">
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => removePlayer(p.id)}
-                        aria-label="הסר"
+                        onClick={handleSyncStats}
+                        disabled={syncing}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
                       </Button>
-                    )}
+  
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowFullLeaderboard((v) => !v)}
+                      >
+                        {showFullLeaderboard ? "הסתר" : "טבלה"}
+                      </Button>
+                    </div>
                   </div>
-                ))}
-              
-                {!teamPlayers.length && (
-                  <p className="text-sm text-muted-foreground">אין שחקנים עדיין</p>
-                )}
+  
+                  {loading ? (
+                    <p className="text-sm text-muted-foreground">טוען...</p>
+                  ) : leaderboard.length ? (
+                    <div className="space-y-2">
+                      {(showFullLeaderboard ? leaderboard : topLeaderboard).map((s, idx) => (
+                        <div
+                          key={s.player_id}
+                          className="flex items-center justify-between border-b border-border/50 py-2 last:border-b-0"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="text-muted-foreground w-5 text-right">{idx + 1}</span>
+                            <span className="text-foreground font-medium">{s.player_name}</span>
+                          </div>
+  
+                          <div className="text-right text-xs text-muted-foreground">
+                            <span>ניצ׳ {s.games_won}</span>
+                            <span className="mr-3">שערים {s.goals_for}:{s.goals_against}</span>
+                          </div>
+                        </div>
+                      ))}
+  
+                      {!showFullLeaderboard && leaderboard.length > 3 && (
+                        <p className="text-xs text-muted-foreground text-center pt-1">
+                          ועוד {leaderboard.length - 3} שחקנים בטבלה
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      אין נתונים להצגה. לחץ על רענון לעדכון סטטיסטיקות.
+                    </p>
+                  )}
+                </div>
               </div>
             </Card>
-
-            {/* Team join requests */}
-            {canManageSelectedTeam && selectedTeamId && joinRequests.length > 0 && (
-              <Card className="bg-gradient-card border-neon-green/20 p-4 shadow-card mb-6">
-                <div className="space-y-3">
+  
+            {/* Admin area */}
+            {canManageSelectedTeam && (
+              <Card className="bg-gaming-surface/50 border-border/50 p-4 mb-4">
+                <div className="flex items-center justify-between gap-3 mb-3">
                   <div>
-                    <h3 className="text-lg font-semibold text-foreground">בקשות הצטרפות</h3>
-                    <p className="text-sm text-muted-foreground">
-                      משתמשים שביקשו להצטרף לקבוצה הזו.
+                    <h3 className="font-semibold text-foreground">ניהול קבוצה</h3>
+                    <p className="text-xs text-muted-foreground">
+                      פעולות ניהול למנהלי הקבוצה בלבד
                     </p>
                   </div>
-            
-                  <div className="space-y-2">
-                    {joinRequests.map((request) => (
-                      <div
-                        key={request.id}
-                        className="rounded-lg border border-border/50 bg-gaming-surface/50 p-3 space-y-2"
-                      >
-                        <div>
-                          <p className="text-sm font-semibold text-foreground">
-                            {request.user_display_name ||
-                              request.user_email ||
-                              `משתמש ${request.user_id.slice(0, 8)}`}
-                          </p>
-                        
-                          {request.user_display_name && request.user_email && (
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {request.user_email}
-                            </p>
-                          )}
-                        
-                          {!request.user_display_name && !request.user_email && (
-                            <p className="text-xs text-muted-foreground mt-1">
-                              מזהה משתמש: {request.user_id.slice(0, 8)}
-                            </p>
-                          )}
-                        
-                          {request.message && (
-                            <p className="text-xs text-muted-foreground mt-1">
-                              הודעה: {request.message}
-                            </p>
-                          )}
-                        
-                          <p className="text-xs text-muted-foreground mt-1">
-                            נשלחה: {new Date(request.created_at).toLocaleString("he-IL")}
-                          </p>
-                        
-                          <p className="text-xs text-neon-green mt-1">
-                            ממתין לאישור
-                          </p>
-                        </div>
-            
-                        <div className="flex gap-2">
-                          <Button
-                            variant="gaming"
-                            size="sm"
-                            className="flex-1 gap-1"
-                            disabled={handlingRequestId === request.id}
-                            onClick={() => approveRequest(request.id)}
-                          >
-                            <Check className="h-4 w-4" />
-                            אשר
-                          </Button>
-            
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="flex-1 gap-1"
-                            disabled={handlingRequestId === request.id}
-                            onClick={() => rejectRequest(request.id)}
-                          >
-                            <X className="h-4 w-4" />
-                            דחה
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+  
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowAdminSettings((v) => !v)}
+                  >
+                    {showAdminSettings ? "הסתר" : "פתח"}
+                  </Button>
                 </div>
+  
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    variant="gaming"
+                    size="sm"
+                    onClick={() => onStartEveningForTeam(selectedTeamId)}
+                  >
+                    התחל ערב
+                  </Button>
+  
+                  {inviteCode && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        navigator.clipboard.writeText(`${window.location.origin}/join-team/${inviteCode}`);
+                        toast({ title: "הקישור הועתק!" });
+                      }}
+                    >
+                      <Copy className="h-4 w-4" />
+                      הזמן
+                    </Button>
+                  )}
+                </div>
+  
+                {showAdminSettings && (
+                  <div className="mt-4 space-y-4">
+                    {/* Discovery settings */}
+                    <div className="rounded-lg border border-border/50 bg-gaming-bg/40 p-3 space-y-3">
+                      <div>
+                        <h4 className="font-semibold text-foreground text-sm">גילוי והצטרפות</h4>
+                        <p className="text-xs text-muted-foreground">
+                          בחר האם משתמשים אחרים יוכלו למצוא את הקבוצה ולבקש להצטרף.
+                        </p>
+                      </div>
+  
+                      <select
+                        value={teamVisibility}
+                        onChange={(e) =>
+                          setTeamVisibility(e.target.value as "private" | "searchable" | "public")
+                        }
+                        className="w-full rounded-md border border-border bg-gaming-surface px-3 py-2 text-sm text-foreground"
+                      >
+                        <option value="private">פרטית — רק עם קישור הזמנה</option>
+                        <option value="searchable">ניתנת לחיפוש — אפשר לבקש להצטרף</option>
+                        <option value="public">ציבורית — תופיע בחיפוש</option>
+                      </select>
+  
+                      <Input
+                        value={teamDescription}
+                        onChange={(e) => setTeamDescription(e.target.value)}
+                        placeholder="תיאור קצר לקבוצה"
+                        className="bg-gaming-surface border-border"
+                      />
+  
+                      <Button
+                        variant="outline"
+                        onClick={saveDiscoverySettings}
+                        disabled={savingDiscovery}
+                        className="w-full"
+                      >
+                        {savingDiscovery ? "שומר..." : "שמור הגדרות"}
+                      </Button>
+                    </div>
+  
+                    {/* Join requests */}
+                    {joinRequests.length > 0 && (
+                      <div className="rounded-lg border border-border/50 bg-gaming-bg/40 p-3 space-y-2">
+                        <h4 className="font-semibold text-foreground text-sm">בקשות הצטרפות</h4>
+  
+                        {joinRequests.map((request) => (
+                          <div
+                            key={request.id}
+                            className="rounded-lg border border-border/50 bg-gaming-surface/50 p-3 space-y-2"
+                          >
+                            <div>
+                              <p className="text-sm font-semibold text-foreground">
+                                {request.user_display_name ||
+                                  request.user_email ||
+                                  `משתמש ${request.user_id.slice(0, 8)}`}
+                              </p>
+  
+                              {request.user_email && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  {request.user_email}
+                                </p>
+                              )}
+  
+                              {request.message && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  הודעה: {request.message}
+                                </p>
+                              )}
+                            </div>
+  
+                            <div className="flex gap-2">
+                              <Button
+                                variant="gaming"
+                                size="sm"
+                                className="flex-1"
+                                disabled={handlingRequestId === request.id}
+                                onClick={() => approveRequest(request.id)}
+                              >
+                                אשר
+                              </Button>
+  
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="flex-1"
+                                disabled={handlingRequestId === request.id}
+                                onClick={() => rejectRequest(request.id)}
+                              >
+                                דחה
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </Card>
             )}
-
-            {/* Team leaderboard */}
-            <Card className="bg-gradient-card border-neon-green/20 p-6 shadow-card">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <Trophy className="h-5 w-5 text-neon-green" />
-                  <h2 className="text-lg font-semibold text-foreground">טבלת על של הקבוצה</h2>
-                </div>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={handleSyncStats}
-                  disabled={syncing}
-                >
-                  <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
-                </Button>
-              </div>
-              <div className="text-xs text-muted-foreground mb-3">
-                סטטיסטיקות מחושבות מכל הערבים המשויכים לקבוצה
-              </div>
-              <Separator className="mb-3" />
-              <div className="space-y-2">
-                {loading ? (
-                  <p className="text-sm text-muted-foreground">טוען...</p>
-                ) : leaderboard.length ? (
-                  leaderboard.map((s, idx) => (
-                    <div key={s.player_id} className="flex items-center justify-between border-b border-border/50 py-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-muted-foreground w-5 text-right">{idx + 1}</span>
-                        <span className="text-foreground font-medium">{s.player_name}</span>
-                      </div>
-                      <div className="text-right text-sm text-muted-foreground">
-                        <span className="inline-block min-w-[4ch]">ניצ׳ {s.games_won}</span>
-                        <span className="inline-block min-w-[7ch] ml-3">שערים {s.goals_for}:{s.goals_against}</span>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-muted-foreground">אין נתונים להצגה. לחץ על כפתור הרענון לעדכון סטטיסטיקות.</p>
-                )}
-              </div>
-            </Card>
+  
+            {/* Leave team */}
+            {selectedTeam && selectedTeamRole !== "owner" && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => leaveTeam(selectedTeam.id, selectedTeam.name)}
+                className="w-full text-destructive hover:text-destructive mb-4"
+              >
+                עזוב קבוצה
+              </Button>
+            )}
           </>
         )}
-
+  
         {/* Select existing player dialog */}
         <SelectExistingPlayerDialog
           open={selectPlayerOpen}
@@ -759,4 +847,3 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam }: TeamsManagerProp
       </div>
     </div>
   );
-};
