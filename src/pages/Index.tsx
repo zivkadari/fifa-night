@@ -481,12 +481,13 @@ const handleGoHome = () => {
         if (activeFP && fpEvening) {
           tournamentMode = "ליגת 5 שחקנים";
           const completed = fpEvening.schedule.filter(m => m.scoreA !== undefined).length;
-          tournamentProgress = `${completed} / ${fpEvening.schedule.length} משחקים`;
+          tournamentProgress = `${completed} מתוך ${fpEvening.schedule.length} משחקים`;
         } else if (activeRegular && currentEvening) {
           tournamentMode = currentEvening.type === 'singles' ? "טורניר יחידים" : "טורניר זוגות";
           const completedMatches = currentEvening.rounds.reduce((s, r) => s + r.matches.filter(m => m.completed).length, 0);
           tournamentProgress = `${completedMatches} משחקים שהושלמו`;
         }
+        const currentActiveEveningId = activeFP ? fpEvening?.id : activeRegular ? currentEvening?.id : null;
 
         return (
           <TeamDashboard
