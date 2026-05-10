@@ -84,6 +84,9 @@ export const TeamDashboard = ({
   activeTournamentProgress,
   activeTeamEvenings,
   onOpenTeamEvening,
+  currentActiveEveningId,
+  hasActiveLocalTournament,
+  authLoading,
 }: TeamDashboardProps) => {
   const { teams, activePlayer, loading: teamsLoading } = useTeam();
   const [displayName, setDisplayName] = useState<string | null>(null);
