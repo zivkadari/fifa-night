@@ -132,7 +132,6 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam }: TeamsManagerProp
   
     loadTeam();
   }, [selectedTeamId, canManageSelectedTeam]);
-
   const handleSyncStats = async () => {
     setSyncing(true);
     try {
@@ -599,18 +598,28 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam }: TeamsManagerProp
               )}
               <div className="space-y-2 max-h-48 overflow-y-auto">
                 {teamPlayers.map((p) => (
-                  <div key={p.id} className="flex items-center justify-between border-b border-border/50 py-1">
+                  <div
+                    key={p.id}
+                    className="flex items-center justify-between border-b border-border/50 py-1"
+                  >
                     <span className="text-foreground">{p.name}</span>
+              
                     {canManageSelectedTeam && (
-                      <Button variant="ghost" size="icon" onClick={() => removePlayer(p.id)} aria-label="הסר">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removePlayer(p.id)}
+                        aria-label="הסר"
+                      >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     )}
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
                   </div>
                 ))}
-                {!teamPlayers.length && <p className="text-sm text-muted-foreground">אין שחקנים עדיין</p>}
+              
+                {!teamPlayers.length && (
+                  <p className="text-sm text-muted-foreground">אין שחקנים עדיין</p>
+                )}
               </div>
             </Card>
 
