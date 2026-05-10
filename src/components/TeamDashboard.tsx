@@ -109,8 +109,14 @@ export const TeamDashboard = ({
   }, [isAuthed, userEmail]);
 
   const hasActiveTournament = !!onResume;
-  const showNewUserOnboarding = !!isAuthed && !teamsLoading && teams.length === 0 && !hasActiveTournament;
-  const showSignedOutOnboarding = !isAuthed;
+  const showNewUserOnboarding = !authLoading && !!isAuthed && !teamsLoading && teams.length === 0 && !hasActiveTournament;
+  const showSignedOutOnboarding = !authLoading && !isAuthed;
+  const filteredTeamEvenings = (activeTeamEvenings || []).filter(
+    (e) => !currentActiveEveningId || e.evening_id !== currentActiveEveningId,
+  );
+  const showTeamEveningsSection = !authLoading && !!isAuthed && (
+    hasActiveLocalTournament ? filteredTeamEvenings.length > 0 : true
+  );
   // Best-effort greeting name: profile display_name → claimed player name → email local-part
   const greetingName = displayName
     || activePlayer?.player_name
