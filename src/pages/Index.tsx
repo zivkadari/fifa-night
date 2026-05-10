@@ -539,6 +539,9 @@ const handleGoHome = () => {
             activeTournamentMode={tournamentMode}
             activeTournamentProgress={tournamentProgress}
             activeTeamEvenings={activeTeamEvenings}
+            currentActiveEveningId={currentActiveEveningId ?? null}
+            hasActiveLocalTournament={!!(activeFP || activeRegular)}
+            authLoading={authLoading}
             onOpenTeamEvening={handleOpenTeamEvening}
           />
         );
