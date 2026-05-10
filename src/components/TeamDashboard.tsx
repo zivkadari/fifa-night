@@ -518,7 +518,7 @@ export const TeamDashboard = ({
             <Card className="bg-card border-border">
               <CardContent className="p-3">
                 <p className="text-xs text-muted-foreground">
-                  אין טורנירים פעילים בקבוצות שלך כרגע
+                  איןאין טורנירים פעילים כרגע — כשטורניר ייפתח באחת הקבוצות שלך, הוא יופיע כאן.
                 </p>
               </CardContent>
             </Card>
