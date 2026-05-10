@@ -182,7 +182,17 @@ export const TeamDashboard = ({
       
       </div>
 
-      {isAuthed && teamsLoading && (
+      {authLoading && (
+        <Card className="bg-gradient-card border-border shadow-card mb-4">
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">
+              טוען את החשבון שלך...
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {!authLoading && isAuthed && teamsLoading && (
         <Card className="bg-gradient-card border-border shadow-card mb-4">
           <CardContent className="p-4">
             <p className="text-sm text-muted-foreground">
