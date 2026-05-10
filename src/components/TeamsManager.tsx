@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { RemoteStorageService } from "@/services/remoteStorageService";
-import { ArrowLeft, Users, Plus, Trash2, Trophy, RefreshCw, UserPlus, Pencil, Check, X, Copy } from "lucide-react";
+import { ArrowLeft, Users, Plus, Trash2, RefreshCw, UserPlus, Pencil, Check, X, Copy } from "lucide-react";
 import { validateTeamName, validatePlayerName } from "@/lib/validation";
 import { SelectExistingPlayerDialog } from "./SelectExistingPlayerDialog";
 import { TeamMemberIdentityCard } from "./TeamMemberIdentityCard";
@@ -702,7 +702,7 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam }: TeamsManagerProp
                   <Button
                     variant="gaming"
                     size="sm"
-                    onClick={() => onStartEveningForTeam(selectedTeamId)}
+                    onClick={() => selectedTeamId && onStartEveningForTeam(selectedTeamId)}
                   >
                     התחל ערב
                   </Button>
@@ -847,3 +847,4 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam }: TeamsManagerProp
       </div>
     </div>
   );
+};
