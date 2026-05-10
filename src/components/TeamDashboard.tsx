@@ -329,75 +329,68 @@ export const TeamDashboard = ({
           </CardContent>
         </Card>
       ) : (
-        <Card
-          className="bg-gradient-card border-neon-green/20 shadow-card mb-4 cursor-pointer hover:border-neon-green/40 transition-all hover:shadow-glow group"
-          onClick={onStartFivePlayer}
-        >
-          <CardContent className="p-4 flex items-center gap-4">
-            <div className="h-12 w-12 rounded-lg bg-neon-green/10 border border-neon-green/20 flex items-center justify-center group-hover:bg-neon-green/20 transition-colors">
-              <Zap className="h-6 w-6 text-neon-green" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="text-base font-bold text-foreground">התחל ליגת 5 שחקנים</h3>
-              <p className="text-xs text-muted-foreground">5 שחקנים • 10 זוגות • 15/30 משחקים</p>
-            </div>
-            <ChevronRight className="h-5 w-5 text-muted-foreground rotate-180 shrink-0" />
-          </CardContent>
-        </Card>
+        <>
+          <Dialog open={startDialogOpen} onOpenChange={setStartDialogOpen}>
+            <DialogTrigger asChild>
+              <Card className="bg-gradient-card border-neon-green/20 shadow-card mb-4 cursor-pointer hover:border-neon-green/40 transition-all hover:shadow-glow group">
+                <CardContent className="p-4 flex items-center gap-4">
+                  <div className="h-12 w-12 rounded-lg bg-neon-green/10 border border-neon-green/20 flex items-center justify-center group-hover:bg-neon-green/20 transition-colors">
+                    <Plus className="h-6 w-6 text-neon-green" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-base font-bold text-foreground">התחל טורניר</h3>
+                    <p className="text-xs text-muted-foreground">בחר מצב משחק והתחל ערב חדש</p>
+                  </div>
+                  <ChevronRight className="h-5 w-5 text-muted-foreground rotate-180 shrink-0" />
+                </CardContent>
+              </Card>
+            </DialogTrigger>
+            <DialogContent dir="rtl" className="max-w-sm">
+              <DialogHeader>
+                <DialogTitle>איזה טורניר תרצה לפתוח?</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-2 pt-2">
+                <Button
+                  variant="gaming"
+                  size="lg"
+                  className="w-full justify-start gap-3"
+                  onClick={() => { setStartDialogOpen(false); onStartFivePlayer(); }}
+                >
+                  <Zap className="h-5 w-5" />
+                  <div className="text-right">
+                    <div className="text-sm font-bold">ליגת 5 שחקנים</div>
+                    <div className="text-[10px] opacity-80">5 שחקנים • 10 זוגות</div>
+                  </div>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="w-full justify-start gap-3"
+                  onClick={() => { setStartDialogOpen(false); onStartPairs(); }}
+                >
+                  <Users className="h-5 w-5" />
+                  <div className="text-right">
+                    <div className="text-sm font-bold">זוגות</div>
+                    <div className="text-[10px] text-muted-foreground">4 שחקנים</div>
+                  </div>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="w-full justify-start gap-3"
+                  onClick={() => { setStartDialogOpen(false); onStartSingles(); }}
+                >
+                  <User className="h-5 w-5" />
+                  <div className="text-right">
+                    <div className="text-sm font-bold">יחידים</div>
+                    <div className="text-[10px] text-muted-foreground">קבוצות אישיות</div>
+                  </div>
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </>
       ))}
-
-      {/* ── 3. Tournament mode launcher ── */}
-      {!teamsLoading && !hasActiveTournament && !showNewUserOnboarding && !showSignedOutOnboarding && (
-        <div className="mb-4">
-          <p className="text-xs text-muted-foreground mb-2 font-medium">מצבי משחק נוספים</p>
-          <div className="grid grid-cols-2 gap-2">
-            <Card
-              className="bg-card border-border cursor-pointer hover:border-neon-green/30 transition-colors"
-              onClick={onStartPairs}
-            >
-              <CardContent className="p-3 flex items-center gap-3">
-                <Users className="h-5 w-5 text-muted-foreground" />
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-foreground">זוגות</p>
-                  <p className="text-[10px] text-muted-foreground">4 שחקנים</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card
-              className="bg-card border-border cursor-pointer hover:border-neon-green/30 transition-colors"
-              onClick={onStartSingles}
-            >
-              <CardContent className="p-3 flex items-center gap-3">
-                <User className="h-5 w-5 text-muted-foreground" />
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-foreground">יחידים</p>
-                  <p className="text-[10px] text-muted-foreground">קבוצות אישיות</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      )}
-
-      {!showSignedOutOnboarding && (
-      <div className="mb-4 space-y-2">
-        <p className="text-xs text-muted-foreground font-medium">טורנירים</p>
-
-        <Card
-          className="bg-card border-border cursor-pointer hover:border-neon-green/30 transition-colors"
-          onClick={onViewHistory}
-        >
-          <CardContent className="p-3 flex items-center gap-3">
-            <Eye className="h-5 w-5 text-muted-foreground" />
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-foreground">טורנירים</p>
-              <p className="text-[10px] text-muted-foreground">צפייה, היסטוריה וניהול כל הטורנירים שלך</p>
-            </div>
-          </CardContent>
-        </Card>
-
-      </div>
-      )}
 
       {/* Active tournaments across my teams */}
       {!showSignedOutOnboarding && isAuthed && (
@@ -485,59 +478,71 @@ export const TeamDashboard = ({
         </div>
       )}
 
+      {/* Quick actions */}
       {!showSignedOutOnboarding && (
-      <Collapsible open={manageOpen} onOpenChange={setManageOpen}>
-        <CollapsibleTrigger asChild>
-          <button className="flex items-center gap-2 w-full text-xs text-muted-foreground font-medium mb-2 hover:text-foreground transition-colors">
-            <Settings className="h-3.5 w-3.5" />
-            ניהול
-            <ChevronDown className={`h-3.5 w-3.5 transition-transform ${manageOpen ? "rotate-180" : ""}`} />
-          </button>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="space-y-2">
-          {onManageTeams && (
-            <Button variant="ghost" size="sm" onClick={onManageTeams} className="w-full justify-start gap-3 text-muted-foreground">
-              <Users className="h-4 w-4" />
-              הקבוצות שלי
-            </Button>
-          )}
-
-            {onFindTeam && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onFindTeam}
-                className="w-full justify-start gap-3 text-muted-foreground"
+        <div className="mb-4 space-y-2">
+          <p className="text-xs text-muted-foreground font-medium">פעולות</p>
+          <div className="grid grid-cols-2 gap-2">
+            <Card
+              className="bg-card border-border cursor-pointer hover:border-neon-green/30 transition-colors"
+              onClick={onViewHistory}
+            >
+              <CardContent className="p-3 flex items-center gap-3">
+                <Eye className="h-5 w-5 text-muted-foreground shrink-0" />
+                <p className="text-sm font-semibold text-foreground">טורנירים</p>
+              </CardContent>
+            </Card>
+            {onManageTeams && (
+              <Card
+                className="bg-card border-border cursor-pointer hover:border-neon-green/30 transition-colors"
+                onClick={onManageTeams}
               >
-                <UserPlus className="h-4 w-4" />
-                מצא קבוצה קיימת
-              </Button>
+                <CardContent className="p-3 flex items-center gap-3">
+                  <Users className="h-5 w-5 text-muted-foreground shrink-0" />
+                  <p className="text-sm font-semibold text-foreground">הקבוצות שלי</p>
+                </CardContent>
+              </Card>
             )}
+            {onFindTeam && (
+              <Card
+                className="bg-card border-border cursor-pointer hover:border-neon-green/30 transition-colors"
+                onClick={onFindTeam}
+              >
+                <CardContent className="p-3 flex items-center gap-3">
+                  <UserPlus className="h-5 w-5 text-muted-foreground shrink-0" />
+                  <p className="text-sm font-semibold text-foreground">מצא קבוצה</p>
+                </CardContent>
+              </Card>
+            )}
+            <Link to="/settings" className="block">
+              <Card className="bg-card border-border cursor-pointer hover:border-neon-green/30 transition-colors h-full">
+                <CardContent className="p-3 flex items-center gap-3">
+                  <Settings className="h-5 w-5 text-muted-foreground shrink-0" />
+                  <p className="text-sm font-semibold text-foreground">הגדרות</p>
+                </CardContent>
+              </Card>
+            </Link>
+          </div>
+        </div>
+      )}
 
-            <Button asChild variant="ghost" size="sm" className="w-full justify-start gap-3 text-muted-foreground">
-              <Link to="/settings">
-                <Settings className="h-4 w-4" />
-                הגדרות ומידע משפטי
-              </Link>
-            </Button>
-          {isAdmin && (
-            <>
-              <Button asChild variant="ghost" size="sm" className="w-full justify-start gap-3 text-muted-foreground">
-                <Link to="/admin/clubs">
-                  <Star className="h-4 w-4" />
-                  ניהול מאגר קבוצות
-                </Link>
-              </Button>
-              <Button asChild variant="ghost" size="sm" className="w-full justify-start gap-3 text-muted-foreground">
-                <Link to="/admin/pool-config">
-                  <Settings className="h-4 w-4" />
-                  הגדרת הרכב קבוצות
-                </Link>
-              </Button>
-            </>
-          )}
-        </CollapsibleContent>
-      </Collapsible>
+      {/* Admin */}
+      {!showSignedOutOnboarding && isAdmin && (
+        <div className="mb-4 space-y-2">
+          <p className="text-xs text-muted-foreground font-medium">Admin</p>
+          <Button asChild variant="ghost" size="sm" className="w-full justify-start gap-3 text-muted-foreground">
+            <Link to="/admin/clubs">
+              <Star className="h-4 w-4" />
+              ניהול מאגר קבוצות
+            </Link>
+          </Button>
+          <Button asChild variant="ghost" size="sm" className="w-full justify-start gap-3 text-muted-foreground">
+            <Link to="/admin/pool-config">
+              <Settings className="h-4 w-4" />
+              הגדרת הרכב קבוצות
+            </Link>
+          </Button>
+        </div>
       )}
 
       {/* Footer */}
