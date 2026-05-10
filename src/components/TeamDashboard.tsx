@@ -415,11 +415,11 @@ export const TeamDashboard = ({
       ))}
 
       {/* Active tournaments across my teams */}
-      {!showSignedOutOnboarding && isAuthed && (
+      {showTeamEveningsSection && (
         <div className="mb-4 space-y-2">
           <p className="text-xs text-muted-foreground font-medium">טורנירים פעילים בקבוצות שלי</p>
-          {activeTeamEvenings && activeTeamEvenings.length > 0 ? (
-            activeTeamEvenings.map((entry) => {
+          {filteredTeamEvenings.length > 0 ? (
+            filteredTeamEvenings.map((entry) => {
               const ev: any = entry.evening;
               const isFP = Array.isArray(ev?.schedule);
               const mode = isFP
@@ -431,7 +431,7 @@ export const TeamDashboard = ({
               if (isFP) {
                 const total = ev.schedule.length;
                 const done = ev.schedule.filter((m: any) => m.scoreA !== undefined).length;
-                progress = `${done} / ${total} משחקים`;
+                progress = `${done} מתוך ${total} משחקים`;
               } else if (Array.isArray(ev?.rounds)) {
                 const done = ev.rounds.reduce(
                   (s: number, r: any) => s + (r.matches?.filter((m: any) => m.completed).length || 0),
