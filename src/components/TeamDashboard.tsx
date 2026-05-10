@@ -443,7 +443,7 @@ export const TeamDashboard = ({
       {/* Active tournaments across my teams */}
       {showTeamEveningsSection && (
         <div className="mb-4 space-y-2">
-          <p className="text-xs text-muted-foreground font-medium">טורנירים פעילים בקבוצות שלי</p>
+          <p className="text-xs text-muted-foreground font-medium">טורנירים פעילים</p>
           {filteredTeamEvenings.length > 0 ? (
             filteredTeamEvenings.map((entry) => {
               const ev: any = entry.evening;
@@ -518,7 +518,7 @@ export const TeamDashboard = ({
             <Card className="bg-card border-border">
               <CardContent className="p-3">
                 <p className="text-xs text-muted-foreground">
-                  איןאין טורנירים פעילים כרגע — כשטורניר ייפתח באחת הקבוצות שלך, הוא יופיע כאן.
+                  אין טורנירים פעילים כרגע
                 </p>
               </CardContent>
             </Card>
