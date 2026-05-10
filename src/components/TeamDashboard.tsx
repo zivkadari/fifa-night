@@ -549,7 +549,7 @@ export const TeamDashboard = ({
       )}
 
       {/* Admin */}
-      {!showSignedOutOnboarding && isAdmin && (
+      {!authLoading && !showSignedOutOnboarding && isAdmin && (
         <div className="mb-4 space-y-2">
           <p className="text-xs text-muted-foreground font-medium">Admin</p>
           <Button asChild variant="ghost" size="sm" className="w-full justify-start gap-3 text-muted-foreground">
