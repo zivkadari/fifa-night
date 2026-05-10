@@ -49,6 +49,7 @@ const Index = () => {
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const [isAuthed, setIsAuthed] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [currentTeamId, setCurrentTeamId] = useState<string | null>(null);
   const [singlesFlowState, setSinglesFlowState] = useState<'club-assignment' | 'match-schedule' | 'game'>('club-assignment');
