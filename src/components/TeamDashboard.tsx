@@ -130,7 +130,21 @@ export const TeamDashboard = ({
       {/* ── 0. Auth strip ── */}
       <div className="flex items-center justify-between mb-3 gap-2">
         <div className="flex-1 min-w-0">
-          {isAuthed ? (
+          {authLoading ? (
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-full bg-muted/20 border border-border flex items-center justify-center shrink-0">
+                <span className="text-xs text-muted-foreground">...</span>
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground leading-none mb-0.5">
+                  טוען
+                </p>
+                <p className="text-sm text-muted-foreground font-semibold truncate leading-tight">
+                  טוען את החשבון שלך...
+                </p>
+              </div>
+            </div>
+          ) : isAuthed ? (
             <div className="flex items-center gap-2">
               {greetingName && (
                 <div className="h-8 w-8 rounded-full bg-neon-green/15 border border-neon-green/30 flex items-center justify-center text-neon-green text-sm font-bold shrink-0">
@@ -138,12 +152,16 @@ export const TeamDashboard = ({
                 </div>
               )}
               <div className="min-w-0">
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground leading-none mb-0.5">מחובר כ</p>
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground leading-none mb-0.5">
+                  מחובר כ
+                </p>
                 <p className="text-sm text-foreground font-semibold truncate leading-tight">
                   {greetingName || userEmail}
                 </p>
                 {greetingName && userEmail && (
-                  <p className="text-[10px] text-muted-foreground truncate leading-tight">{userEmail}</p>
+                  <p className="text-[10px] text-muted-foreground truncate leading-tight">
+                    {userEmail}
+                  </p>
                 )}
               </div>
             </div>
@@ -151,12 +169,20 @@ export const TeamDashboard = ({
             <p className="text-sm text-muted-foreground">לא מחובר</p>
           )}
         </div>
-        {isAuthed ? (
+        {authLoading ? (
+          <div className="h-8 w-20 shrink-0" />
+        ) : isAuthed ? (
           <div className="flex items-center gap-1 shrink-0">
             <Button asChild variant="ghost" size="sm">
               <Link to="/profile">פרופיל</Link>
             </Button>
-            <Button variant="ghost" size="icon" onClick={onSignOut} className="text-muted-foreground h-8 w-8" title="התנתק">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onSignOut}
+              className="text-muted-foreground h-8 w-8"
+              title="התנתק"
+            >
               <LogOut className="h-4 w-4" />
             </Button>
           </div>
