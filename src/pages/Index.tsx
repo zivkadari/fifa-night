@@ -66,6 +66,7 @@ const Index = () => {
   const [showFpDeadlock, setShowFpDeadlock] = useState(false);
   const [teamPlayersForFP, setTeamPlayersForFP] = useState<Player[] | null>(null);
   const [activeTeamEvenings, setActiveTeamEvenings] = useState<Awaited<ReturnType<typeof RemoteStorageService.listActiveEveningsForMyTeams>>>([]);
+  const [routeTeamId, setRouteTeamId] = useState<string | null>(null);
 
    // Navigation helper that also pushes into browser history so Back goes to previous screen
   function goTo(next: AppState) {
@@ -74,6 +75,23 @@ const Index = () => {
     }
     setAppState(next);
   }
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const screen = params.get("screen");
+    const teamId = params.get("teamId");
+  
+    if (screen === "teams") {
+      setRouteTeamId(teamId);
+      setAppState("teams");
+  
+      window.history.replaceState(
+        { appState: "teams" },
+        "",
+        window.location.pathname
+      );
+    }
+  }, [location.search]);
 
   const { persistNow: persistActiveEveningNow, clearActive: clearActiveEvening } = useActiveEveningPersistence({
     currentEvening,
@@ -770,6 +788,7 @@ const handleGoHome = () => {
                 setCurrentTeamId(teamId);
                 goTo('setup');
               }}
+              initialTeamId={routeTeamId}
             />
           );
         
