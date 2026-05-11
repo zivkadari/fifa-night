@@ -641,7 +641,7 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam }: TeamsManagerProp
                         size="sm"
                         onClick={() => setShowFullLeaderboard((v) => !v)}
                       >
-                        {showFullLeaderboard ? "הסתר" : "טבלה"}
+                        {showFullLeaderboard ? "הסתר" : "טבלה מלאה"}
                       </Button>
                     </div>
                   </div>
