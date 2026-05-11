@@ -1912,7 +1912,6 @@ export class RemoteStorageService {
     }
   
     return true;
-}
-
+  }
 }
 
