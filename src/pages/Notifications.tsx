@@ -104,6 +104,13 @@ const NotificationsPage = () => {
 
   const handleOpenTeam = async (n: Notification) => {
     await markRead(n.id);
+  
+    const teamId = n.data?.team_id;
+    if (teamId) {
+      navigate(`/?screen=teams&teamId=${encodeURIComponent(teamId)}`);
+      return;
+    }
+  
     navigate("/");
   };
 
