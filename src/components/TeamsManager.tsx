@@ -556,7 +556,7 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam }: TeamsManagerProp
                       size="sm"
                       onClick={() => setShowPlayers((v) => !v)}
                     >
-                      {showPlayers ? "הסתר" : "הצג"}
+                      {showPlayers ? "הסתר" : "הצג שחקנים"}
                     </Button>
                   </div>
             
@@ -641,7 +641,7 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam }: TeamsManagerProp
                         size="sm"
                         onClick={() => setShowFullLeaderboard((v) => !v)}
                       >
-                        {showFullLeaderboard ? "הסתר" : "טבלה"}
+                        {showFullLeaderboard ? "הסתר" : "טבלה מלאה"}
                       </Button>
                     </div>
                   </div>
@@ -684,25 +684,12 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam }: TeamsManagerProp
   
             {/* Admin area */}
             {canManageSelectedTeam && (
-              <Card className="bg-gaming-surface/50 border-border/50 p-4 mb-4">
-                <div className="flex items-center justify-between gap-3 mb-3">
-                  <div>
-                    <h3 className="font-semibold text-foreground">ניהול קבוצה</h3>
-                    <p className="text-xs text-muted-foreground">
-                      פעולות ניהול למנהלי הקבוצה בלבד
-                    </p>
-                  </div>
-  
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowAdminSettings((v) => !v)}
-                  >
-                    {showAdminSettings ? "הסתר" : "פתח"}
-                  </Button>
+              <Card className="bg-gaming-surface/50 border-border/50 p-3 mb-4">
+                <div className="mb-2">
+                  <h3 className="font-semibold text-foreground text-sm">ניהול קבוצה</h3>
                 </div>
-  
-                <div className="grid grid-cols-2 gap-2">
+
+                <div className="grid grid-cols-3 gap-2">
                   <Button
                     variant="gaming"
                     size="sm"
@@ -710,20 +697,28 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam }: TeamsManagerProp
                   >
                     התחל ערב
                   </Button>
-  
-                  {inviteCode && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        navigator.clipboard.writeText(`${window.location.origin}/join-team/${inviteCode}`);
-                        toast({ title: "הקישור הועתק!" });
-                      }}
-                    >
-                      <Copy className="h-4 w-4" />
-                      הזמן
-                    </Button>
-                  )}
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={!inviteCode}
+                    onClick={() => {
+                      if (!inviteCode) return;
+                      navigator.clipboard.writeText(`${window.location.origin}/join-team/${inviteCode}`);
+                      toast({ title: "הקישור הועתק!" });
+                    }}
+                  >
+                    <Copy className="h-4 w-4" />
+                    הזמן
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowAdminSettings((v) => !v)}
+                  >
+                    הגדרות
+                  </Button>
                 </div>
   
                 {showAdminSettings && (
