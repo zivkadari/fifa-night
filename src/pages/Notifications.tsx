@@ -175,6 +175,10 @@ const NotificationsPage = () => {
 
   const renderActions = (n: Notification) => {
     if (n.type === "team_join_request_created") {
+      if (n.data?.handled) {
+        return null;
+      }
+    
       return (
         <div className="flex gap-2 pt-2">
           <Button size="sm" variant="gaming" disabled={busyId === n.id} onClick={() => handleApprove(n)}>
@@ -226,6 +230,12 @@ const NotificationsPage = () => {
             <span className="text-[10px] text-muted-foreground shrink-0">{formatTime(n.created_at)}</span>
           </div>
           {n.body && <p className="text-xs text-muted-foreground break-words">{n.body}</p>}
+          {isHandledJoinRequestNotification(n) && getHandledJoinRequestText(n) && (
+            <p className="text-xs text-neon-green pt-1">
+              {getHandledJoinRequestText(n)}
+            </p>
+          )}
+          
           {renderActions(n)}
         </CardContent>
       </Card>
