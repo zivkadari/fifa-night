@@ -17,6 +17,7 @@ import Tournaments from "./pages/Tournaments";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import SettingsPage from "./pages/Settings";
+import NotificationsPage from "./pages/Notifications";
 import { TeamProvider } from "./contexts/TeamContext";
 const VIBRATION_SETTING_KEY = "settings-vibration-enabled";
 
