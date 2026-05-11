@@ -66,6 +66,19 @@ export class RemoteStorageService {
         // Surface the server error so the caller can handle it
         throw new Error(error.message);
       }
+      // Notify other team members (best-effort; deduped server-side)
+      try {
+        const mode = (evening as any)?.mode === 'fivePlayer' || (evening as any)?.matches?.[0]?.mode === 'fivePlayer'
+          ? 'ליגת 5 שחקנים'
+          : (evening as any)?.singlesMode ? 'טורניר יחידים' : 'טורניר זוגות';
+        await supabase.rpc("notify_team_evening_started", {
+          _evening_id: evening.id,
+          _team_id: teamId,
+          _tournament_mode: mode,
+        });
+      } catch (e: any) {
+        console.warn("notify_team_evening_started failed:", e?.message);
+      }
       return;
     }
 
