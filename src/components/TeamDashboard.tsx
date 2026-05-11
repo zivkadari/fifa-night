@@ -91,7 +91,21 @@ export const TeamDashboard = ({
   const { teams, activePlayer, loading: teamsLoading } = useTeam();
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [startDialogOpen, setStartDialogOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const isAdmin = userEmail === "zivkad12@gmail.com";
+
+  // Load unread notifications count
+  useEffect(() => {
+    if (!isAuthed) { setUnreadCount(0); return; }
+    let mounted = true;
+    const refresh = async () => {
+      const c = await RemoteStorageService.getUnreadNotificationsCount();
+      if (mounted) setUnreadCount(c);
+    };
+    refresh();
+    const id = setInterval(refresh, 60000);
+    return () => { mounted = false; clearInterval(id); };
+  }, [isAuthed]);
 
   // Load profile display name for the greeting
   useEffect(() => {
