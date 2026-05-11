@@ -1672,6 +1672,11 @@ export class RemoteStorageService {
       return false;
     }
   
+    try {
+      await supabase.rpc("notify_team_join_request_decision", { _request_id: requestId, _approved: true });
+    } catch (e: any) {
+      console.warn("notify_team_join_request_decision (approve) failed:", e?.message);
+    }
     return true;
   }
 
@@ -1691,6 +1696,11 @@ export class RemoteStorageService {
     if (error) {
       console.error("rejectJoinRequest error:", error.message);
       return false;
+    }
+    try {
+      await supabase.rpc("notify_team_join_request_decision", { _request_id: requestId, _approved: false });
+    } catch (e: any) {
+      console.warn("notify_team_join_request_decision (reject) failed:", e?.message);
     }
     return true;
   }
