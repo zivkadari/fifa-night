@@ -10,6 +10,7 @@ import { useTeam } from "@/contexts/TeamContext";
 interface TeamMemberIdentityCardProps {
   teamId: string;
   teamName?: string;
+  compact?: boolean;
 }
 
 interface AvailablePlayer {
@@ -21,6 +22,7 @@ interface AvailablePlayer {
 export const TeamMemberIdentityCard = ({
   teamId,
   teamName,
+  compact = false,
 }: TeamMemberIdentityCardProps) => {
   const { toast } = useToast();
   const { refresh } = useTeam();
@@ -162,62 +164,74 @@ export const TeamMemberIdentityCard = ({
   if (loading) return null;
 
   if (memberMode === "player") {
+    const content = (
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs text-muted-foreground">
+            הזהות שלך בקבוצה
+          </p>
+          <p className="text-sm font-semibold text-foreground truncate">
+            {linkedPlayerName || "שחקן מקושר"} · שחקן
+          </p>
+        </div>
+  
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={saving}
+          onClick={resetIdentity}
+          className="shrink-0"
+        >
+          שנה
+        </Button>
+      </div>
+    );
+  
+    if (compact) return content;
+  
     return (
       <Card className="bg-gaming-surface/40 border-border/50 shadow-card mb-3">
         <CardContent className="p-3">
-          <div className="flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-xs text-muted-foreground">
-                הזהות שלך בקבוצה הזו
-              </p>
-              <p className="text-sm font-semibold text-foreground truncate">
-                {linkedPlayerName || "שחקן מקושר"} · שחקן
-              </p>
-            </div>
-  
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={saving}
-              onClick={resetIdentity}
-              className="shrink-0"
-            >
-              שנה
-            </Button>
-          </div>
+          {content}
         </CardContent>
       </Card>
     );
   }
 
   if (memberMode === "spectator") {
+    const content = (
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs text-muted-foreground">
+            הזהות שלך בקבוצה
+          </p>
+          <p className="text-sm font-semibold text-foreground truncate">
+            צופה
+          </p>
+        </div>
+  
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={saving}
+          onClick={resetIdentity}
+          className="shrink-0"
+        >
+          שנה
+        </Button>
+      </div>
+    );
+  
+    if (compact) return content;
+  
     return (
       <Card className="bg-gaming-surface/40 border-border/50 shadow-card mb-3">
         <CardContent className="p-3">
-          <div className="flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-xs text-muted-foreground">
-                הזהות שלך בקבוצה הזו
-              </p>
-              <p className="text-sm font-semibold text-foreground truncate">
-                צופה
-              </p>
-            </div>
-  
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={saving}
-              onClick={resetIdentity}
-              className="shrink-0"
-            >
-              שנה
-            </Button>
-          </div>
+          {content}
         </CardContent>
       </Card>
     );
-  }
+}
 
   if (memberMode !== "unset") return null;
 
