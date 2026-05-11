@@ -36,6 +36,25 @@ const formatTime = (iso: string) => {
   }
 };
 
+const isHandledJoinRequestNotification = (n: Notification) => {
+  return n.type === "team_join_request_created" && !!n.data?.handled;
+};
+
+const getHandledJoinRequestText = (n: Notification) => {
+  const requester = n.data?.requester_label || "המשתמש";
+  const team = n.data?.team_name || "הקבוצה";
+
+  if (n.data?.decision === "approved") {
+    return `הוספת את ${requester} לקבוצת ${team}`;
+  }
+
+  if (n.data?.decision === "rejected") {
+    return `דחית את בקשת ההצטרפות של ${requester} לקבוצת ${team}`;
+  }
+
+  return null;
+};
+
 const NotificationsPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -80,10 +99,26 @@ const NotificationsPage = () => {
     setBusyId(null);
     if (ok) {
       toast({ title: "הבקשה אושרה" });
-      await markRead(n.id);
+    
+      setItems((prev) =>
+        prev.map((item) =>
+          item.id === n.id
+            ? {
+                ...item,
+                read_at: item.read_at ?? new Date().toISOString(),
+                data: {
+                  ...(item.data || {}),
+                  handled: true,
+                  decision: "approved",
+                  handled_at: new Date().toISOString(),
+                },
+              }
+            : item
+        )
+      );
+    
+      await RemoteStorageService.markNotificationAsHandled(n.id, "approved");
       await load();
-    } else {
-      toast({ title: "שגיאה באישור", variant: "destructive" });
     }
   };
 
@@ -95,10 +130,26 @@ const NotificationsPage = () => {
     setBusyId(null);
     if (ok) {
       toast({ title: "הבקשה נדחתה" });
-      await markRead(n.id);
+    
+      setItems((prev) =>
+        prev.map((item) =>
+          item.id === n.id
+            ? {
+                ...item,
+                read_at: item.read_at ?? new Date().toISOString(),
+                data: {
+                  ...(item.data || {}),
+                  handled: true,
+                  decision: "rejected",
+                  handled_at: new Date().toISOString(),
+                },
+              }
+            : item
+        )
+      );
+    
+      await RemoteStorageService.markNotificationAsHandled(n.id, "rejected");
       await load();
-    } else {
-      toast({ title: "שגיאה בדחיה", variant: "destructive" });
     }
   };
 
