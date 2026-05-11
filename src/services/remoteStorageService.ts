@@ -1873,5 +1873,46 @@ export class RemoteStorageService {
     }
     return true;
   }
+
+  static async markNotificationAsHandled(
+    notificationId: string,
+    decision: "approved" | "rejected"
+  ): Promise<boolean> {
+    if (!supabase) return false;
+  
+    const { data: existing, error: fetchError } = await supabase
+      .from("notifications")
+      .select("data")
+      .eq("id", notificationId)
+      .maybeSingle();
+  
+    if (fetchError || !existing) {
+      console.error("markNotificationAsHandled fetch error:", fetchError?.message);
+      return false;
+    }
+  
+    const nextData = {
+      ...((existing as any).data || {}),
+      handled: true,
+      decision,
+      handled_at: new Date().toISOString(),
+    };
+  
+    const { error } = await supabase
+      .from("notifications")
+      .update({
+        data: nextData,
+        read_at: new Date().toISOString(),
+      })
+      .eq("id", notificationId);
+  
+    if (error) {
+      console.error("markNotificationAsHandled error:", error.message);
+      return false;
+    }
+  
+    return true;
+}
+
 }
 
