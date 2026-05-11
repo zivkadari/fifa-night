@@ -1523,7 +1523,7 @@ export class RemoteStorageService {
     if (!supabase) return false;
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return false;
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from(TEAM_JOIN_REQUESTS_TABLE)
       .insert({
         team_id: teamId,
@@ -1531,12 +1531,21 @@ export class RemoteStorageService {
         requester_email: user.email || null,
         status: "pending",
         message: message?.trim() || null,
-      });
+      })
+      .select("id")
+      .maybeSingle();
     if (error) {
       // duplicate pending request — treat as success
       if (error.code === "23505") return true;
       console.error("requestToJoinTeam error:", error.message);
       return false;
+    }
+    if (data?.id) {
+      try {
+        await supabase.rpc("notify_team_join_request_created", { _request_id: data.id });
+      } catch (e: any) {
+        console.warn("notify_team_join_request_created failed:", e?.message);
+      }
     }
     return true;
   }
