@@ -119,6 +119,8 @@ const NotificationsPage = () => {
     
       await RemoteStorageService.markNotificationAsHandled(n.id, "approved");
       await load();
+    } else {
+      toast({ title: "שגיאה באישור", variant: "destructive" });
     }
   };
 
@@ -150,6 +152,8 @@ const NotificationsPage = () => {
     
       await RemoteStorageService.markNotificationAsHandled(n.id, "rejected");
       await load();
+    } else {
+      toast({ title: "שגיאה בדחיה", variant: "destructive" });
     }
   };
 
