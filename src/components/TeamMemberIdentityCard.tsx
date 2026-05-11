@@ -168,10 +168,10 @@ export const TeamMemberIdentityCard = ({
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs text-muted-foreground">
-            הזהות שלך בקבוצה
+            אתה מזוהה בקבוצה כשחקן
           </p>
           <p className="text-sm font-semibold text-foreground truncate">
-            {linkedPlayerName || "שחקן מקושר"} · שחקן
+            {linkedPlayerName || "שחקן מקושר"}
           </p>
         </div>
   
@@ -182,7 +182,7 @@ export const TeamMemberIdentityCard = ({
           onClick={resetIdentity}
           className="shrink-0"
         >
-          שנה
+          שנה זהות
         </Button>
       </div>
     );
