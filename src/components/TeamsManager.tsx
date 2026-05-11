@@ -40,9 +40,10 @@ interface TeamJoinRequest {
 interface TeamsManagerProps {
   onBack: () => void;
   onStartEveningForTeam: (teamId: string) => void;
+  initialTeamId?: string | null;
 }
 
-export const TeamsManager = ({ onBack, onStartEveningForTeam }: TeamsManagerProps) => {
+export const TeamsManager = ({ onBack, onStartEveningForTeam, initialTeamId }: TeamsManagerProps) => {
   const { toast } = useToast();
   const { refresh: refreshTeamsContext, setActiveTeamId } = useTeam();
   const [teams, setTeams] = useState<Array<{ id: string; name: string; role?: string }>>([]);
@@ -75,12 +76,18 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam }: TeamsManagerProp
     const load = async () => {
       const list = await RemoteStorageService.listTeams();
       setTeams(list);
+  
       if (list.length && !selectedTeamId) {
-        setSelectedTeamId(list[0].id);
+        const initialExists = initialTeamId
+          ? list.some((team) => team.id === initialTeamId)
+          : false;
+  
+        setSelectedTeamId(initialExists ? initialTeamId! : list[0].id);
       }
     };
+  
     load();
-  }, []);
+  }, [initialTeamId, selectedTeamId]);
 
   useEffect(() => {
     if (!selectedTeamId) {
