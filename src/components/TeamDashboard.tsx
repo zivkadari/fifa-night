@@ -98,13 +98,36 @@ export const TeamDashboard = ({
   useEffect(() => {
     if (!isAuthed) { setUnreadCount(0); return; }
     let mounted = true;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
     const refresh = async () => {
       const c = await RemoteStorageService.getUnreadNotificationsCount();
       if (mounted) setUnreadCount(c);
     };
+    const setupRealtime = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!mounted || !user) return;
+      channel = supabase
+        .channel(`notifications-count:${user.id}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "notifications",
+            filter: `user_id=eq.${user.id}`,
+          },
+          refresh
+        )
+        .subscribe();
+    };
     refresh();
+    setupRealtime();
     const id = setInterval(refresh, 60000);
-    return () => { mounted = false; clearInterval(id); };
+    return () => {
+      mounted = false;
+      clearInterval(id);
+      if (channel) supabase.removeChannel(channel);
+    };
   }, [isAuthed]);
 
   // Load profile display name for the greeting

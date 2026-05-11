@@ -72,6 +72,7 @@ const NotificationsPage = () => {
 
   useEffect(() => {
     let mounted = true;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
     (async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!mounted) return;
@@ -82,8 +83,27 @@ const NotificationsPage = () => {
       }
       setAuthed(true);
       await load();
+      if (!mounted) return;
+      channel = supabase
+        .channel(`notifications:${session.user.id}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "notifications",
+            filter: `user_id=eq.${session.user.id}`,
+          },
+          () => {
+            load();
+          }
+        )
+        .subscribe();
     })();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+      if (channel) supabase.removeChannel(channel);
+    };
   }, [load]);
 
   const markRead = async (id: string) => {

@@ -683,6 +683,10 @@ export type Database = {
         Args: { _team_id: string }
         Returns: string
       }
+      review_team_join_request: {
+        Args: { _approved: boolean; _request_id: string }
+        Returns: boolean
+      }
       resolve_invite_code: {
         Args: { _code: string }
         Returns: {

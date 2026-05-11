@@ -1523,6 +1523,24 @@ export class RemoteStorageService {
     if (!supabase) return false;
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return false;
+
+    const { data: existing, error: existingError } = await supabase
+      .from(TEAM_JOIN_REQUESTS_TABLE)
+      .select("id")
+      .eq("team_id", teamId)
+      .eq("user_id", user.id)
+      .eq("status", "pending")
+      .maybeSingle();
+
+    if (!existingError && existing?.id) {
+      try {
+        await supabase.rpc("notify_team_join_request_created", { _request_id: existing.id });
+      } catch (e: any) {
+        console.warn("notify_team_join_request_created existing failed:", e?.message);
+      }
+      return true;
+    }
+
     const { data, error } = await supabase
       .from(TEAM_JOIN_REQUESTS_TABLE)
       .insert({
@@ -1630,6 +1648,17 @@ export class RemoteStorageService {
     } = await supabase.auth.getUser();
   
     if (!user) return false;
+
+    try {
+      const { data, error } = await supabase.rpc("review_team_join_request", {
+        _request_id: requestId,
+        _approved: true,
+      });
+      if (!error) return data !== false;
+      console.warn("review_team_join_request approve fallback:", error.message);
+    } catch (e: any) {
+      console.warn("review_team_join_request approve exception:", e?.message);
+    }
   
     const { data: req, error: fetchErr } = await supabase
       .from(TEAM_JOIN_REQUESTS_TABLE)
@@ -1684,6 +1713,18 @@ export class RemoteStorageService {
     if (!supabase) return false;
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return false;
+
+    try {
+      const { data, error } = await supabase.rpc("review_team_join_request", {
+        _request_id: requestId,
+        _approved: false,
+      });
+      if (!error) return data !== false;
+      console.warn("review_team_join_request reject fallback:", error.message);
+    } catch (e: any) {
+      console.warn("review_team_join_request reject exception:", e?.message);
+    }
+
     const { error } = await supabase
       .from(TEAM_JOIN_REQUESTS_TABLE)
       .update({
