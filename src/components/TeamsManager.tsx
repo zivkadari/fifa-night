@@ -556,7 +556,7 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam }: TeamsManagerProp
                       size="sm"
                       onClick={() => setShowPlayers((v) => !v)}
                     >
-                      {showPlayers ? "הסתר" : "הצג"}
+                      {showPlayers ? "הסתר" : "הצג שחקנים"}
                     </Button>
                   </div>
             
