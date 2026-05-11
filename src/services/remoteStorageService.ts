@@ -1110,23 +1110,28 @@ export class RemoteStorageService {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return false;
   
-    await supabase
+    const { error: playerAccountError } = await supabase
       .from(PLAYER_ACCOUNTS_TABLE)
       .delete()
       .eq("user_id", user.id)
       .eq("team_id", teamId);
-  
-    const { error } = await supabase
+
+    if (playerAccountError) {
+      console.error("resetTeamMemberMode player account error:", playerAccountError.message);
+      return false;
+    }
+
+    const { error: memberModeError } = await supabase
       .from(TEAM_MEMBERS_TABLE)
       .update({ member_mode: "unset" })
       .eq("team_id", teamId)
       .eq("user_id", user.id);
-  
-    if (error) {
-      console.error("resetTeamMemberMode error:", error.message);
+
+    if (memberModeError) {
+      console.error("resetTeamMemberMode member mode error:", memberModeError.message);
       return false;
     }
-  
+
     return true;
   }
 
