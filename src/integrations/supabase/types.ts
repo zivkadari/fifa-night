@@ -159,6 +159,39 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          body: string | null
+          created_at: string
+          data: Json
+          id: string
+          read_at: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          data?: Json
+          id?: string
+          read_at?: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          data?: Json
+          id?: string
+          read_at?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       pairs_pool_config: {
         Row: {
           distribution: Json
@@ -629,6 +662,22 @@ export type Database = {
           team_id: string
           team_name: string
         }[]
+      }
+      notify_team_evening_started: {
+        Args: {
+          _evening_id: string
+          _team_id: string
+          _tournament_mode: string
+        }
+        Returns: number
+      }
+      notify_team_join_request_created: {
+        Args: { _request_id: string }
+        Returns: number
+      }
+      notify_team_join_request_decision: {
+        Args: { _approved: boolean; _request_id: string }
+        Returns: undefined
       }
       regenerate_team_invite_code: {
         Args: { _team_id: string }

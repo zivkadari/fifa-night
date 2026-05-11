@@ -66,6 +66,19 @@ export class RemoteStorageService {
         // Surface the server error so the caller can handle it
         throw new Error(error.message);
       }
+      // Notify other team members (best-effort; deduped server-side)
+      try {
+        const mode = (evening as any)?.mode === 'fivePlayer' || (evening as any)?.matches?.[0]?.mode === 'fivePlayer'
+          ? 'ליגת 5 שחקנים'
+          : (evening as any)?.singlesMode ? 'טורניר יחידים' : 'טורניר זוגות';
+        await supabase.rpc("notify_team_evening_started", {
+          _evening_id: evening.id,
+          _team_id: teamId,
+          _tournament_mode: mode,
+        });
+      } catch (e: any) {
+        console.warn("notify_team_evening_started failed:", e?.message);
+      }
       return;
     }
 
@@ -1510,7 +1523,7 @@ export class RemoteStorageService {
     if (!supabase) return false;
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return false;
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from(TEAM_JOIN_REQUESTS_TABLE)
       .insert({
         team_id: teamId,
@@ -1518,12 +1531,21 @@ export class RemoteStorageService {
         requester_email: user.email || null,
         status: "pending",
         message: message?.trim() || null,
-      });
+      })
+      .select("id")
+      .maybeSingle();
     if (error) {
       // duplicate pending request — treat as success
       if (error.code === "23505") return true;
       console.error("requestToJoinTeam error:", error.message);
       return false;
+    }
+    if (data?.id) {
+      try {
+        await supabase.rpc("notify_team_join_request_created", { _request_id: data.id });
+      } catch (e: any) {
+        console.warn("notify_team_join_request_created failed:", e?.message);
+      }
     }
     return true;
   }
@@ -1650,6 +1672,11 @@ export class RemoteStorageService {
       return false;
     }
   
+    try {
+      await supabase.rpc("notify_team_join_request_decision", { _request_id: requestId, _approved: true });
+    } catch (e: any) {
+      console.warn("notify_team_join_request_decision (approve) failed:", e?.message);
+    }
     return true;
   }
 
@@ -1669,6 +1696,11 @@ export class RemoteStorageService {
     if (error) {
       console.error("rejectJoinRequest error:", error.message);
       return false;
+    }
+    try {
+      await supabase.rpc("notify_team_join_request_decision", { _request_id: requestId, _approved: false });
+    } catch (e: any) {
+      console.warn("notify_team_join_request_decision (reject) failed:", e?.message);
     }
     return true;
   }
@@ -1767,6 +1799,79 @@ export class RemoteStorageService {
       console.error("listActiveEveningsForMyTeams unexpected error:", e?.message || e);
       return [];
     }
+  }
+
+  // ========== Notifications ==========
+  static async listMyNotifications(limit = 50): Promise<Array<{
+    id: string;
+    user_id: string;
+    type: string;
+    title: string;
+    body: string | null;
+    data: any;
+    read_at: string | null;
+    created_at: string;
+  }>> {
+    if (!supabase) return [];
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+    const { data, error } = await supabase
+      .from("notifications")
+      .select("id, user_id, type, title, body, data, read_at, created_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    if (error) {
+      console.error("listMyNotifications error:", error.message);
+      return [];
+    }
+    return (data || []) as any;
+  }
+
+  static async getUnreadNotificationsCount(): Promise<number> {
+    if (!supabase) return 0;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return 0;
+    const { count, error } = await supabase
+      .from("notifications")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .is("read_at", null);
+    if (error) {
+      console.error("getUnreadNotificationsCount error:", error.message);
+      return 0;
+    }
+    return count || 0;
+  }
+
+  static async markNotificationAsRead(notificationId: string): Promise<boolean> {
+    if (!supabase) return false;
+    const { error } = await supabase
+      .from("notifications")
+      .update({ read_at: new Date().toISOString() })
+      .eq("id", notificationId)
+      .is("read_at", null);
+    if (error) {
+      console.error("markNotificationAsRead error:", error.message);
+      return false;
+    }
+    return true;
+  }
+
+  static async markAllNotificationsAsRead(): Promise<boolean> {
+    if (!supabase) return false;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return false;
+    const { error } = await supabase
+      .from("notifications")
+      .update({ read_at: new Date().toISOString() })
+      .eq("user_id", user.id)
+      .is("read_at", null);
+    if (error) {
+      console.error("markAllNotificationsAsRead error:", error.message);
+      return false;
+    }
+    return true;
   }
 }
 
