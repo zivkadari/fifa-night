@@ -203,7 +203,7 @@ export const TeamMemberIdentityCard = ({
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs text-muted-foreground">
-            הזהות שלך בקבוצה
+            אתה מוגדר בקבוצה כ
           </p>
           <p className="text-sm font-semibold text-foreground truncate">
             צופה
@@ -217,7 +217,7 @@ export const TeamMemberIdentityCard = ({
           onClick={resetIdentity}
           className="shrink-0"
         >
-          שנה
+          שנה זהות
         </Button>
       </div>
     );
