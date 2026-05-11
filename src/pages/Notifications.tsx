@@ -228,6 +228,24 @@ const NotificationsPage = () => {
         </div>
       );
     }
+
+    if (n.type === "team_identity_required") {
+      return (
+        <div className="flex gap-2 pt-2">
+          <Button
+            size="sm"
+            variant="gaming"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleOpenTeam(n);
+            }}
+          >
+            בחר זהות
+          </Button>
+        </div>
+      );
+    }
+
     if (n.type === "team_evening_started") {
       return (
         <div className="flex gap-2 pt-2">
