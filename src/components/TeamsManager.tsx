@@ -481,65 +481,65 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam }: TeamsManagerProp
   
         {selectedTeamId && (
           <>
-            {/* Selected team summary */}
-            <Card className="bg-gaming-surface/50 border-border/50 p-4 mb-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-xs text-neon-green font-semibold mb-1">
-                    {roleLabel}
-                  </p>
-                  <h2 className="text-xl font-bold text-foreground truncate">
-                    {selectedTeamName}
-                  </h2>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {teamPlayers.length} שחקנים · {leaderboard.length ? "יש נתוני טבלה" : "אין נתוני טבלה עדיין"}
-                  </p>
-                </div>
-  
-                {canManageSelectedTeam && (
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => selectedTeam && startEditingTeam(selectedTeam)}
-                    aria-label="ערוך שם קבוצה"
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
-  
-              {editingTeamId === selectedTeamId && (
-                <div className="flex gap-2 mt-3">
-                  <Input
-                    value={editingTeamName}
-                    onChange={(e) => setEditingTeamName(e.target.value)}
-                    className="bg-gaming-surface border-border flex-1"
-                    autoFocus
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") saveTeamName();
-                      if (e.key === "Escape") cancelEditingTeam();
-                    }}
-                  />
-                  <Button variant="outline" size="icon" onClick={saveTeamName} className="text-neon-green">
-                    <Check className="h-4 w-4" />
-                  </Button>
-                  <Button variant="outline" size="icon" onClick={cancelEditingTeam}>
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
-            </Card>
-  
-            {/* Identity */}
-            <TeamMemberIdentityCard
-              teamId={selectedTeamId}
-              teamName={selectedTeamName}
-            />
-  
-            {/* Quick team overview */}
+            {/* Selected team overview */}
             <Card className="bg-gaming-surface/50 border-border/50 p-4 mb-4">
               <div className="space-y-4">
-                {/* Players summary */}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-xs text-neon-green font-semibold mb-1">
+                      {roleLabel}
+                    </p>
+                    <h2 className="text-xl font-bold text-foreground truncate">
+                      {selectedTeamName}
+                    </h2>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {teamPlayers.length} שחקנים · {leaderboard.length ? "יש נתוני טבלה" : "אין נתוני טבלה עדיין"}
+                    </p>
+                  </div>
+            
+                  {canManageSelectedTeam && (
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => selectedTeam && startEditingTeam(selectedTeam)}
+                      aria-label="ערוך שם קבוצה"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+            
+                {editingTeamId === selectedTeamId && (
+                  <div className="flex gap-2">
+                    <Input
+                      value={editingTeamName}
+                      onChange={(e) => setEditingTeamName(e.target.value)}
+                      className="bg-gaming-surface border-border flex-1"
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") saveTeamName();
+                        if (e.key === "Escape") cancelEditingTeam();
+                      }}
+                    />
+                    <Button variant="outline" size="icon" onClick={saveTeamName} className="text-neon-green">
+                      <Check className="h-4 w-4" />
+                    </Button>
+                    <Button variant="outline" size="icon" onClick={cancelEditingTeam}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+            
+                <Separator />
+            
+                <TeamMemberIdentityCard
+                  teamId={selectedTeamId}
+                  teamName={selectedTeamName}
+                  compact
+                />
+            
+                <Separator />
+            
                 <div>
                   <div className="flex items-center justify-between gap-3 mb-1">
                     <div>
@@ -550,7 +550,7 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam }: TeamsManagerProp
                           : "אין שחקנים עדיין"}
                       </p>
                     </div>
-  
+            
                     <Button
                       variant="outline"
                       size="sm"
@@ -559,7 +559,7 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam }: TeamsManagerProp
                       {showPlayers ? "הסתר" : "הצג"}
                     </Button>
                   </div>
-  
+            
                   {showPlayers && (
                     <div className="mt-3 rounded-lg border border-border/50 bg-gaming-bg/40 p-3 space-y-2">
                       {canManageSelectedTeam && (
@@ -582,14 +582,14 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam }: TeamsManagerProp
                           </Button>
                         </div>
                       )}
-  
+            
                       {teamPlayers.map((p) => (
                         <div
                           key={p.id}
                           className="flex items-center justify-between border-b border-border/50 py-2 last:border-b-0"
                         >
                           <span className="text-foreground">{p.name}</span>
-  
+            
                           {canManageSelectedTeam && (
                             <Button
                               variant="ghost"
@@ -602,16 +602,20 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam }: TeamsManagerProp
                           )}
                         </div>
                       ))}
-  
+            
                       {!teamPlayers.length && (
                         <p className="text-sm text-muted-foreground">אין שחקנים עדיין</p>
                       )}
                     </div>
                   )}
                 </div>
+              </div>
+            </Card>
   
-                <Separator />
-  
+            {/* Quick team overview */}
+            <Card className="bg-gaming-surface/50 border-border/50 p-4 mb-4">
+              <div className="space-y-4">
+                
                 {/* Leaderboard summary */}
                 <div>
                   <div className="flex items-center justify-between gap-3 mb-2">
