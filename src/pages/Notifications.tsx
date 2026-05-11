@@ -185,11 +185,27 @@ const NotificationsPage = () => {
     
       return (
         <div className="flex gap-2 pt-2">
-          <Button size="sm" variant="gaming" disabled={busyId === n.id} onClick={() => handleApprove(n)}>
+          <Button
+            size="sm"
+            variant="gaming"
+            disabled={busyId === n.id}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleApprove(n);
+            }}
+          >
             {busyId === n.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
             אשר
           </Button>
-          <Button size="sm" variant="outline" disabled={busyId === n.id} onClick={() => handleReject(n)}>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={busyId === n.id}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleReject(n);
+            }}
+          >
             <X className="h-3 w-3" />
             דחה
           </Button>
@@ -199,7 +215,14 @@ const NotificationsPage = () => {
     if (n.type === "team_join_request_approved") {
       return (
         <div className="flex gap-2 pt-2">
-          <Button size="sm" variant="outline" onClick={() => handleOpenTeam(n)}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleOpenTeam(n);
+            }}
+          >
             פתח קבוצה
           </Button>
         </div>
@@ -208,7 +231,14 @@ const NotificationsPage = () => {
     if (n.type === "team_evening_started") {
       return (
         <div className="flex gap-2 pt-2">
-          <Button size="sm" variant="outline" onClick={() => handleOpenTeam(n)}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleOpenTeam(n);
+            }}
+          >
             פתח טורניר
           </Button>
         </div>
