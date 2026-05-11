@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Trophy, Gamepad2, Users2, User, Users, ChevronDown, ChevronRight,
-  Eye, Settings, UserPlus, Star, LogOut, LogIn, X, Play, Zap, Plus,
+  Eye, Settings, UserPlus, Star, LogOut, LogIn, X, Play, Zap, Plus, Bell,
 } from "lucide-react";
 import {
   Dialog,
