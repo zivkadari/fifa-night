@@ -1800,5 +1800,78 @@ export class RemoteStorageService {
       return [];
     }
   }
+
+  // ========== Notifications ==========
+  static async listMyNotifications(limit = 50): Promise<Array<{
+    id: string;
+    user_id: string;
+    type: string;
+    title: string;
+    body: string | null;
+    data: any;
+    read_at: string | null;
+    created_at: string;
+  }>> {
+    if (!supabase) return [];
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+    const { data, error } = await supabase
+      .from("notifications")
+      .select("id, user_id, type, title, body, data, read_at, created_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    if (error) {
+      console.error("listMyNotifications error:", error.message);
+      return [];
+    }
+    return (data || []) as any;
+  }
+
+  static async getUnreadNotificationsCount(): Promise<number> {
+    if (!supabase) return 0;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return 0;
+    const { count, error } = await supabase
+      .from("notifications")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .is("read_at", null);
+    if (error) {
+      console.error("getUnreadNotificationsCount error:", error.message);
+      return 0;
+    }
+    return count || 0;
+  }
+
+  static async markNotificationAsRead(notificationId: string): Promise<boolean> {
+    if (!supabase) return false;
+    const { error } = await supabase
+      .from("notifications")
+      .update({ read_at: new Date().toISOString() })
+      .eq("id", notificationId)
+      .is("read_at", null);
+    if (error) {
+      console.error("markNotificationAsRead error:", error.message);
+      return false;
+    }
+    return true;
+  }
+
+  static async markAllNotificationsAsRead(): Promise<boolean> {
+    if (!supabase) return false;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return false;
+    const { error } = await supabase
+      .from("notifications")
+      .update({ read_at: new Date().toISOString() })
+      .eq("user_id", user.id)
+      .is("read_at", null);
+    if (error) {
+      console.error("markAllNotificationsAsRead error:", error.message);
+      return false;
+    }
+    return true;
+  }
 }
 
