@@ -576,6 +576,26 @@ export const TeamDashboard = ({
                 </CardContent>
               </Card>
             )}
+            <Link to="/notifications" className="block">
+              <Card className="bg-card border-border cursor-pointer hover:border-neon-green/30 transition-colors h-full">
+                <CardContent className="p-3 flex items-center gap-3">
+                  <div className="relative shrink-0">
+                    <Bell className="h-5 w-5 text-muted-foreground" />
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-neon-green text-gaming-bg text-[10px] font-bold flex items-center justify-center">
+                        {unreadCount > 9 ? "9+" : unreadCount}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm font-semibold text-foreground">
+                    התרעות
+                    {unreadCount > 0 && (
+                      <span className="text-[10px] text-muted-foreground block">{unreadCount} חדשות</span>
+                    )}
+                  </p>
+                </CardContent>
+              </Card>
+            </Link>
             <Link to="/settings" className="block">
               <Card className="bg-card border-border cursor-pointer hover:border-neon-green/30 transition-colors h-full">
                 <CardContent className="p-3 flex items-center gap-3">
