@@ -39,59 +39,85 @@ import { useTeam } from "@/contexts/TeamContext";
 
 type AppState = 'home' | 'setup' | 'tournament-type' | 'singles-setup' | 'singles-clubs' | 'singles-schedule' | 'game' | 'summary' | 'history' | 'teams' | 'find-team' | 'join' | 'pairs-mode-selection' | 'tier-question-flow' | 'fp-setup' | 'fp-bank-overview' | 'fp-game' | 'fp-summary';
 type TeamEveningEditReason = "owner_admin" | "playing" | "view_only" | null;
+type MatchScoreSubmission = {
+  roundIndex: number | null;
+  matchIndex: number;
+  scoreA: number;
+  scoreB: number;
+  clubA?: Club | null;
+  clubB?: Club | null;
+};
 
 const hasMatchScore = (match: any, key = "score") =>
   Array.isArray(match?.[key]) || typeof match?.[key] === "number";
 
 const sameScore = (a: any, b: any) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
 
-const isFirstTimeRegularScoreSubmission = (previous: Evening | null, next: Evening) => {
+const getFirstTimeRegularScoreSubmission = (previous: Evening | null, next: Evening): MatchScoreSubmission | null => {
   if (!previous || previous.id !== next.id || (previous as any).completed !== (next as any).completed) {
-    return false;
+    return null;
   }
 
   if (Array.isArray((previous as any).schedule) || Array.isArray((next as any).schedule)) {
-    return false;
+    return null;
   }
 
-  let addedScores = 0;
+  let submission: MatchScoreSubmission | null = null;
 
   if (previous.type === "singles" || next.type === "singles") {
     const oldGames = previous.gameSequence ?? [];
     const newGames = next.gameSequence ?? [];
-    if (oldGames.length !== newGames.length) return false;
+    if (oldGames.length !== newGames.length) return null;
 
     for (let i = 0; i < oldGames.length; i += 1) {
       const oldGame = oldGames[i] as any;
       const newGame = newGames[i] as any;
       const oldHasScore = hasMatchScore(oldGame);
       const newHasScore = hasMatchScore(newGame);
-      if (oldHasScore && !sameScore(oldGame.score, newGame.score)) return false;
-      if (!oldHasScore && newHasScore) addedScores += 1;
+      if (oldHasScore && !sameScore(oldGame.score, newGame.score)) return null;
+      if (!oldHasScore && newHasScore) {
+        if (submission || !Array.isArray(newGame.score)) return null;
+        submission = {
+          roundIndex: null,
+          matchIndex: i,
+          scoreA: newGame.score[0],
+          scoreB: newGame.score[1],
+        };
+      }
     }
-    return addedScores === 1;
+    return submission;
   }
 
   const oldRounds = previous.rounds ?? [];
   const newRounds = next.rounds ?? [];
-  if (oldRounds.length !== newRounds.length) return false;
+  if (oldRounds.length !== newRounds.length) return null;
 
   for (let i = 0; i < oldRounds.length; i += 1) {
     const oldMatches = oldRounds[i]?.matches ?? [];
     const newMatches = newRounds[i]?.matches ?? [];
-    if (oldMatches.length !== newMatches.length) return false;
+    if (oldMatches.length !== newMatches.length) return null;
 
     for (let j = 0; j < oldMatches.length; j += 1) {
       const oldMatch = oldMatches[j] as any;
       const newMatch = newMatches[j] as any;
       const oldHasScore = hasMatchScore(oldMatch);
       const newHasScore = hasMatchScore(newMatch);
-      if (oldHasScore && !sameScore(oldMatch.score, newMatch.score)) return false;
-      if (!oldHasScore && newHasScore) addedScores += 1;
+      if (oldHasScore && !sameScore(oldMatch.score, newMatch.score)) return null;
+      if (!oldHasScore && newHasScore) {
+        if (submission || !Array.isArray(newMatch.score)) return null;
+        submission = {
+          roundIndex: i,
+          matchIndex: j,
+          scoreA: newMatch.score[0],
+          scoreB: newMatch.score[1],
+          clubA: newMatch.clubs?.[0] ?? null,
+          clubB: newMatch.clubs?.[1] ?? null,
+        };
+      }
     }
   }
 
-  return addedScores === 1;
+  return submission;
 };
 
 const Index = () => {
@@ -517,23 +543,24 @@ const handleGoHome = () => {
     if (!RemoteStorageService.isEnabled()) return;
 
     if (currentTeamEditReason === "playing") {
-      if (!isFirstTimeRegularScoreSubmission(previousEvening, evening)) {
+      const submission = getFirstTimeRegularScoreSubmission(previousEvening, evening);
+      if (!submission) {
         console.warn("Skipped remote evening save for regular member; only first-time score submissions are persisted in Phase 1.5A", {
           eveningId: evening.id,
         });
         return;
       }
 
-      RemoteStorageService.submitTournamentScore(evening)
+      RemoteStorageService.submitMatchScore(evening.id, submission)
         .then((savedEvening) => {
           setCurrentEvening(savedEvening);
           if (!savedEvening.completed) persistActiveEveningNow(savedEvening);
         })
         .catch((error) => {
-          console.error("submitTournamentScore failed:", error?.message || error);
+          console.error("submitMatchScore failed:", error?.message || error);
           toast({
-            title: "׳©׳’׳™׳׳” ׳‘׳©׳׳™׳¨׳× ׳”׳×׳•׳¦׳׳”",
-            description: error?.message || "׳׳ ׳ ׳™׳×׳ ׳׳©׳׳•׳¨ ׳׳× ׳”׳×׳•׳¦׳׳” ׳‘׳¢׳ ׳Ÿ",
+            title: "שגיאה בשמירת התוצאה",
+            description: "לא ניתן לשמור את התוצאה. נסה שוב בעוד רגע.",
             variant: "destructive",
           });
         });

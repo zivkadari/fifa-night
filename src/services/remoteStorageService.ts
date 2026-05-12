@@ -138,6 +138,33 @@ export class RemoteStorageService {
     return data as Evening;
   }
 
+  static async submitMatchScore(
+    eveningId: string,
+    submission: {
+      roundIndex: number | null;
+      matchIndex: number;
+      scoreA: number;
+      scoreB: number;
+      clubA?: any;
+      clubB?: any;
+    }
+  ): Promise<Evening> {
+    if (!supabase) throw new Error("Supabase is not configured");
+    const { data, error } = await supabase.rpc("submit_match_score", {
+      _evening_id: eveningId,
+      _round_index: submission.roundIndex,
+      _match_index: submission.matchIndex,
+      _score_a: submission.scoreA,
+      _score_b: submission.scoreB,
+      _club_a: submission.clubA ?? null,
+      _club_b: submission.clubB ?? null,
+    });
+    if (error) {
+      throw new Error(error.message);
+    }
+    return data as Evening;
+  }
+
   static async loadEvenings(): Promise<Evening[]> {
     if (!supabase) return [];
     const { data: { user } } = await supabase.auth.getUser();
