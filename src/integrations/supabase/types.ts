@@ -623,6 +623,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cancel_team_evening: {
+        Args: { _evening_id: string }
+        Returns: Json
+      }
       cleanup_old_join_attempts: { Args: never; Returns: undefined }
       create_team_evening: {
         Args: { _data: Json; _evening_id: string; _team_id: string }

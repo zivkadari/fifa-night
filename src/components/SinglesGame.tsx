@@ -28,6 +28,8 @@ interface SinglesGameProps {
   onComplete: (evening: Evening) => void;
   onGoHome: () => void;
   onUpdateEvening: (evening: Evening) => void;
+  canStopTournament?: boolean;
+  onStopTournament?: () => void;
 }
 
 export const SinglesGameComponent = ({ evening, onBack, onComplete, onGoHome, onUpdateEvening }: SinglesGameProps) => {

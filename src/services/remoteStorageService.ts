@@ -165,6 +165,17 @@ export class RemoteStorageService {
     return data as Evening;
   }
 
+  static async cancelTeamEvening(eveningId: string): Promise<Evening> {
+    if (!supabase) throw new Error("Supabase is not configured");
+    const { data, error } = await supabase.rpc("cancel_team_evening", {
+      _evening_id: eveningId,
+    });
+    if (error) {
+      throw new Error(error.message);
+    }
+    return data as Evening;
+  }
+
   static async loadEvenings(): Promise<Evening[]> {
     if (!supabase) return [];
     const { data: { user } } = await supabase.auth.getUser();
@@ -182,6 +193,19 @@ export class RemoteStorageService {
       if (r.team_id) (evening as any)._team_id = r.team_id;
       return evening;
     });
+  }
+
+  static async loadEveningById(eveningId: string): Promise<Evening | null> {
+    if (!supabase) return null;
+    const { data, error } = await supabase
+      .from(EVENINGS_TABLE)
+      .select("data")
+      .eq("id", eveningId)
+      .maybeSingle();
+    if (error) {
+      throw new Error(error.message);
+    }
+    return (data?.data as Evening | undefined) ?? null;
   }
 
   static async loadAllFPEvenings(): Promise<any[]> {
@@ -468,20 +492,34 @@ export class RemoteStorageService {
   }
 
   // Subscribe to realtime changes for a specific evening id
-  static subscribeToEvening(eveningId: string, onChange: (evening: Evening) => void) {
+  static subscribeToEvening(
+    eveningId: string,
+    onChange: (evening: Evening) => void,
+    onDelete?: () => void,
+    onStatus?: (status: string, error?: unknown) => void,
+  ) {
     if (!this.isEnabled() || !supabase) return () => {};
 
     const channel = supabase
       .channel(`evening:${eveningId}`)
       .on(
         "postgres_changes",
-        { event: "UPDATE", schema: "public", table: EVENINGS_TABLE, filter: `id=eq.${eveningId}` },
+        { event: "*", schema: "public", table: EVENINGS_TABLE, filter: `id=eq.${eveningId}` },
         (payload: any) => {
+          if (payload?.eventType === "DELETE") {
+            onDelete?.();
+            return;
+          }
           const newRow = (payload?.new as EveningRow) || null;
           if (newRow?.data) onChange(newRow.data);
         }
       )
-      .subscribe();
+      .subscribe((status, error) => {
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || error) {
+          console.error("subscribeToEvening status:", status, error);
+        }
+        onStatus?.(status, error);
+      });
 
     return () => {
       try { supabase.removeChannel(channel); } catch {}
@@ -1885,7 +1923,7 @@ export class RemoteStorageService {
       }
       const active = (rows || []).filter((r: any) => {
         const ev = r.data as Evening | undefined;
-        return ev && (ev as any).completed !== true;
+        return ev && (ev as any).completed !== true && (ev as any).cancelled !== true;
       });
       if (active.length === 0) return [];
 

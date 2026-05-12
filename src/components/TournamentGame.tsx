@@ -19,9 +19,21 @@ import {
   RefreshCw,
   Share2,
   Pencil,
-  Trash2
+  Trash2,
+  StopCircle
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -47,9 +59,11 @@ interface TournamentGameProps {
   onGoHome: () => void;
   onUpdateEvening: (evening: Evening) => void;
   onRoundModeSelection?: (nextRoundIndex: number) => void;
+  canStopTournament?: boolean;
+  onStopTournament?: () => void;
 }
 
-export const TournamentGame = ({ evening, onBack, onComplete, onGoHome, onUpdateEvening, onRoundModeSelection }: TournamentGameProps) => {
+export const TournamentGame = ({ evening, onBack, onComplete, onGoHome, onUpdateEvening, onRoundModeSelection, canStopTournament, onStopTournament }: TournamentGameProps) => {
   // If this is a singles tournament, use the singles component
   if (evening.type === 'singles') {
     return (
@@ -59,6 +73,8 @@ export const TournamentGame = ({ evening, onBack, onComplete, onGoHome, onUpdate
         onComplete={onComplete}
         onGoHome={onGoHome}
         onUpdateEvening={onUpdateEvening}
+        canStopTournament={canStopTournament}
+        onStopTournament={onStopTournament}
       />
     );
   }
@@ -1239,6 +1255,29 @@ export const TournamentGame = ({ evening, onBack, onComplete, onGoHome, onUpdate
             <Button variant="ghost" size="icon" onClick={onGoHome} aria-label="Home">
               <Home className="h-5 w-5" />
             </Button>
+            {canStopTournament && onStopTournament && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()} className="text-destructive" aria-label="Stop tournament">
+                    <StopCircle className="h-5 w-5" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>להפסיק את הטורניר?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      הטורניר יסומן כמופסק וכל המשתתפים יחזרו למסך הבית.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>ביטול</AlertDialogCancel>
+                    <AlertDialogAction onClick={onStopTournament} className="bg-destructive hover:bg-destructive/90">
+                      הפסק טורניר
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
           </div>
         </div>
 

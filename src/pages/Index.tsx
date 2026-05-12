@@ -308,6 +308,105 @@ useEffect(() => {
     }
   };
 
+  useEffect(() => {
+    if (currentEvening?.id) {
+      const entry = activeTeamEvenings.find((item) => item.evening_id === currentEvening.id);
+      if (entry && !Array.isArray((entry.evening as any)?.schedule)) {
+        setCurrentEvening(entry.evening);
+        setCurrentTeamId(entry.team_id);
+        setCurrentTeamEditReason(entry.reason);
+      }
+    }
+    if (fpEvening?.id) {
+      const entry = activeTeamEvenings.find((item) => item.evening_id === fpEvening.id);
+      if (entry && Array.isArray((entry.evening as any)?.schedule)) {
+        setFpEvening(entry.evening as any);
+        setFpTeamId(entry.team_id);
+        setCurrentTeamEditReason(entry.reason);
+      }
+    }
+  }, [activeTeamEvenings, currentEvening?.id, fpEvening?.id]);
+
+  const getCancelledByName = (evening: Evening | FPEvening | any) =>
+    evening?.cancelled_by_name || "משתמש מורשה";
+
+  const handleCancelledEvening = (evening: Evening | FPEvening | any) => {
+    toast({
+      title: `הטורניר הופסק על ידי ${getCancelledByName(evening)}`,
+    });
+    clearActiveEvening();
+    StorageService.clearFPActive();
+    setCurrentEvening(null);
+    setFpEvening(null);
+    setCurrentTeamEditReason(null);
+    goTo('home');
+  };
+
+  const handleStopTournament = async (eveningId: string, kind: "regular" | "fp" = "regular") => {
+    try {
+      const cancelled = await RemoteStorageService.cancelTeamEvening(eveningId);
+      if (kind === "fp") {
+        StorageService.clearFPActive();
+        setFpEvening(null);
+      } else {
+        clearActiveEvening();
+        setCurrentEvening(null);
+      }
+      setCurrentTeamEditReason(null);
+      toast({ title: "הטורניר הופסק" });
+      goTo('home');
+      return cancelled;
+    } catch (error: any) {
+      console.error("cancelTeamEvening failed:", error?.message || error);
+      toast({
+        title: "שגיאה בהפסקת הטורניר",
+        description: error?.message || "לא ניתן להפסיק את הטורניר כרגע.",
+        variant: "destructive",
+      });
+      return null;
+    }
+  };
+
+  const handleResumeActiveTournament = async (kind: "regular" | "fp") => {
+    const eveningId = kind === "fp" ? fpEvening?.id : currentEvening?.id;
+    if (!eveningId) return;
+    try {
+      const latest = await RemoteStorageService.loadEveningById(eveningId);
+      if (!latest) {
+        throw new Error("Evening not found");
+      }
+      if ((latest as any).cancelled) {
+        handleCancelledEvening(latest);
+        return;
+      }
+      if ((latest as any).completed) {
+        toast({ title: "הטורניר כבר הסתיים" });
+        clearActiveEvening();
+        StorageService.clearFPActive();
+        setCurrentEvening(null);
+        setFpEvening(null);
+        goTo('home');
+        return;
+      }
+      if (kind === "fp") {
+        setFpEvening(latest as any);
+        StorageService.saveFPActive(latest as any);
+        goTo('fp-game');
+      } else {
+        setCurrentEvening(latest);
+        persistActiveEveningNow(latest);
+        goTo('game');
+      }
+    } catch (error: any) {
+      console.error("load latest active evening failed:", error?.message || error);
+      toast({
+        title: "שגיאה בטעינת הטורניר",
+        description: "לא ניתן לטעון את מצב הטורניר העדכני.",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Realtime sync: subscribe to current evening when in game state
   useEffect(() => {
     if (appState !== 'game' || !currentEvening) return;
@@ -317,6 +416,10 @@ useEffect(() => {
       e.rounds.reduce((sum, r) => sum + r.matches.filter(m => m.completed).length, 0);
 
     const unsubscribe = RemoteStorageService.subscribeToEvening(currentEvening.id, (remoteEvening) => {
+      if ((remoteEvening as any).cancelled === true) {
+        handleCancelledEvening(remoteEvening);
+        return;
+      }
       const local = currentEveningRef.current;
       if (!local) {
         setCurrentEvening(remoteEvening);
@@ -339,6 +442,12 @@ useEffect(() => {
           });
         }
       }
+    }, () => {
+      toast({ title: "הטורניר הופסק" });
+      clearActiveEvening();
+      setCurrentEvening(null);
+      setCurrentTeamEditReason(null);
+      goTo('home');
     });
     return () => unsubscribe && unsubscribe();
   }, [appState, currentEvening?.id, currentTeamEditReason]);
@@ -594,12 +703,9 @@ const handleGoHome = () => {
   };
 
   const handleCloseTournament = () => {
-    // Delete remote record so spectator link doesn't show stale cancelled tournament
     if (currentEvening?.id) {
-      RemoteStorageService.deleteEvening(currentEvening.id).catch(() => {});
+      handleStopTournament(currentEvening.id, "regular");
     }
-    clearActiveEvening();
-    setCurrentEvening(null);
   };
 
   // Handle successful join from JoinEvening component
@@ -674,18 +780,14 @@ const handleGoHome = () => {
             onViewHistory={handleViewHistory}
             onResume={
               activeFP
-                ? () => goTo('fp-game')
+                ? () => handleResumeActiveTournament("fp")
                 : activeRegular
-                  ? () => goTo('game')
+                  ? () => handleResumeActiveTournament("regular")
                   : undefined
             }
             onCloseTournament={
               activeFP
-                ? () => {
-                    RemoteStorageService.deleteEvening(fpEvening!.id).catch(() => {});
-                    StorageService.clearFPActive();
-                    setFpEvening(null);
-                  }
+                ? () => handleStopTournament(fpEvening!.id, "fp")
                 : activeRegular
                   ? handleCloseTournament
                   : undefined
@@ -820,7 +922,9 @@ const handleGoHome = () => {
 
               // Push to remote for collaboration
               const effectiveTeamId = pendingTeamId ?? currentTeamId ?? null;
-              await RemoteStorageService.upsertEveningLiveWithTeam(updatedEvening, effectiveTeamId).catch(() => {});
+              await RemoteStorageService.upsertEveningLiveWithTeam(updatedEvening, effectiveTeamId).catch((error) => {
+                console.error("Failed to save tier-question evening:", error?.message || error);
+              });
 
               goTo('game');
             }}
@@ -865,7 +969,9 @@ const handleGoHome = () => {
             onBack={() => window.history.back()}
             onStartTournament={() => {
               // Push to remote storage for sharing
-              RemoteStorageService.upsertEveningLiveWithTeam(currentEvening, currentTeamId ?? null).catch(() => {});
+              RemoteStorageService.upsertEveningLiveWithTeam(currentEvening, currentTeamId ?? null).catch((error) => {
+                console.error("Failed to save singles evening before start:", error?.message || error);
+              });
               
               setSinglesFlowState('game');
               goTo('game');
@@ -883,6 +989,8 @@ const handleGoHome = () => {
               onComplete={handleCompleteEvening}
               onGoHome={handleGoHome}
               onUpdateEvening={handleUpdateEvening}
+              canStopTournament={currentTeamEditReason === "owner_admin"}
+              onStopTournament={() => currentEvening && handleStopTournament(currentEvening.id, "regular")}
               clubsWithOverrides={clubsWithOverrides}
             />
           ) : (
@@ -892,6 +1000,8 @@ const handleGoHome = () => {
               onComplete={handleCompleteEvening}
               onGoHome={handleGoHome}
               onUpdateEvening={handleUpdateEvening}
+              canStopTournament={currentTeamEditReason === "owner_admin"}
+              onStopTournament={() => currentEvening && handleStopTournament(currentEvening.id, "regular")}
               onRoundModeSelection={(nextRoundIndex) => {
                 setPendingRoundIndex(nextRoundIndex);
                 goTo('pairs-mode-selection');
@@ -968,7 +1078,9 @@ const handleGoHome = () => {
                 }
                 if (teamId) setFpTeamId(teamId);
                 // Create via RPC (enforces one active evening per team)
-                RemoteStorageService.createTeamEvening(result as any, teamId).catch(() => {});
+                RemoteStorageService.createTeamEvening(result as any, teamId).catch((error) => {
+                  console.error("Failed to create FP team evening:", error?.message || error);
+                });
                 goTo('fp-bank-overview');
               }}
             />
@@ -984,7 +1096,9 @@ const handleGoHome = () => {
               onUpdateEvening={(ev) => {
                 setFpEvening(ev);
                 StorageService.saveFPActive(ev);
-                RemoteStorageService.upsertEveningLiveWithTeam(ev as any, fpTeamId ?? null).catch(() => {});
+                RemoteStorageService.upsertEveningLiveWithTeam(ev as any, fpTeamId ?? null).catch((error) => {
+                  console.error("Failed to save FP bank update:", error?.message || error);
+                });
               }}
             />
           ) : null;
@@ -1000,10 +1114,14 @@ const handleGoHome = () => {
                 goTo('fp-summary');
               }}
               onGoHome={() => goTo('home')}
+              canStopTournament={currentTeamEditReason === "owner_admin"}
+              onStopTournament={() => fpEvening && handleStopTournament(fpEvening.id, "fp")}
               onUpdateEvening={(ev) => {
                 setFpEvening(ev);
                 if (!ev.completed) StorageService.saveFPActive(ev);
-                RemoteStorageService.upsertEveningLiveWithTeam(ev as any, fpTeamId ?? null).catch(() => {});
+                RemoteStorageService.upsertEveningLiveWithTeam(ev as any, fpTeamId ?? null).catch((error) => {
+                  console.error("Failed to save FP evening update:", error?.message || error);
+                });
               }}
             />
           ) : null;
@@ -1019,7 +1137,9 @@ const handleGoHome = () => {
                 StorageService.saveFPEvening(ev);
                 StorageService.clearFPActive();
                 // Push final completed state to Supabase so historical spectator links work
-                RemoteStorageService.upsertEveningLiveWithTeam(ev as any, fpTeamId ?? null).catch(() => {});
+                RemoteStorageService.upsertEveningLiveWithTeam(ev as any, fpTeamId ?? null).catch((error) => {
+                  console.error("Failed to save FP summary:", error?.message || error);
+                });
               }}
               onBackToHome={() => {
                 setFpEvening(null);

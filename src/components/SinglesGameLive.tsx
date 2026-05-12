@@ -16,9 +16,21 @@ import {
   Crown,
   Home,
   Star,
-  History
+  History,
+  StopCircle
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Evening, SinglesGame, PlayerStats, Club } from "@/types/tournament";
 import { DiceScoreInput } from "@/components/DiceScoreInput";
 import { TournamentEngine } from "@/services/tournamentEngine";
@@ -31,9 +43,11 @@ interface SinglesGameLiveProps {
   onComplete: (evening: Evening) => void;
   onGoHome: () => void;
   onUpdateEvening: (evening: Evening) => void;
+  canStopTournament?: boolean;
+  onStopTournament?: () => void;
 }
 
-export const SinglesGameLive = ({ evening, onBack, onComplete, onGoHome, onUpdateEvening, clubsWithOverrides }: SinglesGameLiveProps) => {
+export const SinglesGameLive = ({ evening, onBack, onComplete, onGoHome, onUpdateEvening, clubsWithOverrides, canStopTournament, onStopTournament }: SinglesGameLiveProps) => {
   const { toast } = useToast();
   const [currentEvening, setCurrentEvening] = useState(evening);
   const [currentGame, setCurrentGame] = useState<SinglesGame | null>(null);
@@ -433,9 +447,34 @@ export const SinglesGameLive = ({ evening, onBack, onComplete, onGoHome, onUpdat
             </p>
           </div>
           
-          <Button variant="ghost" size="icon" onClick={onGoHome}>
-            <Home className="h-5 w-5" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="icon" onClick={onGoHome}>
+              <Home className="h-5 w-5" />
+            </Button>
+            {canStopTournament && onStopTournament && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="ghost" size="icon" className="text-destructive" aria-label="Stop tournament">
+                    <StopCircle className="h-5 w-5" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>להפסיק את הטורניר?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      הטורניר יסומן כמופסק וכל המשתתפים יחזרו למסך הבית.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>ביטול</AlertDialogCancel>
+                    <AlertDialogAction onClick={onStopTournament} className="bg-destructive hover:bg-destructive/90">
+                      הפסק טורניר
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+          </div>
         </div>
 
         {/* Progress */}

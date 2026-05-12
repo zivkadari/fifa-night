@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { ArrowLeft, Home, Trophy, Users, Check, ChevronDown, Edit2, X, Save, ListOrdered, Share2, Copy, Eye } from "lucide-react";
+import { ArrowLeft, Home, Trophy, Users, Check, ChevronDown, Edit2, X, Save, ListOrdered, Share2, Copy, Eye, StopCircle } from "lucide-react";
 import { FPEvening, FPTeamBank, FPMatch, FPPair, FPBlockTiming } from "@/types/fivePlayerTypes";
 import { Club } from "@/types/tournament";
 import { StarRating } from "@/components/StarRating";
@@ -20,6 +20,17 @@ import {
   DrawerTitle,
   DrawerDescription,
 } from "@/components/ui/drawer";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface FPGameProps {
   evening: FPEvening;
@@ -27,6 +38,8 @@ interface FPGameProps {
   onComplete: (evening: FPEvening) => void;
   onGoHome: () => void;
   onUpdateEvening: (evening: FPEvening) => void;
+  canStopTournament?: boolean;
+  onStopTournament?: () => void;
 }
 
 type MatchStep = 'teamA' | 'teamB' | 'score';
@@ -41,7 +54,7 @@ const WINNER_SHORTCUTS: Record<string, [number, number][]> = {
   B: [[0, 1], [0, 2], [1, 2], [1, 3], [0, 3]],
 };
 
-export const FPGame = ({ evening, onBack, onComplete, onGoHome, onUpdateEvening }: FPGameProps) => {
+export const FPGame = ({ evening, onBack, onComplete, onGoHome, onUpdateEvening, canStopTournament, onStopTournament }: FPGameProps) => {
   const { toast } = useToast();
   const [currentEvening, setCurrentEvening] = useState(evening);
   const [scoreA, setScoreA] = useState('');
@@ -835,6 +848,29 @@ export const FPGame = ({ evening, onBack, onComplete, onGoHome, onUpdateEvening 
             <Button variant="ghost" size="icon" onClick={onGoHome}>
               <Home className="h-5 w-5" />
             </Button>
+            {canStopTournament && onStopTournament && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="ghost" size="icon" className="text-destructive" aria-label="Stop tournament">
+                    <StopCircle className="h-5 w-5" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>להפסיק את הטורניר?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      הטורניר יסומן כמופסק וכל המשתתפים יחזרו למסך הבית.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>ביטול</AlertDialogCancel>
+                    <AlertDialogAction onClick={onStopTournament} className="bg-destructive hover:bg-destructive/90">
+                      הפסק טורניר
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
           </div>
         </div>
 
