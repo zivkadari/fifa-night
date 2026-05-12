@@ -208,9 +208,19 @@ useEffect(() => {
         goTo('game');
       }
     } else {
-      // TODO: dedicated read-only spectator view inside the app.
-      // For now, route to the public spectator page for this evening.
-      navigate(`/spectate?evening=${encodeURIComponent(entry.evening_id)}`);
+      if (entry.share_code) {
+        navigate(`/spectate/${encodeURIComponent(entry.share_code)}`);
+      } else {
+        console.error("Missing share code for view-only active tournament", {
+          eveningId: entry.evening_id,
+          teamId: entry.team_id,
+        });
+        toast({
+          title: "לא ניתן לפתוח לצפייה",
+          description: "חסר קוד צפייה לטורניר הזה.",
+          variant: "destructive",
+        });
+      }
     }
   };
 

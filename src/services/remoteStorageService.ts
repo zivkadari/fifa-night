@@ -1803,6 +1803,7 @@ export class RemoteStorageService {
   static async listActiveEveningsForMyTeams(): Promise<Array<{
     evening: Evening;
     evening_id: string;
+    share_code: string | null;
     team_id: string | null;
     team_name: string | null;
     can_edit: boolean;
@@ -1831,7 +1832,7 @@ export class RemoteStorageService {
       // 2) active evenings for those teams
       const { data: rows, error: eErr } = await supabase
         .from(EVENINGS_TABLE)
-        .select("id, data, team_id, updated_at")
+        .select("id, data, team_id, share_code, updated_at")
         .in("team_id", teamIds);
       if (eErr) {
         console.error("listActiveEveningsForMyTeams evenings error:", eErr.message);
@@ -1877,6 +1878,7 @@ export class RemoteStorageService {
         return {
           evening: ev,
           evening_id: r.id,
+          share_code: r.share_code ?? null,
           team_id: teamId,
           team_name: teamId ? (teamNameById.get(teamId) ?? null) : null,
           can_edit,
