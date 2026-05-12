@@ -195,9 +195,18 @@ useEffect(() => {
 
   const handleOpenTeamEvening = (entry: typeof activeTeamEvenings[number]) => {
     if (entry.can_edit) {
-      setCurrentEvening(entry.evening);
-      setCurrentTeamId(entry.team_id);
-      goTo('game');
+      const isFP = Array.isArray((entry.evening as any)?.schedule);
+      if (isFP) {
+        const evening = entry.evening as unknown as FPEvening;
+        setFpEvening(evening);
+        setFpTeamId(entry.team_id);
+        StorageService.saveFPActive(evening);
+        goTo('fp-game');
+      } else {
+        setCurrentEvening(entry.evening);
+        setCurrentTeamId(entry.team_id);
+        goTo('game');
+      }
     } else {
       // TODO: dedicated read-only spectator view inside the app.
       // For now, route to the public spectator page for this evening.
@@ -558,7 +567,6 @@ const handleGoHome = () => {
             activeTournamentProgress={tournamentProgress}
             activeTeamEvenings={activeTeamEvenings}
             currentActiveEveningId={currentActiveEveningId ?? null}
-            hasActiveLocalTournament={!!(activeFP || activeRegular)}
             authLoading={authLoading}
             onOpenTeamEvening={handleOpenTeamEvening}
           />

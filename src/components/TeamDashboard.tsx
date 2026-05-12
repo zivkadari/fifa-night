@@ -62,7 +62,6 @@ interface TeamDashboardProps {
   activeTeamEvenings?: ActiveTeamEveningEntry[];
   onOpenTeamEvening?: (entry: ActiveTeamEveningEntry) => void;
   currentActiveEveningId?: string | null;
-  hasActiveLocalTournament?: boolean;
   authLoading?: boolean;
 }
 
@@ -85,7 +84,6 @@ export const TeamDashboard = ({
   activeTeamEvenings,
   onOpenTeamEvening,
   currentActiveEveningId,
-  hasActiveLocalTournament,
   authLoading,
 }: TeamDashboardProps) => {
   const { teams, activePlayer, loading: teamsLoading } = useTeam();
@@ -151,9 +149,7 @@ export const TeamDashboard = ({
   const filteredTeamEvenings = (activeTeamEvenings || []).filter(
     (e) => !currentActiveEveningId || e.evening_id !== currentActiveEveningId,
   );
-  const showTeamEveningsSection = !authLoading && !!isAuthed && (
-    hasActiveLocalTournament ? filteredTeamEvenings.length > 0 : true
-  );
+  const showTeamEveningsSection = !authLoading && !!isAuthed && filteredTeamEvenings.length > 0;
   // Best-effort greeting name: profile display_name → claimed player name → email local-part
   const greetingName = displayName
     || activePlayer?.player_name
@@ -499,8 +495,7 @@ export const TeamDashboard = ({
       {showTeamEveningsSection && (
         <div className="mb-4 space-y-2">
           <p className="text-xs text-muted-foreground font-medium">טורנירים פעילים</p>
-          {filteredTeamEvenings.length > 0 ? (
-            filteredTeamEvenings.map((entry) => {
+          {filteredTeamEvenings.map((entry) => {
               const ev: any = entry.evening;
               const isFP = Array.isArray(ev?.schedule);
               const mode = isFP
@@ -568,16 +563,7 @@ export const TeamDashboard = ({
                   </CardContent>
                 </Card>
               );
-            })
-          ) : (
-            <Card className="bg-card border-border">
-              <CardContent className="p-3">
-                <p className="text-xs text-muted-foreground">
-                  אין טורנירים פעילים כרגע
-                </p>
-              </CardContent>
-            </Card>
-          )}
+            })}
         </div>
       )}
 
