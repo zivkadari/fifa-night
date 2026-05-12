@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -46,6 +46,7 @@ interface TeamsManagerProps {
 export const TeamsManager = ({ onBack, onStartEveningForTeam, initialTeamId }: TeamsManagerProps) => {
   const { toast } = useToast();
   const { refresh: refreshTeamsContext, setActiveTeamId } = useTeam();
+  const autoSyncedTeamIdsRef = useRef<Set<string>>(new Set());
   const [teams, setTeams] = useState<Array<{ id: string; name: string; role?: string }>>([]);
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [teamPlayers, setTeamPlayers] = useState<Array<{ id: string; name: string }>>([]);
@@ -100,16 +101,32 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam, initialTeamId }: T
       return;
     }
   
+    let cancelled = false;
+
     const loadTeam = async () => {
       setLoading(true);
   
       try {
-        const [players, stats] = await Promise.all([
-          RemoteStorageService.listTeamPlayers(selectedTeamId),
-          RemoteStorageService.getTeamLeaderboard(selectedTeamId),
-        ]);
+        const players = await RemoteStorageService.listTeamPlayers(selectedTeamId);
+        if (cancelled) return;
   
         setTeamPlayers(players);
+
+        if (!autoSyncedTeamIdsRef.current.has(selectedTeamId)) {
+          autoSyncedTeamIdsRef.current.add(selectedTeamId);
+          const result = await RemoteStorageService.syncTeamStats(selectedTeamId);
+          if (!result.success) {
+            console.warn("auto syncTeamStats failed:", {
+              teamId: selectedTeamId,
+              error: result.error
+            });
+          }
+          if (cancelled) return;
+        }
+
+        const stats = await RemoteStorageService.getTeamLeaderboard(selectedTeamId);
+        if (cancelled) return;
+
         setLeaderboard(stats);
   
         if (canManageSelectedTeam) {
@@ -119,6 +136,8 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam, initialTeamId }: T
             RemoteStorageService.listTeamJoinRequests(selectedTeamId),
           ]);
   
+          if (cancelled) return;
+
           setInviteCode(code);
           setJoinRequests(requests);
   
@@ -136,11 +155,17 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam, initialTeamId }: T
           setTeamDescription("");
         }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     };
   
     loadTeam();
+
+    return () => {
+      cancelled = true;
+    };
   }, [selectedTeamId, canManageSelectedTeam]);
   const handleSyncStats = async () => {
     if (!selectedTeamId) return;
