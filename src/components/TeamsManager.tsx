@@ -143,19 +143,21 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam, initialTeamId }: T
     loadTeam();
   }, [selectedTeamId, canManageSelectedTeam]);
   const handleSyncStats = async () => {
+    if (!selectedTeamId) return;
+
     setSyncing(true);
     try {
-      const success = await RemoteStorageService.syncStats(undefined, true);
-      if (success) {
+      const result = await RemoteStorageService.syncTeamStats(selectedTeamId);
+      if (result.success) {
         toast({ title: "סטטיסטיקות עודכנו", description: "הנתונים חושבו מחדש מכל הערבים" });
-        // Reload leaderboard
-        if (selectedTeamId) {
-          const stats = await RemoteStorageService.getTeamLeaderboard(selectedTeamId);
-          setLeaderboard(stats);
-        }
+        const stats = await RemoteStorageService.getTeamLeaderboard(selectedTeamId);
+        setLeaderboard(stats);
       } else {
-        toast({ title: "שגיאה בעדכון סטטיסטיקות", variant: "destructive" });
+        toast({ title: "שגיאה בעדכון סטטיסטיקות", description: result.error, variant: "destructive" });
       }
+    } catch (error: any) {
+      console.error("handleSyncStats error:", error);
+      toast({ title: "שגיאה בעדכון סטטיסטיקות", description: error?.message, variant: "destructive" });
     } finally {
       setSyncing(false);
     }

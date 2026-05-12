@@ -24,6 +24,11 @@ type EveningRow = {
   team_id?: string | null;
 };
 
+type SyncStatsResult = {
+  success: boolean;
+  error?: string;
+};
+
 export class RemoteStorageService {
   static isEnabled() {
     return Boolean(supabase);
@@ -1477,6 +1482,43 @@ export class RemoteStorageService {
       });
   }
 
+  private static async getFunctionErrorMessage(error: any): Promise<string> {
+    const fallback = error?.message || "Unknown sync-stats failure";
+
+    try {
+      if (error?.context && typeof error.context.json === "function") {
+        const body = await error.context.json();
+        return body?.error || body?.message || fallback;
+      }
+    } catch {
+      // The response body may already be consumed or not JSON.
+    }
+
+    return fallback;
+  }
+
+  static async syncTeamStats(teamId: string): Promise<SyncStatsResult> {
+    if (!supabase) return { success: false, error: "Supabase is not configured" };
+
+    try {
+      const { error } = await supabase.functions.invoke("sync-stats", {
+        body: { team_id: teamId }
+      });
+
+      if (error) {
+        const message = await this.getFunctionErrorMessage(error);
+        console.error("syncTeamStats error:", { teamId, message, error });
+        return { success: false, error: message };
+      }
+
+      return { success: true };
+    } catch (e: any) {
+      const message = e?.message || "Unknown sync-stats exception";
+      console.error("syncTeamStats exception:", { teamId, message, error: e });
+      return { success: false, error: message };
+    }
+  }
+
   static async syncStats(eveningId?: string, backfillAll?: boolean): Promise<boolean> {
     if (!supabase) return false;
     try {
@@ -1484,12 +1526,18 @@ export class RemoteStorageService {
         body: eveningId ? { evening_id: eveningId } : { backfill_all: backfillAll }
       });
       if (error) {
-        console.error("syncStats error:", error.message);
+        const message = await this.getFunctionErrorMessage(error);
+        console.error("syncStats error:", { eveningId, backfillAll, message, error });
         return false;
       }
       return true;
-    } catch (e) {
-      console.error("syncStats exception:", e);
+    } catch (e: any) {
+      console.error("syncStats exception:", {
+        eveningId,
+        backfillAll,
+        message: e?.message || "Unknown sync-stats exception",
+        error: e
+      });
       return false;
     }
   }

@@ -294,9 +294,10 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
     const body = await req.json();
-    const { evening_id, backfill_all } = body;
+    const { evening_id, backfill_all, team_id } = body;
+    const teamId = typeof team_id === "string" && team_id.trim() ? team_id.trim() : null;
 
-    console.log("sync-stats called with:", { evening_id, backfill_all, userId });
+    console.log("sync-stats called with:", { evening_id, backfill_all, team_id: teamId, userId });
 
     // Restrict backfill_all to admin users only
     if (backfill_all) {
@@ -319,6 +320,44 @@ Deno.serve(async (req) => {
       if (error) throw error;
       evenings = data || [];
       console.log(`Backfilling ${evenings.length} evenings`);
+    } else if (teamId) {
+      const { data: team, error: teamError } = await supabase
+        .from("teams")
+        .select("id, owner_id")
+        .eq("id", teamId)
+        .maybeSingle();
+
+      if (teamError) throw teamError;
+      if (!team) {
+        return new Response(
+          JSON.stringify({ error: "Team not found" }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const { data: membership, error: membershipError } = await supabase
+        .from("team_members")
+        .select("team_id")
+        .eq("team_id", teamId)
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (membershipError) throw membershipError;
+      if (team.owner_id !== userId && !membership) {
+        return new Response(
+          JSON.stringify({ error: "Team membership required for stats sync" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const { data, error } = await supabase
+        .from("evenings")
+        .select("id, data, team_id")
+        .eq("team_id", teamId);
+
+      if (error) throw error;
+      evenings = data || [];
+      console.log(`Syncing stats for team ${teamId}: ${evenings.length} evenings`);
     } else if (evening_id) {
       const { data, error } = await supabase
         .from("evenings")
@@ -463,6 +502,14 @@ Deno.serve(async (req) => {
       console.log("Clearing existing stats for full backfill");
       await supabase.from("player_stats_by_team").delete().neq("player_id", "");
       await supabase.from("player_stats_global").delete().neq("player_id", "");
+    } else if (teamId) {
+      console.log(`Clearing existing team stats for ${teamId}`);
+      const { error } = await supabase
+        .from("player_stats_by_team")
+        .delete()
+        .eq("team_id", teamId);
+
+      if (error) throw error;
     }
 
     // Upsert team stats
@@ -512,7 +559,8 @@ Deno.serve(async (req) => {
       console.log(`Upserted ${teamUpserts.length} team stats records`);
     }
 
-    // Upsert global stats
+    // Upsert global stats. Team-scoped sync intentionally leaves global stats alone
+    // because it only recalculates a slice of the full data set.
     const globalUpserts: {
       player_id: string;
       games_played: number;
@@ -527,20 +575,22 @@ Deno.serve(async (req) => {
       delta_count: number;
     }[] = [];
 
-    for (const [playerId, stats] of globalStats) {
-      globalUpserts.push({
-        player_id: playerId,
-        games_played: stats.wins + stats.losses + stats.draws,
-        games_won: stats.wins,
-        games_lost: stats.losses,
-        games_drawn: stats.draws,
-        goals_for: stats.goalsFor,
-        goals_against: stats.goalsAgainst,
-        alpha_count: stats.alphaCount,
-        beta_count: stats.betaCount,
-        gamma_count: stats.gammaCount,
-        delta_count: stats.deltaCount,
-      });
+    if (!teamId) {
+      for (const [playerId, stats] of globalStats) {
+        globalUpserts.push({
+          player_id: playerId,
+          games_played: stats.wins + stats.losses + stats.draws,
+          games_won: stats.wins,
+          games_lost: stats.losses,
+          games_drawn: stats.draws,
+          goals_for: stats.goalsFor,
+          goals_against: stats.goalsAgainst,
+          alpha_count: stats.alphaCount,
+          beta_count: stats.betaCount,
+          gamma_count: stats.gammaCount,
+          delta_count: stats.deltaCount,
+        });
+      }
     }
 
     if (globalUpserts.length > 0) {
@@ -558,6 +608,8 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
+        scope: teamId ? "team" : backfill_all ? "all" : "evening",
+        team_id: teamId,
         team_stats_count: teamUpserts.length,
         global_stats_count: globalUpserts.length,
       }),
