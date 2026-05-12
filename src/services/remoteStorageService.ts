@@ -1851,15 +1851,20 @@ export class RemoteStorageService {
     body: string | null;
     data: any;
     read_at: string | null;
+    dismissed_at: string | null;
     created_at: string;
   }>> {
     if (!supabase) return [];
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return [];
+
+    await this.syncNotificationTasks();
+
     const { data, error } = await supabase
       .from("notifications")
-      .select("id, user_id, type, title, body, data, read_at, created_at")
+      .select("id, user_id, type, title, body, data, read_at, dismissed_at, created_at")
       .eq("user_id", user.id)
+      .is("dismissed_at", null)
       .order("created_at", { ascending: false })
       .limit(limit);
     if (error) {
@@ -1873,16 +1878,38 @@ export class RemoteStorageService {
     if (!supabase) return 0;
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return 0;
+
+    await this.syncNotificationTasks();
+
     const { count, error } = await supabase
       .from("notifications")
       .select("id", { count: "exact", head: true })
       .eq("user_id", user.id)
+      .is("dismissed_at", null)
       .is("read_at", null);
     if (error) {
       console.error("getUnreadNotificationsCount error:", error.message);
       return 0;
     }
     return count || 0;
+  }
+
+  private static async syncNotificationTasks(): Promise<void> {
+    if (!supabase) return;
+
+    try {
+      const { error } = await supabase.rpc("sync_identity_required_notifications");
+      if (error) console.warn("sync_identity_required_notifications failed:", error.message);
+    } catch (e: any) {
+      console.warn("sync_identity_required_notifications exception:", e?.message);
+    }
+
+    try {
+      const { error } = await supabase.rpc("sync_join_request_notifications");
+      if (error) console.warn("sync_join_request_notifications failed:", error.message);
+    } catch (e: any) {
+      console.warn("sync_join_request_notifications exception:", e?.message);
+    }
   }
 
   static async markNotificationAsRead(notificationId: string): Promise<boolean> {
@@ -1983,6 +2010,63 @@ export class RemoteStorageService {
       return false;
     }
   
+    return true;
+  }
+
+  static async dismissNotification(notificationId: string): Promise<boolean> {
+    if (!supabase) return false;
+
+    try {
+      const { data, error } = await supabase.rpc("dismiss_notification", {
+        _notification_id: notificationId,
+      });
+      if (!error) return data === true;
+      console.warn("dismiss_notification fallback:", error.message);
+    } catch (e: any) {
+      console.warn("dismiss_notification exception:", e?.message);
+    }
+
+    const { error } = await supabase
+      .from("notifications")
+      .update({
+        dismissed_at: new Date().toISOString(),
+        read_at: new Date().toISOString(),
+      } as any)
+      .eq("id", notificationId);
+
+    if (error) {
+      console.error("dismissNotification error:", error.message);
+      return false;
+    }
+
+    return true;
+  }
+
+  static async dismissReadNotifications(): Promise<boolean> {
+    if (!supabase) return false;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return false;
+
+    try {
+      const { error } = await supabase.rpc("dismiss_read_notifications");
+      if (!error) return true;
+      console.warn("dismiss_read_notifications fallback:", error.message);
+    } catch (e: any) {
+      console.warn("dismiss_read_notifications exception:", e?.message);
+    }
+
+    const { error } = await supabase
+      .from("notifications")
+      .update({ dismissed_at: new Date().toISOString() } as any)
+      .eq("user_id", user.id)
+      .not("read_at", "is", null)
+      .is("dismissed_at", null);
+
+    if (error) {
+      console.error("dismissReadNotifications error:", error.message);
+      return false;
+    }
+
     return true;
   }
 }

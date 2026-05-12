@@ -164,6 +164,7 @@ export type Database = {
           body: string | null
           created_at: string
           data: Json
+          dismissed_at: string | null
           id: string
           read_at: string | null
           title: string
@@ -174,6 +175,7 @@ export type Database = {
           body?: string | null
           created_at?: string
           data?: Json
+          dismissed_at?: string | null
           id?: string
           read_at?: string | null
           title: string
@@ -184,6 +186,7 @@ export type Database = {
           body?: string | null
           created_at?: string
           data?: Json
+          dismissed_at?: string | null
           id?: string
           read_at?: string | null
           title?: string
@@ -625,6 +628,11 @@ export type Database = {
         Args: { _data: Json; _evening_id: string; _team_id: string }
         Returns: string
       }
+      dismiss_notification: {
+        Args: { _notification_id: string }
+        Returns: boolean
+      }
+      dismiss_read_notifications: { Args: never; Returns: number }
       get_evening_share_code: { Args: { _evening_id: string }; Returns: string }
       get_team_evenings: {
         Args: { _team_id: string }
@@ -696,6 +704,8 @@ export type Database = {
         Args: { _approved: boolean; _request_id: string }
         Returns: boolean
       }
+      sync_identity_required_notifications: { Args: never; Returns: number }
+      sync_join_request_notifications: { Args: never; Returns: number }
       resolve_invite_code: {
         Args: { _code: string }
         Returns: {

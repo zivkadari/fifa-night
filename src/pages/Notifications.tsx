@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Bell, Check, X, ArrowRight, Loader2, Inbox } from "lucide-react";
+import { Bell, Check, X, ArrowRight, Loader2, Inbox, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { RemoteStorageService } from "@/services/remoteStorageService";
 import { useToast } from "@/hooks/use-toast";
@@ -16,6 +16,7 @@ type Notification = {
   body: string | null;
   data: any;
   read_at: string | null;
+  dismissed_at: string | null;
   created_at: string;
 };
 
@@ -194,6 +195,20 @@ const NotificationsPage = () => {
     setItems(prev => prev.map(n => n.read_at ? n : { ...n, read_at: new Date().toISOString() }));
   };
 
+  const handleDismiss = async (n: Notification) => {
+    const ok = await RemoteStorageService.dismissNotification(n.id);
+    if (ok) {
+      setItems(prev => prev.filter(item => item.id !== n.id));
+    }
+  };
+
+  const handleDismissRead = async () => {
+    const ok = await RemoteStorageService.dismissReadNotifications();
+    if (ok) {
+      setItems(prev => prev.filter(n => !n.read_at));
+    }
+  };
+
   const unread = items.filter(n => !n.read_at);
   const read = items.filter(n => n.read_at);
 
@@ -299,7 +314,21 @@ const NotificationsPage = () => {
               {isUnread && <span className="h-2 w-2 rounded-full bg-neon-green inline-block" />}
               <p className="text-sm font-semibold text-foreground break-words">{n.title}</p>
             </div>
-            <span className="text-[10px] text-muted-foreground shrink-0">{formatTime(n.created_at)}</span>
+            <div className="flex items-center gap-1 shrink-0">
+              <span className="text-[10px] text-muted-foreground">{formatTime(n.created_at)}</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                aria-label="נקה התראה"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDismiss(n);
+                }}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </div>
           </div>
           {n.body && <p className="text-xs text-muted-foreground break-words">{n.body}</p>}
           {isHandledJoinRequestNotification(n) && getHandledJoinRequestText(n) && (
@@ -344,7 +373,7 @@ const NotificationsPage = () => {
 
         {authed && (
           <>
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-2">
               <Button
                 variant="ghost"
                 size="sm"
@@ -352,6 +381,14 @@ const NotificationsPage = () => {
                 onClick={handleMarkAll}
               >
                 סמן הכל כנקרא
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={read.length === 0}
+                onClick={handleDismissRead}
+              >
+                נקה נקראו
               </Button>
             </div>
 
