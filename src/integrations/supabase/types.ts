@@ -663,6 +663,15 @@ export type Database = {
           team_name: string
         }[]
       }
+      mark_all_notifications_read: { Args: never; Returns: number }
+      mark_notification_handled: {
+        Args: { _decision: string; _notification_id: string }
+        Returns: boolean
+      }
+      mark_notification_read: {
+        Args: { _notification_id: string }
+        Returns: boolean
+      }
       notify_team_evening_started: {
         Args: {
           _evening_id: string

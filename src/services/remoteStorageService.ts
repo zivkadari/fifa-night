@@ -1887,6 +1887,17 @@ export class RemoteStorageService {
 
   static async markNotificationAsRead(notificationId: string): Promise<boolean> {
     if (!supabase) return false;
+
+    try {
+      const { data, error } = await supabase.rpc("mark_notification_read", {
+        _notification_id: notificationId,
+      });
+      if (!error) return data === true;
+      console.warn("mark_notification_read fallback:", error.message);
+    } catch (e: any) {
+      console.warn("mark_notification_read exception:", e?.message);
+    }
+
     const { error } = await supabase
       .from("notifications")
       .update({ read_at: new Date().toISOString() })
@@ -1903,6 +1914,15 @@ export class RemoteStorageService {
     if (!supabase) return false;
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return false;
+
+    try {
+      const { error } = await supabase.rpc("mark_all_notifications_read");
+      if (!error) return true;
+      console.warn("mark_all_notifications_read fallback:", error.message);
+    } catch (e: any) {
+      console.warn("mark_all_notifications_read exception:", e?.message);
+    }
+
     const { error } = await supabase
       .from("notifications")
       .update({ read_at: new Date().toISOString() })
@@ -1920,6 +1940,17 @@ export class RemoteStorageService {
     decision: "approved" | "rejected"
   ): Promise<boolean> {
     if (!supabase) return false;
+
+    try {
+      const { data, error } = await supabase.rpc("mark_notification_handled", {
+        _notification_id: notificationId,
+        _decision: decision,
+      });
+      if (!error) return data === true;
+      console.warn("mark_notification_handled fallback:", error.message);
+    } catch (e: any) {
+      console.warn("mark_notification_handled exception:", e?.message);
+    }
   
     const { data: existing, error: fetchError } = await supabase
       .from("notifications")

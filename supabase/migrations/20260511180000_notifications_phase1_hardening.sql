@@ -34,6 +34,39 @@ CREATE INDEX IF NOT EXISTS idx_notifications_join_request_lookup
     'team_join_request_rejected'
   );
 
+-- Keep one notification per recipient/request/type before adding unique indexes.
+-- This only touches Phase 1 join-request notification types and preserves the
+-- oldest row in each duplicate set.
+WITH duplicate_notifications AS (
+  SELECT
+    id,
+    row_number() OVER (
+      PARTITION BY user_id, type, data->>'request_id'
+      ORDER BY created_at ASC, id ASC
+    ) AS rn
+  FROM public.notifications
+  WHERE type IN (
+      'team_join_request_created',
+      'team_join_request_approved',
+      'team_join_request_rejected'
+    )
+    AND data ? 'request_id'
+)
+DELETE FROM public.notifications n
+USING duplicate_notifications d
+WHERE n.id = d.id
+  AND d.rn > 1;
+
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_notifications_join_request_created
+  ON public.notifications (user_id, ((data->>'request_id')))
+  WHERE type = 'team_join_request_created'
+    AND data ? 'request_id';
+
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_notifications_join_request_decision
+  ON public.notifications (user_id, type, ((data->>'request_id')))
+  WHERE type IN ('team_join_request_approved', 'team_join_request_rejected')
+    AND data ? 'request_id';
+
 ALTER TABLE public.team_join_requests ENABLE ROW LEVEL SECURITY;
 
 DO $$
@@ -75,6 +108,13 @@ BEGIN
     );
   END IF;
 END $$;
+
+DROP POLICY IF EXISTS "Notifications: users update own" ON public.notifications;
+DROP POLICY IF EXISTS "Notifications: no direct updates" ON public.notifications;
+CREATE POLICY "Notifications: no direct updates"
+  ON public.notifications FOR UPDATE TO authenticated
+  USING (false)
+  WITH CHECK (false);
 
 CREATE OR REPLACE FUNCTION public.notify_team_join_request_created(_request_id uuid)
 RETURNS integer
@@ -123,13 +163,10 @@ BEGIN
   WHERE tm.team_id = req.team_id
     AND tm.role IN ('owner', 'admin')
     AND tm.user_id <> req.user_id
-    AND NOT EXISTS (
-      SELECT 1
-      FROM public.notifications n
-      WHERE n.user_id = tm.user_id
-        AND n.type = 'team_join_request_created'
-        AND n.data->>'request_id' = req.id::text
-    );
+  ON CONFLICT (user_id, ((data->>'request_id')))
+    WHERE type = 'team_join_request_created'
+      AND data ? 'request_id'
+    DO NOTHING;
 
   GET DIAGNOSTICS inserted_count = ROW_COUNT;
   RETURN inserted_count;
@@ -160,7 +197,8 @@ BEGIN
   SELECT id, team_id, user_id, status
     INTO req
   FROM public.team_join_requests
-  WHERE id = _request_id;
+  WHERE id = _request_id
+  FOR UPDATE;
 
   IF req IS NULL THEN RAISE EXCEPTION 'request not found'; END IF;
 
@@ -220,7 +258,11 @@ BEGIN
     WHERE n.user_id = req.user_id
       AND n.type = notification_type
       AND n.data->>'request_id' = req.id::text
-  );
+  )
+  ON CONFLICT (user_id, type, ((data->>'request_id')))
+    WHERE type IN ('team_join_request_approved', 'team_join_request_rejected')
+      AND data ? 'request_id'
+    DO NOTHING;
 
   RETURN true;
 END;
@@ -240,10 +282,91 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION public.mark_notification_read(_notification_id uuid)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  updated_count int := 0;
+BEGIN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'not authenticated'; END IF;
+
+  UPDATE public.notifications
+  SET read_at = COALESCE(read_at, now())
+  WHERE id = _notification_id
+    AND user_id = auth.uid();
+
+  GET DIAGNOSTICS updated_count = ROW_COUNT;
+  RETURN updated_count > 0;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.mark_all_notifications_read()
+RETURNS integer
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  updated_count int := 0;
+BEGIN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'not authenticated'; END IF;
+
+  UPDATE public.notifications
+  SET read_at = COALESCE(read_at, now())
+  WHERE user_id = auth.uid()
+    AND read_at IS NULL;
+
+  GET DIAGNOSTICS updated_count = ROW_COUNT;
+  RETURN updated_count;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.mark_notification_handled(
+  _notification_id uuid,
+  _decision text
+)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  updated_count int := 0;
+BEGIN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'not authenticated'; END IF;
+  IF _decision NOT IN ('approved', 'rejected') THEN
+    RAISE EXCEPTION 'invalid decision';
+  END IF;
+
+  UPDATE public.notifications
+  SET data = COALESCE(data, '{}'::jsonb) || jsonb_build_object(
+        'handled', true,
+        'decision', _decision,
+        'handled_at', now()
+      ),
+      read_at = COALESCE(read_at, now())
+  WHERE id = _notification_id
+    AND user_id = auth.uid()
+    AND type = 'team_join_request_created';
+
+  GET DIAGNOSTICS updated_count = ROW_COUNT;
+  RETURN updated_count > 0;
+END;
+$$;
+
 REVOKE EXECUTE ON FUNCTION public.review_team_join_request(uuid, boolean) FROM anon, public;
 GRANT EXECUTE ON FUNCTION public.review_team_join_request(uuid, boolean) TO authenticated;
 
 REVOKE EXECUTE ON FUNCTION public.notify_team_join_request_created(uuid) FROM anon, public;
 REVOKE EXECUTE ON FUNCTION public.notify_team_join_request_decision(uuid, boolean) FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.mark_notification_read(uuid) FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.mark_all_notifications_read() FROM anon, public;
+REVOKE EXECUTE ON FUNCTION public.mark_notification_handled(uuid, text) FROM anon, public;
 GRANT EXECUTE ON FUNCTION public.notify_team_join_request_created(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.notify_team_join_request_decision(uuid, boolean) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.mark_notification_read(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.mark_all_notifications_read() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.mark_notification_handled(uuid, text) TO authenticated;
