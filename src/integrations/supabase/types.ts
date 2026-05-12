@@ -706,6 +706,10 @@ export type Database = {
       }
       sync_identity_required_notifications: { Args: never; Returns: number }
       sync_join_request_notifications: { Args: never; Returns: number }
+      submit_tournament_score: {
+        Args: { _data: Json; _evening_id: string }
+        Returns: Json
+      }
       resolve_invite_code: {
         Args: { _code: string }
         Returns: {

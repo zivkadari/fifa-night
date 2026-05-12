@@ -38,6 +38,61 @@ import { FPBankOverview } from "@/components/FPBankOverview";
 import { useTeam } from "@/contexts/TeamContext";
 
 type AppState = 'home' | 'setup' | 'tournament-type' | 'singles-setup' | 'singles-clubs' | 'singles-schedule' | 'game' | 'summary' | 'history' | 'teams' | 'find-team' | 'join' | 'pairs-mode-selection' | 'tier-question-flow' | 'fp-setup' | 'fp-bank-overview' | 'fp-game' | 'fp-summary';
+type TeamEveningEditReason = "owner_admin" | "playing" | "view_only" | null;
+
+const hasMatchScore = (match: any, key = "score") =>
+  Array.isArray(match?.[key]) || typeof match?.[key] === "number";
+
+const sameScore = (a: any, b: any) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+
+const isFirstTimeRegularScoreSubmission = (previous: Evening | null, next: Evening) => {
+  if (!previous || previous.id !== next.id || (previous as any).completed !== (next as any).completed) {
+    return false;
+  }
+
+  if (Array.isArray((previous as any).schedule) || Array.isArray((next as any).schedule)) {
+    return false;
+  }
+
+  let addedScores = 0;
+
+  if (previous.type === "singles" || next.type === "singles") {
+    const oldGames = previous.gameSequence ?? [];
+    const newGames = next.gameSequence ?? [];
+    if (oldGames.length !== newGames.length) return false;
+
+    for (let i = 0; i < oldGames.length; i += 1) {
+      const oldGame = oldGames[i] as any;
+      const newGame = newGames[i] as any;
+      const oldHasScore = hasMatchScore(oldGame);
+      const newHasScore = hasMatchScore(newGame);
+      if (oldHasScore && !sameScore(oldGame.score, newGame.score)) return false;
+      if (!oldHasScore && newHasScore) addedScores += 1;
+    }
+    return addedScores === 1;
+  }
+
+  const oldRounds = previous.rounds ?? [];
+  const newRounds = next.rounds ?? [];
+  if (oldRounds.length !== newRounds.length) return false;
+
+  for (let i = 0; i < oldRounds.length; i += 1) {
+    const oldMatches = oldRounds[i]?.matches ?? [];
+    const newMatches = newRounds[i]?.matches ?? [];
+    if (oldMatches.length !== newMatches.length) return false;
+
+    for (let j = 0; j < oldMatches.length; j += 1) {
+      const oldMatch = oldMatches[j] as any;
+      const newMatch = newMatches[j] as any;
+      const oldHasScore = hasMatchScore(oldMatch);
+      const newHasScore = hasMatchScore(newMatch);
+      if (oldHasScore && !sameScore(oldMatch.score, newMatch.score)) return false;
+      if (!oldHasScore && newHasScore) addedScores += 1;
+    }
+  }
+
+  return addedScores === 1;
+};
 
 const Index = () => {
   const location = useLocation();
@@ -52,6 +107,7 @@ const Index = () => {
   const [authLoading, setAuthLoading] = useState(true);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [currentTeamId, setCurrentTeamId] = useState<string | null>(null);
+  const [currentTeamEditReason, setCurrentTeamEditReason] = useState<TeamEveningEditReason>(null);
   const [singlesFlowState, setSinglesFlowState] = useState<'club-assignment' | 'match-schedule' | 'game'>('club-assignment');
   const [selectedTournamentType, setSelectedTournamentType] = useState<'pairs' | 'singles' | null>(null);
   const [clubsWithOverrides, setClubsWithOverrides] = useState<Club[]>(FIFA_CLUBS);
@@ -200,11 +256,13 @@ useEffect(() => {
         const evening = entry.evening as unknown as FPEvening;
         setFpEvening(evening);
         setFpTeamId(entry.team_id);
+        setCurrentTeamEditReason(entry.reason);
         StorageService.saveFPActive(evening);
         goTo('fp-game');
       } else {
         setCurrentEvening(entry.evening);
         setCurrentTeamId(entry.team_id);
+        setCurrentTeamEditReason(entry.reason);
         goTo('game');
       }
     } else {
@@ -249,12 +307,15 @@ useEffect(() => {
         setCurrentEvening(remoteEvening);
       } else {
         console.warn('[Realtime] Ignored stale remote state', { localProgress, remoteProgress });
-        // Re-push local state to server so it catches up
-        RemoteStorageService.upsertEveningLive(local).catch(() => {});
+        if (currentTeamEditReason === "owner_admin" || currentTeamEditReason === null) {
+          RemoteStorageService.upsertEveningLive(local).catch((error) => {
+            console.error("Failed to re-push local evening after stale realtime update:", error?.message || error);
+          });
+        }
       }
     });
     return () => unsubscribe && unsubscribe();
-  }, [appState, currentEvening?.id]);
+  }, [appState, currentEvening?.id, currentTeamEditReason]);
 
   // Handle joined evening from deep link navigation
   useEffect(() => {
@@ -270,6 +331,7 @@ useEffect(() => {
           const joinedEvening = evenings.find(e => e.id === state.joinedEveningId);
           if (joinedEvening && !joinedEvening.completed) {
             setCurrentEvening(joinedEvening);
+            setCurrentTeamEditReason("playing");
             goTo('game');
             toast({
               title: "הצטרפת לטורניר!",
@@ -294,6 +356,7 @@ useEffect(() => {
     clearActiveEvening();
     goTo('tournament-type');
     setCurrentEvening(null);
+    setCurrentTeamEditReason(null);
     setSelectedTournamentType(null);
   };
 
@@ -350,6 +413,7 @@ useEffect(() => {
 
     setCurrentEvening(newEvening);
     setCurrentTeamId(effectiveTeamId);
+    setCurrentTeamEditReason("owner_admin");
     // Create via server-side RPC (enforces one active evening per team)
     try {
       await RemoteStorageService.createTeamEvening(newEvening, effectiveTeamId);
@@ -445,10 +509,40 @@ const handleGoHome = () => {
   };
 
   const handleUpdateEvening = (evening: Evening) => {
+    const previousEvening = currentEveningRef.current;
     setCurrentEvening(evening);
     // Local persistence protects against iOS killing the Safari/PWA instance in background
     if (!evening.completed) persistActiveEveningNow(evening);
-    RemoteStorageService.upsertEveningLive(evening).catch(() => {});
+
+    if (!RemoteStorageService.isEnabled()) return;
+
+    if (currentTeamEditReason === "playing") {
+      if (!isFirstTimeRegularScoreSubmission(previousEvening, evening)) {
+        console.warn("Skipped remote evening save for regular member; only first-time score submissions are persisted in Phase 1.5A", {
+          eveningId: evening.id,
+        });
+        return;
+      }
+
+      RemoteStorageService.submitTournamentScore(evening)
+        .then((savedEvening) => {
+          setCurrentEvening(savedEvening);
+          if (!savedEvening.completed) persistActiveEveningNow(savedEvening);
+        })
+        .catch((error) => {
+          console.error("submitTournamentScore failed:", error?.message || error);
+          toast({
+            title: "׳©׳’׳™׳׳” ׳‘׳©׳׳™׳¨׳× ׳”׳×׳•׳¦׳׳”",
+            description: error?.message || "׳׳ ׳ ׳™׳×׳ ׳׳©׳׳•׳¨ ׳׳× ׳”׳×׳•׳¦׳׳” ׳‘׳¢׳ ׳Ÿ",
+            variant: "destructive",
+          });
+        });
+      return;
+    }
+
+    RemoteStorageService.upsertEveningLive(evening).catch((error) => {
+      console.error("upsertEveningLive failed:", error?.message || error);
+    });
   };
 
   // Auth helpers available globally from home page
@@ -488,6 +582,7 @@ const handleGoHome = () => {
       const joinedEvening = evenings.find(e => e.id === eveningId);
       if (joinedEvening && !joinedEvening.completed) {
         setCurrentEvening(joinedEvening);
+        setCurrentTeamEditReason("playing");
         goTo('game');
         toast({
           title: "הצטרפת לטורניר!",
@@ -652,6 +747,7 @@ const handleGoHome = () => {
                 persistActiveEveningNow(newEvening);
                 setCurrentEvening(newEvening);
                 setCurrentTeamId(pendingTeamId ?? null);
+                setCurrentTeamEditReason("owner_admin");
                 goTo('tier-question-flow');
               }
             }}
@@ -713,6 +809,7 @@ const handleGoHome = () => {
               const singlesEvening = TournamentEngine.createSinglesEvening(players, clubsPerPlayer, currentTeamId ?? undefined, clubsWithOverrides);
               persistActiveEveningNow(singlesEvening);
               setCurrentEvening(singlesEvening);
+              setCurrentTeamEditReason("owner_admin");
               setSinglesFlowState('club-assignment');
               goTo('singles-clubs');
             }}
@@ -804,6 +901,7 @@ const handleGoHome = () => {
               onBack={() => window.history.back()}
               onStartEveningForTeam={(teamId) => {
                 setCurrentTeamId(teamId);
+                setCurrentTeamEditReason("owner_admin");
                 goTo('setup');
               }}
               initialTeamId={routeTeamId}

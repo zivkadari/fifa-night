@@ -93,10 +93,13 @@ export class RemoteStorageService {
 
   static async upsertEveningLive(evening: Evening): Promise<void> {
     if (!supabase) return;
-    await supabase
+    const { error } = await supabase
       .from(EVENINGS_TABLE)
       .update({ data: evening as any, updated_at: new Date().toISOString() } as any)
       .eq("id", evening.id);
+    if (error) {
+      throw new Error(error.message);
+    }
   }
 
   static async upsertEveningLiveWithTeam(evening: Evening, teamId: string | null): Promise<void> {
@@ -115,9 +118,24 @@ export class RemoteStorageService {
       row.team_id = teamId;
     }
     
-    await supabase
+    const { error } = await supabase
       .from(EVENINGS_TABLE)
       .upsert(row, { onConflict: "id" });
+    if (error) {
+      throw new Error(error.message);
+    }
+  }
+
+  static async submitTournamentScore(evening: Evening): Promise<Evening> {
+    if (!supabase) return evening;
+    const { data, error } = await supabase.rpc("submit_tournament_score", {
+      _evening_id: evening.id,
+      _data: evening as any,
+    });
+    if (error) {
+      throw new Error(error.message);
+    }
+    return data as Evening;
   }
 
   static async loadEvenings(): Promise<Evening[]> {
