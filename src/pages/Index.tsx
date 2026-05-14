@@ -676,9 +676,19 @@ const handleGoHome = () => {
       return;
     }
 
-    RemoteStorageService.upsertEveningLive(evening).catch((error) => {
-      console.error("upsertEveningLive failed:", error?.message || error);
-    });
+    RemoteStorageService.upsertEveningLive(evening)
+      .then((savedEvening) => {
+        setCurrentEvening(savedEvening);
+        if (!savedEvening.completed) persistActiveEveningNow(savedEvening);
+      })
+      .catch((error) => {
+        console.error("upsertEveningLive failed:", error?.message || error);
+        toast({
+          title: "שגיאה בשמירת הטורניר",
+          description: error?.message || "לא ניתן לשמור את העדכון כרגע.",
+          variant: "destructive",
+        });
+      });
   };
 
   // Auth helpers available globally from home page
