@@ -735,6 +735,10 @@ export type Database = {
           team_name: string
         }[]
       }
+      update_evening_live_admin: {
+        Args: { _data: Json; _evening_id: string }
+        Returns: Json
+      }
       trigger_stats_backfill: { Args: never; Returns: undefined }
       user_evening_ids: { Args: { _user_id: string }; Returns: string[] }
       user_team_ids: { Args: { _user_id: string }; Returns: string[] }
