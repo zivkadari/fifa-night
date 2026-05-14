@@ -91,15 +91,26 @@ export class RemoteStorageService {
     await this.upsertEveningLiveWithTeam(evening, null);
   }
 
-  static async upsertEveningLive(evening: Evening): Promise<void> {
-    if (!supabase) return;
-    const { error } = await supabase
-      .from(EVENINGS_TABLE)
-      .update({ data: evening as any, updated_at: new Date().toISOString() } as any)
-      .eq("id", evening.id);
+  static async upsertEveningLive(evening: Evening): Promise<Evening> {
+    if (!supabase) return evening;
+  
+    const { data, error } = await supabase.rpc("update_evening_live_admin", {
+      _evening_id: evening.id,
+      _data: evening as any,
+    });
+  
     if (error) {
+      console.error("update_evening_live_admin error:", {
+        eveningId: evening.id,
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+      });
       throw new Error(error.message);
     }
+  
+    return (data as Evening) ?? evening;
   }
 
   static async upsertEveningLiveWithTeam(evening: Evening, teamId: string | null): Promise<void> {
