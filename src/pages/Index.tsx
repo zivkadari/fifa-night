@@ -645,21 +645,17 @@ const handleGoHome = () => {
 
   const handleUpdateEvening = (evening: Evening) => {
     const previousEvening = currentEveningRef.current;
+    const submission = getFirstTimeRegularScoreSubmission(previousEvening, evening);
+  
     setCurrentEvening(evening);
-    // Local persistence protects against iOS killing the Safari/PWA instance in background
-    if (!evening.completed) persistActiveEveningNow(evening);
-
+  
+    if (!evening.completed) {
+      persistActiveEveningNow(evening);
+    }
+  
     if (!RemoteStorageService.isEnabled()) return;
-
-    if (currentTeamEditReason === "playing") {
-      const submission = getFirstTimeRegularScoreSubmission(previousEvening, evening);
-      if (!submission) {
-        console.warn("Skipped remote evening save for regular member; only first-time score submissions are persisted in Phase 1.5A", {
-          eveningId: evening.id,
-        });
-        return;
-      }
-
+  
+    if (currentTeamEditReason === "playing" && submission) {
       RemoteStorageService.submitMatchScore(evening.id, submission)
         .then((savedEvening) => {
           setCurrentEvening(savedEvening);
@@ -669,18 +665,15 @@ const handleGoHome = () => {
           console.error("submitMatchScore failed:", error?.message || error);
           toast({
             title: "שגיאה בשמירת התוצאה",
-            description: "לא ניתן לשמור את התוצאה. נסה שוב בעוד רגע.",
+            description: error?.message || "לא ניתן לשמור את התוצאה. נסה שוב בעוד רגע.",
             variant: "destructive",
           });
         });
+  
       return;
     }
-
+  
     RemoteStorageService.upsertEveningLive(evening)
-      .then((savedEvening) => {
-        setCurrentEvening(savedEvening);
-        if (!savedEvening.completed) persistActiveEveningNow(savedEvening);
-      })
       .catch((error) => {
         console.error("upsertEveningLive failed:", error?.message || error);
         toast({
