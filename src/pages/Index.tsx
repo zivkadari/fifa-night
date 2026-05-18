@@ -411,9 +411,14 @@ useEffect(() => {
   useEffect(() => {
     if (appState !== 'game' || !currentEvening) return;
 
-    // Helper: count total completed matches across all rounds as a progress metric
+    // Helpers for realtime conflict protection.
+    // A remote update is newer only if it has more completed matches,
+    // or if completed count is equal but it does not lose existing match records.
     const countCompletedMatches = (e: Evening) =>
       e.rounds.reduce((sum, r) => sum + r.matches.filter(m => m.completed).length, 0);
+    
+    const countTotalMatches = (e: Evening) =>
+      e.rounds.reduce((sum, r) => sum + r.matches.length, 0);
 
     const unsubscribe = RemoteStorageService.subscribeToEvening(currentEvening.id, (remoteEvening) => {
       if ((remoteEvening as any).cancelled === true) {
@@ -428,14 +433,26 @@ useEffect(() => {
 
       const localProgress = countCompletedMatches(local);
       const remoteProgress = countCompletedMatches(remoteEvening);
-
-      // Only accept remote state if it has equal or more progress than local.
-      // This prevents stale server data (from before an internet outage) from
-      // overwriting newer local progress when the connection is restored.
-      if (remoteProgress >= localProgress) {
+      
+      const localTotalMatches = countTotalMatches(local);
+      const remoteTotalMatches = countTotalMatches(remoteEvening);
+      
+      const remoteIsNotStale =
+        remoteProgress > localProgress ||
+        (remoteProgress === localProgress && remoteTotalMatches >= localTotalMatches);
+      
+      // Only accept remote state if it does not remove local match records.
+      // This prevents a saved score update from overwriting the newly-created next match.
+      if (remoteIsNotStale) {
         setCurrentEvening(remoteEvening);
       } else {
-        console.warn('[Realtime] Ignored stale remote state', { localProgress, remoteProgress });
+        console.warn('[Realtime] Ignored stale remote state', {
+          localProgress,
+          remoteProgress,
+          localTotalMatches,
+          remoteTotalMatches,
+        });
+      
         if (currentTeamEditReason === "owner_admin" || currentTeamEditReason === null) {
           RemoteStorageService.upsertEveningLive(local).catch((error) => {
             console.error("Failed to re-push local evening after stale realtime update:", error?.message || error);
