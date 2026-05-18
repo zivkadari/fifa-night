@@ -155,9 +155,47 @@ export const TournamentGame = ({ evening, onBack, onComplete, onGoHome, onUpdate
     return override?.stars ?? club.stars;
   };
 
-  // Sync local state when the parent evening prop changes (e.g. after resume/hydration)
+  // Sync local state when the parent evening prop changes,
+  // but do not let stale remote/parent state remove locally-created matches.
   useEffect(() => {
-    setCurrentEvening(evening);
+    setCurrentEvening((previousEvening) => {
+      if (!previousEvening || previousEvening.id !== evening.id) {
+        return evening;
+      }
+  
+      const countCompletedMatches = (e: Evening) =>
+        e.rounds.reduce(
+          (sum, round) => sum + round.matches.filter((match) => match.completed).length,
+          0
+        );
+  
+      const countTotalMatches = (e: Evening) =>
+        e.rounds.reduce((sum, round) => sum + round.matches.length, 0);
+  
+      const previousCompleted = countCompletedMatches(previousEvening);
+      const incomingCompleted = countCompletedMatches(evening);
+  
+      const previousTotal = countTotalMatches(previousEvening);
+      const incomingTotal = countTotalMatches(evening);
+  
+      const incomingIsNotStale =
+        incomingCompleted > previousCompleted ||
+        (incomingCompleted === previousCompleted && incomingTotal >= previousTotal);
+  
+      if (!incomingIsNotStale) {
+        console.warn("[TournamentGame] Ignored stale incoming evening", {
+          eveningId: evening.id,
+          previousCompleted,
+          incomingCompleted,
+          previousTotal,
+          incomingTotal,
+        });
+  
+        return previousEvening;
+      }
+  
+      return evening;
+    });
   }, [evening]);
 
   // Persist evening state to avoid losing teams when navigating
