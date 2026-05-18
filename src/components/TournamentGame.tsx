@@ -297,8 +297,8 @@ export const TournamentGame = ({ evening, onBack, onComplete, onGoHome, onUpdate
       ...currentEvening,
       rounds: [...currentEvening.rounds, roundWithMatch]
     };
-    setCurrentEvening(updatedEvening);
-    onUpdateEvening(updatedEvening);
+    setCurrentEvening(updatedEveningWithPools);
+    onUpdateEvening(updatedEveningWithPools);
     
     // Generate team pools for the entire round, excluding clubs that were ACTUALLY PLAYED this evening
     // Note: We only exclude clubs from usedClubCounts (clubs that were selected and played),
@@ -344,6 +344,7 @@ export const TournamentGame = ({ evening, onBack, onComplete, onGoHome, onUpdate
     };
     setCurrentEvening(updatedEveningWithPools);
     onUpdateEvening(updatedEveningWithPools);
+    onSaveEveningRemote?.(updatedEveningWithPools);
 
     setOriginalTeamPools([poolResult.pools[0], poolResult.pools[1]]);
     setTeamPools([poolResult.pools[0], poolResult.pools[1]]);
@@ -387,8 +388,9 @@ export const TournamentGame = ({ evening, onBack, onComplete, onGoHome, onUpdate
             ...evening.rounds.slice(roundIndex + 1)
           ]
         };
-        setCurrentEvening(updatedEvening);
-        onUpdateEvening(updatedEvening);
+        setCurrentEvening(updatedEveningPersist);
+        onUpdateEvening(updatedEveningPersist);
+        onSaveEveningRemote?.(updatedEveningPersist);
       } else {
         // Round complete, move to next round
         handleRoundComplete();
@@ -410,7 +412,10 @@ export const TournamentGame = ({ evening, onBack, onComplete, onGoHome, onUpdate
       };
       setCurrentEvening(updatedEveningPersist);
       onUpdateEvening(updatedEveningPersist);
-      
+      onSaveEveningRemote?.(updatedEveningPersist);
+
+// Generate team pools if we don't have them yet or filter existing ones
+
       // Generate team pools if we don't have them yet or filter existing ones
       if (originalTeamPools[0].length === 0) {
         const basePools: [Club[], Club[]] | null = (round.teamPools as [Club[], Club[]] | undefined) ?? null;
@@ -447,6 +452,7 @@ export const TournamentGame = ({ evening, onBack, onComplete, onGoHome, onUpdate
           };
           setCurrentEvening(evWithPools);
           onUpdateEvening(evWithPools);
+          onSaveEveningRemote?.(evWithPools);
           setOriginalTeamPools([poolResult.pools[0], poolResult.pools[1]]);
           setTeamPools([poolResult.pools[0], poolResult.pools[1]]);
         }
@@ -726,6 +732,7 @@ export const TournamentGame = ({ evening, onBack, onComplete, onGoHome, onUpdate
       };
       setCurrentEvening(updatedEvening);
       onUpdateEvening(updatedEvening);
+      onSaveEveningRemote?.(updatedEvening);
     }
     
     toast({
@@ -815,6 +822,7 @@ export const TournamentGame = ({ evening, onBack, onComplete, onGoHome, onUpdate
     };
     setCurrentEvening(updatedEvening);
     onUpdateEvening(updatedEvening);
+    onSaveEveningRemote?.(updatedEvening);
     setEditingMatch(null);
     toast({ title: 'תוצאה עודכנה', description: `${newScore1}-${newScore2}` });
   };
@@ -874,6 +882,7 @@ export const TournamentGame = ({ evening, onBack, onComplete, onGoHome, onUpdate
     };
     setCurrentEvening(updatedEvening);
     onUpdateEvening(updatedEvening);
+    onSaveEveningRemote?.(updatedEvening);
 
     // If no current in-progress match, create one
     const hasInProgress = updatedMatches.some(m => !m.completed);
@@ -1143,6 +1152,7 @@ export const TournamentGame = ({ evening, onBack, onComplete, onGoHome, onUpdate
       };
       setCurrentEvening(updatedEvening);
       onUpdateEvening(updatedEvening);
+      onSaveEveningRemote?.(updatedEvening);
     }
 
     if (currentRound === 2) { 
