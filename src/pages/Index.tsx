@@ -666,10 +666,6 @@ const handleGoHome = () => {
       }
   
       RemoteStorageService.submitMatchScore(evening.id, submission)
-        .then((savedEvening) => {
-          setCurrentEvening(savedEvening);
-          if (!savedEvening.completed) persistActiveEveningNow(savedEvening);
-        })
         .catch((error) => {
           console.error("submitMatchScore failed:", error?.message || error);
           toast({
@@ -683,10 +679,6 @@ const handleGoHome = () => {
     }
   
     RemoteStorageService.upsertEveningLive(evening)
-      .then((savedEvening) => {
-        setCurrentEvening(savedEvening);
-        if (!savedEvening.completed) persistActiveEveningNow(savedEvening);
-      })
       .catch((error) => {
         console.error("upsertEveningLive failed:", error?.message || error);
         toast({
