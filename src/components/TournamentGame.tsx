@@ -399,7 +399,8 @@ export const TournamentGame = ({ evening, onBack, onComplete, onGoHome, onUpdate
   
       setCurrentEvening(updatedEveningPersist);
       onUpdateEvening(updatedEveningPersist);
-  
+      onSaveEveningRemote?.(updatedEveningPersist);
+      
       if (originalTeamPools[0].length === 0) {
         const basePools: [Club[], Club[]] | null =
           (round.teamPools as [Club[], Club[]] | undefined) ?? null;
@@ -441,6 +442,7 @@ export const TournamentGame = ({ evening, onBack, onComplete, onGoHome, onUpdate
   
           setCurrentEvening(evWithPools);
           onUpdateEvening(evWithPools);
+          onSaveEveningRemote?.(evWithPools);
           setOriginalTeamPools([poolResult.pools[0], poolResult.pools[1]]);
           setTeamPools([poolResult.pools[0], poolResult.pools[1]]);
         }
