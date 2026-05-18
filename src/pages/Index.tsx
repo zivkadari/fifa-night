@@ -644,18 +644,27 @@ const handleGoHome = () => {
   };
 
   const handleUpdateEvening = (evening: Evening) => {
-    const previousEvening = currentEveningRef.current;
-    const submission = getFirstTimeRegularScoreSubmission(previousEvening, evening);
-  
     setCurrentEvening(evening);
   
     if (!evening.completed) {
       persistActiveEveningNow(evening);
     }
+  };
+
+  const handleSaveEveningRemote = (evening: Evening) => {
+    const previousEvening = currentEveningRef.current;
+    const submission = getFirstTimeRegularScoreSubmission(previousEvening, evening);
   
     if (!RemoteStorageService.isEnabled()) return;
   
-    if (currentTeamEditReason === "playing" && submission) {
+    if (currentTeamEditReason === "playing") {
+      if (!submission) {
+        console.warn("Skipped remote save for regular player; no first-time score submission detected", {
+          eveningId: evening.id,
+        });
+        return;
+      }
+  
       RemoteStorageService.submitMatchScore(evening.id, submission)
         .then((savedEvening) => {
           setCurrentEvening(savedEvening);
@@ -674,6 +683,10 @@ const handleGoHome = () => {
     }
   
     RemoteStorageService.upsertEveningLive(evening)
+      .then((savedEvening) => {
+        setCurrentEvening(savedEvening);
+        if (!savedEvening.completed) persistActiveEveningNow(savedEvening);
+      })
       .catch((error) => {
         console.error("upsertEveningLive failed:", error?.message || error);
         toast({
@@ -1003,6 +1016,7 @@ const handleGoHome = () => {
               onComplete={handleCompleteEvening}
               onGoHome={handleGoHome}
               onUpdateEvening={handleUpdateEvening}
+              onSaveEveningRemote={handleSaveEveningRemote}
               canStopTournament={currentTeamEditReason === "owner_admin"}
               onStopTournament={() => currentEvening && handleStopTournament(currentEvening.id, "regular")}
               onRoundModeSelection={(nextRoundIndex) => {
