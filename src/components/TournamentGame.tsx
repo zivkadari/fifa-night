@@ -277,209 +277,185 @@ export const TournamentGame = ({ evening, onBack, onComplete, onGoHome, onUpdate
     const roundIndex = targetRoundIndex ?? currentRound;
     const roundNumber = roundIndex + 1;
     const roundPairs = pairSchedule[roundIndex];
-    
+  
     if (!roundPairs) {
-      // Tournament complete
       completeEvening();
       return;
     }
-
-    // Store the pairs for this round
+  
     setCurrentRoundPairs(roundPairs);
-
-    const newRound = TournamentEngine.createRound(roundNumber, roundPairs, currentEvening.winsToComplete);
-    
-    // Create first match immediately and persist it to the round so selection survives navigation
+  
+    const newRound = TournamentEngine.createRound(
+      roundNumber,
+      roundPairs,
+      currentEvening.winsToComplete
+    );
+  
     const firstMatch = TournamentEngine.createNextMatch(newRound, roundPairs);
     const roundWithMatch = { ...newRound, matches: [firstMatch] };
-
+  
     const updatedEvening = {
       ...currentEvening,
-      rounds: [...currentEvening.rounds, roundWithMatch]
+      rounds: [...currentEvening.rounds, roundWithMatch],
     };
-    setCurrentEvening(updatedEveningWithPools);
-    onUpdateEvening(updatedEveningWithPools);
-    
-    // Generate team pools for the entire round, excluding clubs that were ACTUALLY PLAYED this evening
-    // Note: We only exclude clubs from usedClubCounts (clubs that were selected and played),
-    // NOT clubs that were just in a pool but never selected
+  
+    setCurrentEvening(updatedEvening);
+    onUpdateEvening(updatedEvening);
+  
     const teamSelector = new TeamSelector(clubsWithOverrides);
     const maxMatches = currentEvening.winsToComplete * 2 - 1;
-    console.log('Generating pools for round with maxMatches:', maxMatches);
-    const actuallyPlayedClubIds = Object.keys(usedClubCounts).filter(id => (usedClubCounts[id] ?? 0) >= 1);
+    const actuallyPlayedClubIds = Object.keys(usedClubCounts).filter(
+      (id) => (usedClubCounts[id] ?? 0) >= 1
+    );
+  
     const poolConfigs = await fetchPoolConfigs();
     const poolConfig = getPoolConfigForWins(poolConfigs, currentEvening.winsToComplete);
+  
     const poolResult = poolConfig
       ? teamSelector.generateTeamPoolsFromConfig(roundPairs, poolConfig, actuallyPlayedClubIds)
       : teamSelector.generateTeamPools(roundPairs, actuallyPlayedClubIds, maxMatches);
-    // DEV diagnostics: verify no cross-pool duplicates
-    if (process.env.NODE_ENV !== 'production') {
-      const ids0 = new Set(poolResult.pools[0].map(c => c.id));
-      const ids1 = new Set(poolResult.pools[1].map(c => c.id));
-      const duplicates = [...ids0].filter(id => ids1.has(id));
-      console.log('[DEV] startNextRound pool generation', {
-        roundIndex: roundIndex,
-        pair0_clubs: poolResult.pools[0].map(c => `${c.name}(${c.stars}★)`),
-        pair1_clubs: poolResult.pools[1].map(c => `${c.name}(${c.stars}★)`),
-        recycled: Array.from(poolResult.recycledClubIds),
-        duplicatesAcrossPools: duplicates,
-      });
-      if (duplicates.length > 0) {
-        console.error('[DEV] ERROR: Duplicate clubs across pools!', duplicates);
-      }
-    }
+  
     setRecycledClubIds(poolResult.recycledClubIds);
-
-    // Persist pools and recycled club IDs on the round so they don't change on navigation
+  
     const updatedEveningWithPools: Evening = {
       ...updatedEvening,
       rounds: [
         ...updatedEvening.rounds.slice(0, updatedEvening.rounds.length - 1),
-        { 
-          ...updatedEvening.rounds[updatedEvening.rounds.length - 1], 
+        {
+          ...updatedEvening.rounds[updatedEvening.rounds.length - 1],
           teamPools: [poolResult.pools[0], poolResult.pools[1]],
-          recycledClubIds: Array.from(poolResult.recycledClubIds)
+          recycledClubIds: Array.from(poolResult.recycledClubIds),
         },
       ],
     };
+  
     setCurrentEvening(updatedEveningWithPools);
     onUpdateEvening(updatedEveningWithPools);
-    onSaveEveningRemote?.(updatedEveningWithPools);
-
+  
     setOriginalTeamPools([poolResult.pools[0], poolResult.pools[1]]);
     setTeamPools([poolResult.pools[0], poolResult.pools[1]]);
-    
-    // Reset game state for new round
+  
     setSelectedClubs([null, null]);
-    setGamePhase('team-selection');
+    setGamePhase("team-selection");
     setConsumedClubIdsThisRound([]);
-    
-    // Start first match
+  
     setCurrentMatch(firstMatch);
   };
 
   const createNextMatch = async (evening: Evening, roundIndex: number, pairs?: Pair[]) => {
-    // Use stored round pairs if pairs not provided
     const roundPairs = pairs || currentRoundPairs;
     const round = evening.rounds[roundIndex];
-    
-    // Check if round is complete or tied
+  
     if (TournamentEngine.isRoundComplete(round, evening.winsToComplete)) {
       if (TournamentEngine.isRoundTied(round, evening.winsToComplete)) {
-        // Create decider match
         const deciderMatch = TournamentEngine.createDeciderMatch(round, roundPairs);
+  
         setCurrentMatch(deciderMatch);
-
-        // For decider, don't pre-generate pools. We'll draw balanced teams via button.
         setTeamPools([[], []]);
-
+  
         toast({
           title: "Sudden Death!",
-          description: `Tied at ${evening.winsToComplete}-${evening.winsToComplete}. Tap \"Draw Balanced Teams\" to start the decider.`,
+          description: `Tied at ${evening.winsToComplete}-${evening.winsToComplete}. Tap "Draw Balanced Teams" to start the decider.`,
         });
-
-        // Mark round as decider and append the decider match so it persists
-        const updatedRound = { ...round, isDeciderMatch: true, matches: [...round.matches, deciderMatch] };
+  
+        const updatedRound = {
+          ...round,
+          isDeciderMatch: true,
+          matches: [...round.matches, deciderMatch],
+        };
+  
         const updatedEvening = {
           ...evening,
           rounds: [
             ...evening.rounds.slice(0, roundIndex),
             updatedRound,
-            ...evening.rounds.slice(roundIndex + 1)
-          ]
+            ...evening.rounds.slice(roundIndex + 1),
+          ],
         };
-        setCurrentEvening(updatedEveningPersist);
-        onUpdateEvening(updatedEveningPersist);
-        onSaveEveningRemote?.(updatedEveningPersist);
+  
+        setCurrentEvening(updatedEvening);
+        onUpdateEvening(updatedEvening);
       } else {
-        // Round complete, move to next round
         handleRoundComplete();
       }
     } else {
-      // Create next regular match
       const nextMatch = TournamentEngine.createNextMatch(round, roundPairs);
+  
       setCurrentMatch(nextMatch);
-
-      // Persist the new in-progress match so selections survive navigation
-      const updatedRoundPersist = { ...round, matches: [...round.matches, nextMatch] };
+  
+      const updatedRoundPersist = {
+        ...round,
+        matches: [...round.matches, nextMatch],
+      };
+  
       const updatedEveningPersist = {
         ...evening,
         rounds: [
           ...evening.rounds.slice(0, roundIndex),
           updatedRoundPersist,
-          ...evening.rounds.slice(roundIndex + 1)
-        ]
+          ...evening.rounds.slice(roundIndex + 1),
+        ],
       };
+  
       setCurrentEvening(updatedEveningPersist);
       onUpdateEvening(updatedEveningPersist);
-      onSaveEveningRemote?.(updatedEveningPersist);
-
-// Generate team pools if we don't have them yet or filter existing ones
-
-      // Generate team pools if we don't have them yet or filter existing ones
+  
       if (originalTeamPools[0].length === 0) {
-        const basePools: [Club[], Club[]] | null = (round.teamPools as [Club[], Club[]] | undefined) ?? null;
+        const basePools: [Club[], Club[]] | null =
+          (round.teamPools as [Club[], Club[]] | undefined) ?? null;
+  
         if (basePools) {
           setOriginalTeamPools([basePools[0], basePools[1]]);
           setTeamPools([basePools[0], basePools[1]]);
-          // Restore recycled club IDs from round
           setRecycledClubIds(new Set(round.recycledClubIds ?? []));
         } else {
           const teamSelector = new TeamSelector(clubsWithOverrides);
           const maxMatches = currentEvening.winsToComplete * 2 - 1;
-          // Only exclude clubs that were ACTUALLY PLAYED (from usedClubCounts)
-          const actuallyPlayedClubIds = Object.keys(usedClubCounts).filter(id => (usedClubCounts[id] ?? 0) >= 1);
+          const actuallyPlayedClubIds = Object.keys(usedClubCounts).filter(
+            (id) => (usedClubCounts[id] ?? 0) >= 1
+          );
+  
           const poolConfigs = await fetchPoolConfigs();
           const poolConfig = getPoolConfigForWins(poolConfigs, currentEvening.winsToComplete);
+  
           const poolResult = poolConfig
             ? teamSelector.generateTeamPoolsFromConfig(roundPairs, poolConfig, actuallyPlayedClubIds)
             : teamSelector.generateTeamPools(roundPairs, actuallyPlayedClubIds, maxMatches);
-          // Track recycled clubs
+  
           setRecycledClubIds(poolResult.recycledClubIds);
-          // Persist these pools on the round
-          const roundWithPools: Round = { 
-            ...updatedRoundPersist, 
+  
+          const roundWithPools: Round = {
+            ...updatedRoundPersist,
             teamPools: [poolResult.pools[0], poolResult.pools[1]],
-            recycledClubIds: Array.from(poolResult.recycledClubIds)
+            recycledClubIds: Array.from(poolResult.recycledClubIds),
           } as Round;
+  
           const evWithPools: Evening = {
             ...updatedEveningPersist,
             rounds: [
               ...updatedEveningPersist.rounds.slice(0, roundIndex),
               roundWithPools,
-              ...updatedEveningPersist.rounds.slice(roundIndex + 1)
+              ...updatedEveningPersist.rounds.slice(roundIndex + 1),
             ],
           };
+  
           setCurrentEvening(evWithPools);
           onUpdateEvening(evWithPools);
-          onSaveEveningRemote?.(evWithPools);
           setOriginalTeamPools([poolResult.pools[0], poolResult.pools[1]]);
           setTeamPools([poolResult.pools[0], poolResult.pools[1]]);
         }
       } else {
-        // Use allocation-aware filtering: recycled clubs stay until their allocation is consumed
         const filteredPools: [Club[], Club[]] = [
           filterPoolByAllocations(originalTeamPools[0], consumedClubIdsThisRound),
-          filterPoolByAllocations(originalTeamPools[1], consumedClubIdsThisRound)
+          filterPoolByAllocations(originalTeamPools[1], consumedClubIdsThisRound),
         ];
+  
         setTeamPools(filteredPools);
-
-        if (process.env.NODE_ENV !== 'production') {
-          console.log('[DEV] createNextMatch pool filter (allocation-aware)', {
-            roundIndex,
-            pair0_original: originalTeamPools[0].length,
-            pair0_remaining: filteredPools[0].length,
-            pair1_original: originalTeamPools[1].length,
-            pair1_remaining: filteredPools[1].length,
-            consumedThisRound: consumedClubIdsThisRound,
-            recycledClubIds: Array.from(recycledClubIds),
-          });
-        }
       }
     }
-    
+  
     setSelectedClubs([null, null]);
-    setGamePhase('team-selection');
+    setGamePhase("team-selection");
   };
 
   const loadCurrentRound = async (targetIndex?: number) => {
