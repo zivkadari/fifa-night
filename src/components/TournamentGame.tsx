@@ -58,12 +58,13 @@ interface TournamentGameProps {
   onComplete: (evening: Evening) => void;
   onGoHome: () => void;
   onUpdateEvening: (evening: Evening) => void;
+  onSaveEveningRemote?: (evening: Evening) => void;
   onRoundModeSelection?: (nextRoundIndex: number) => void;
   canStopTournament?: boolean;
   onStopTournament?: () => void;
 }
 
-export const TournamentGame = ({ evening, onBack, onComplete, onGoHome, onUpdateEvening, onRoundModeSelection, canStopTournament, onStopTournament }: TournamentGameProps) => {
+export const TournamentGame = ({ evening, onBack, onComplete, onGoHome, onUpdateEvening, onSaveEveningRemote, onRoundModeSelection, canStopTournament, onStopTournament }: TournamentGameProps) => {
   // If this is a singles tournament, use the singles component
   if (evening.type === 'singles') {
     return (
@@ -936,6 +937,7 @@ export const TournamentGame = ({ evening, onBack, onComplete, onGoHome, onUpdate
 
     setCurrentEvening(updatedEvening);
     onUpdateEvening(updatedEvening);
+    onSaveEveningRemote?.(updatedEvening);
 
     // Mark selected clubs as used only after match completion
     const c1 = selectedClubs[0]!;
