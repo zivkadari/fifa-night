@@ -157,7 +157,11 @@ const Index = () => {
     }
     setAppState(next);
   }
-
+  
+  const { persistNow: persistActiveEveningNow, clearActive: clearActiveEvening } = useActiveEveningPersistence({
+    currentEvening,
+  });
+  
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const screen = params.get("screen");
@@ -227,10 +231,6 @@ const Index = () => {
       );
     }
   }, [location.search, toast, persistActiveEveningNow]);
-
-  const { persistNow: persistActiveEveningNow, clearActive: clearActiveEvening } = useActiveEveningPersistence({
-    currentEvening,
-  });
 
   // Ref to access latest currentEvening inside realtime callbacks (avoids stale closures)
   const currentEveningRef = useRef(currentEvening);
