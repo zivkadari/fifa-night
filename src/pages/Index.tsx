@@ -162,6 +162,59 @@ const Index = () => {
     const params = new URLSearchParams(location.search);
     const screen = params.get("screen");
     const teamId = params.get("teamId");
+    const openEvening = params.get("openEvening");
+  
+    if (openEvening) {
+      RemoteStorageService.loadEveningById(openEvening)
+        .then((evening) => {
+          if (!evening) {
+            toast({
+              title: "לא ניתן לפתוח טורניר",
+              description: "הטורניר לא נמצא או שכבר אינו פעיל.",
+              variant: "destructive",
+            });
+            return;
+          }
+  
+          if ((evening as any).cancelled || evening.completed) {
+            toast({
+              title: "הטורניר כבר הסתיים",
+              variant: "destructive",
+            });
+            return;
+          }
+  
+          const isFP = Array.isArray((evening as any)?.schedule);
+  
+          if (isFP) {
+            setFpEvening(evening as any);
+            StorageService.saveFPActive(evening as any);
+            setCurrentTeamEditReason("playing");
+            setAppState("fp-game");
+          } else {
+            setCurrentEvening(evening);
+            persistActiveEveningNow(evening);
+            setCurrentTeamEditReason("playing");
+            setAppState("game");
+          }
+  
+          window.history.replaceState(
+            { appState: isFP ? "fp-game" : "game" },
+            "",
+            window.location.pathname
+          );
+        })
+        .catch((error) => {
+          console.error("openEvening failed:", error?.message || error);
+          toast({
+            title: "שגיאה בפתיחת הטורניר",
+            description: "לא ניתן לפתוח את הטורניר כרגע.",
+            variant: "destructive",
+          });
+        });
+  
+      return;
+    }
   
     if (screen === "teams") {
       setRouteTeamId(teamId);
@@ -173,7 +226,7 @@ const Index = () => {
         window.location.pathname
       );
     }
-  }, [location.search]);
+  }, [location.search, toast, persistActiveEveningNow]);
 
   const { persistNow: persistActiveEveningNow, clearActive: clearActiveEvening } = useActiveEveningPersistence({
     currentEvening,
