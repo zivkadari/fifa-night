@@ -190,6 +190,24 @@ const NotificationsPage = () => {
     navigate("/");
   };
 
+  const handleOpenTournament = async (n: Notification) => {
+    await markRead(n.id);
+  
+    const eveningId = n.data?.evening_id;
+    if (eveningId) {
+      navigate(`/?openEvening=${encodeURIComponent(eveningId)}`);
+      return;
+    }
+  
+    const teamId = n.data?.team_id;
+    if (teamId) {
+      navigate(`/?screen=teams&teamId=${encodeURIComponent(teamId)}`);
+      return;
+    }
+  
+    navigate("/");
+  };
+
   const handleMarkAll = async () => {
     await RemoteStorageService.markAllNotificationsAsRead();
     setItems(prev => prev.map(n => n.read_at ? n : { ...n, read_at: new Date().toISOString() }));
@@ -289,7 +307,7 @@ const NotificationsPage = () => {
             variant="outline"
             onClick={(e) => {
               e.stopPropagation();
-              handleOpenTeam(n);
+              handleOpenTournament(n);
             }}
           >
             פתח טורניר
