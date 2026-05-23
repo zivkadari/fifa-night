@@ -9,7 +9,11 @@ import { StorageService, FPSavedGroup } from "@/services/storageService";
 
 interface FPSetupProps {
   onBack: () => void;
-  onStart: (players: Player[], matchCount: 15 | 30) => void;
+  onStart: (
+    players: Player[],
+    matchCount: 15 | 30,
+    setupOptions?: { firstSittingOutPlayerId?: string }
+  ) => void;
   savedPlayers?: Player[];
   /** Team players to pre-fill when starting within a team context */
   teamPlayers?: Player[];
@@ -31,6 +35,7 @@ export const FPSetup = ({ onBack, onStart, savedPlayers, teamPlayers }: FPSetupP
         : Array.from({ length: 5 }, (_, i) => ({ id: `player-${Date.now()}-${i}`, name: '' }))
   );
   const [matchCount, setMatchCount] = useState<15 | 30>(30);
+  const [firstSittingOutPlayerId, setFirstSittingOutPlayerId] = useState<string>('');
   const [savedGroups, setSavedGroups] = useState<FPSavedGroup[]>([]);
   const [groupName, setGroupName] = useState('');
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
@@ -54,12 +59,29 @@ export const FPSetup = ({ onBack, onStart, savedPlayers, teamPlayers }: FPSetupP
       toast({ title: "יש למלא את כל השמות", variant: "destructive" });
       return;
     }
+  
     if (hasDuplicates) {
       toast({ title: "שמות השחקנים חייבים להיות ייחודיים", variant: "destructive" });
       return;
     }
+  
+    if (!firstSittingOutPlayerId) {
+      toast({ title: "יש לבחור מי יישב בחוץ במשחק הראשון", variant: "destructive" });
+      return;
+    }
+  
     const cleaned = players.map(p => ({ ...p, name: p.name.trim() }));
-    onStart(cleaned, matchCount);
+    const selectedPlayer = cleaned.find(p => p.id === firstSittingOutPlayerId);
+    const remainingPlayers = cleaned.filter(p => p.id !== firstSittingOutPlayerId);
+  
+    if (!selectedPlayer || remainingPlayers.length !== 4) {
+      toast({ title: "בחירת השחקן שיושב בחוץ אינה תקינה", variant: "destructive" });
+      return;
+    }
+  
+    onStart([selectedPlayer, ...remainingPlayers], matchCount, {
+      firstSittingOutPlayerId,
+    });
   };
 
   const handleSaveGroup = () => {
@@ -88,6 +110,7 @@ export const FPSetup = ({ onBack, onStart, savedPlayers, teamPlayers }: FPSetupP
       name,
     }));
     setPlayers(loaded);
+    setFirstSittingOutPlayerId('');
     setMode('new');
   };
 
@@ -250,34 +273,37 @@ export const FPSetup = ({ onBack, onStart, savedPlayers, teamPlayers }: FPSetupP
             </div>
           </Card>
 
-          {/* Tournament length selection */}
+          {/* First sitting out selection */}
           <Card className="bg-gaming-surface/50 border-border/50 p-4">
-            <p className="text-sm font-semibold text-foreground mb-3 text-center">אורך הליגה</p>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={() => setMatchCount(15)}
-                className={`rounded-lg border-2 p-3 text-center transition-all ${
-                  matchCount === 15
-                    ? 'border-primary bg-primary/10'
-                    : 'border-border bg-gaming-surface hover:border-muted-foreground/40'
-                }`}
-              >
-                <p className="text-base font-bold text-foreground">קצרה</p>
-                <p className="text-xs text-muted-foreground">15 משחקים</p>
-                <p className="text-[10px] text-muted-foreground mt-1">3 קבוצות לזוג</p>
-              </button>
-              <button
-                onClick={() => setMatchCount(30)}
-                className={`rounded-lg border-2 p-3 text-center transition-all ${
-                  matchCount === 30
-                    ? 'border-primary bg-primary/10'
-                    : 'border-border bg-gaming-surface hover:border-muted-foreground/40'
-                }`}
-              >
-                <p className="text-base font-bold text-foreground">מלאה</p>
-                <p className="text-xs text-muted-foreground">30 משחקים</p>
-                <p className="text-[10px] text-muted-foreground mt-1">6 קבוצות לזוג</p>
-              </button>
+            <p className="text-sm font-semibold text-foreground mb-3 text-center">
+              מי יישב בחוץ במשחק הראשון?
+            </p>
+          
+            <div className="grid grid-cols-1 gap-2">
+              {players.map((player, idx) => {
+                const name = player.name.trim() || `שחקן ${idx + 1}`;
+                const selected = firstSittingOutPlayerId === player.id;
+          
+                return (
+                  <button
+                    key={player.id}
+                    type="button"
+                    onClick={() => setFirstSittingOutPlayerId(player.id)}
+                    className={`rounded-lg border-2 p-3 text-right transition-all ${
+                      selected
+                        ? 'border-primary bg-primary/10'
+                        : 'border-border bg-gaming-surface hover:border-muted-foreground/40'
+                    }`}
+                  >
+                    <p className="text-sm font-bold text-foreground">{name}</p>
+                    {selected && (
+                      <p className="text-xs text-neon-green mt-1">
+                        יישב בחוץ במשחק הראשון
+                      </p>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </Card>
 
@@ -321,7 +347,7 @@ export const FPSetup = ({ onBack, onStart, savedPlayers, teamPlayers }: FPSetupP
             size="lg"
             className="w-full"
             onClick={handleStart}
-            disabled={!allFilled || hasDuplicates}
+            disabled={!allFilled || hasDuplicates || !firstSittingOutPlayerId}
           >
             <Play className="h-5 w-5" />
             התחל ליגה
