@@ -79,5 +79,5 @@ export interface FPEvening {
   blockTimings?: FPBlockTiming[]; // per-block completion timestamps
   setupOptions?: {
     firstSittingOutPlayerId?: string;
-  };
+    };
   }
