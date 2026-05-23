@@ -353,9 +353,10 @@ export function createFPEvening(players: Player[], clubsOverride?: Club[], maxAp
   const cycles = matchCount === 15 ? 1 : 2;
   const teamsPerTier = matchCount === 15 ? 1 : 2;
 
-  // Shuffle player order randomly so setup input order doesn't create schedule bias
-  const shuffledPlayers = shuffleArray([...players]);
-
+  // Keep players[0] fixed as the first sitting-out player.
+  // Shuffle only the remaining players so setup input order still does not create full schedule bias.
+  const shuffledPlayers = [players[0], ...shuffleArray(players.slice(1))];
+  
   const pairs = generateAllPairs(shuffledPlayers);
   const schedule = generateSchedule(shuffledPlayers, pairs, cycles);
   const banksResult = generateTeamBanks(pairs, shuffledPlayers, clubsOverride, maxAppearances, teamsPerTier);
