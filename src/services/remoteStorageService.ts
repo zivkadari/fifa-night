@@ -2040,19 +2040,26 @@ export class RemoteStorageService {
 
   private static async syncNotificationTasks(): Promise<void> {
     if (!supabase) return;
-
+  
     try {
       const { error } = await supabase.rpc("sync_identity_required_notifications");
       if (error) console.warn("sync_identity_required_notifications failed:", error.message);
     } catch (e: any) {
       console.warn("sync_identity_required_notifications exception:", e?.message);
     }
-
+  
     try {
       const { error } = await supabase.rpc("sync_join_request_notifications");
       if (error) console.warn("sync_join_request_notifications failed:", error.message);
     } catch (e: any) {
       console.warn("sync_join_request_notifications exception:", e?.message);
+    }
+  
+    try {
+      const { error } = await supabase.rpc("sync_team_evening_notifications");
+      if (error) console.warn("sync_team_evening_notifications failed:", error.message);
+    } catch (e: any) {
+      console.warn("sync_team_evening_notifications exception:", e?.message);
     }
   }
 
