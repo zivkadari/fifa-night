@@ -1172,7 +1172,7 @@ const handleGoHome = () => {
             <FPSetup
               teamPlayers={teamPlayersForFP ?? undefined}
               onBack={() => window.history.back()}
-              onStart={async (players, matchCount) => {
+              onStart={async (players, matchCount, setupOptions) => {
                 // Try strict (max 2 appearances)
                 const result = createFPEvening(players, clubsWithOverrides, 2, matchCount);
                 if (typeof result === 'string') {
@@ -1181,8 +1181,13 @@ const handleGoHome = () => {
                   setShowFpDeadlock(true);
                   return;
                 }
-                setFpEvening(result);
-                StorageService.saveFPActive(result);
+                const resultWithSetupOptions = {
+                  ...result,
+                  setupOptions,
+                };
+                
+                setFpEvening(resultWithSetupOptions);
+                StorageService.saveFPActive(resultWithSetupOptions);
                 // Use active team context or auto-detect
                 let teamId = contextTeamId || fpTeamId;
                 if (!teamId && RemoteStorageService.isEnabled()) {
@@ -1192,7 +1197,7 @@ const handleGoHome = () => {
                 }
                 if (teamId) setFpTeamId(teamId);
                 // Create via RPC (enforces one active evening per team)
-                RemoteStorageService.createTeamEvening(result as any, teamId).catch((error) => {
+                RemoteStorageService.createTeamEvening(resultWithSetupOptions as any, teamId).catch((error) => {
                   console.error("Failed to create FP team evening:", error?.message || error);
                 });
                 goTo('fp-bank-overview');
