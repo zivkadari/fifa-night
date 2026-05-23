@@ -77,4 +77,7 @@ export interface FPEvening {
   completedAt?: string;    // ISO timestamp when tournament finished
   durationMinutes?: number; // calculated from completedAt - startedAt
   blockTimings?: FPBlockTiming[]; // per-block completion timestamps
-}
+  setupOptions?: {
+    firstSittingOutPlayerId?: string;
+  };
+  }
