@@ -62,9 +62,21 @@ interface TournamentGameProps {
   onRoundModeSelection?: (nextRoundIndex: number) => void;
   canStopTournament?: boolean;
   onStopTournament?: () => void;
+  canEditCompletedMatches?: boolean;
 }
 
-export const TournamentGame = ({ evening, onBack, onComplete, onGoHome, onUpdateEvening, onSaveEveningRemote, onRoundModeSelection, canStopTournament, onStopTournament }: TournamentGameProps) => {
+export const TournamentGame = ({
+  evening,
+  onBack,
+  onComplete,
+  onGoHome,
+  onUpdateEvening,
+  onSaveEveningRemote,
+  onRoundModeSelection,
+  canStopTournament,
+  onStopTournament,
+  canEditCompletedMatches = false,
+}: TournamentGameProps) => {
   // If this is a singles tournament, use the singles component
   if (evening.type === 'singles') {
     return (
@@ -800,12 +812,21 @@ export const TournamentGame = ({ evening, onBack, onComplete, onGoHome, onUpdate
 
   // Edit an already-submitted match result
   const editMatchResult = (matchId: string, newScore1: number, newScore2: number) => {
-    const round = currentEvening.rounds[currentRound];
-    if (!round) return;
-    const matchIdx = round.matches.findIndex(m => m.id === matchId);
-    if (matchIdx < 0) return;
-    const match = round.matches[matchIdx];
-    if (!match.completed) return;
+      if (!canEditCompletedMatches) {
+        toast({
+          title: "אין הרשאה לעריכת תוצאה",
+          description: "רק מנהל הקבוצה יכול לשנות תוצאה שכבר הוזנה.",
+          variant: "destructive",
+        });
+        return;
+      }
+  
+      const round = currentEvening.rounds[currentRound];
+      if (!round) return;
+      const matchIdx = round.matches.findIndex(m => m.id === matchId);
+      if (matchIdx < 0) return;
+      const match = round.matches[matchIdx];
+      if (!match.completed) return;
 
     // Recalculate pair scores from scratch
     const updatedMatch: Match = { ...match, score: [newScore1, newScore2] };
@@ -845,12 +866,16 @@ export const TournamentGame = ({ evening, onBack, onComplete, onGoHome, onUpdate
 
   // Delete a completed match entirely
   const deleteMatch = (matchId: string) => {
+    if (!canEditCompletedMatches) {
+      toast({
+        title: "אין הרשאה למחיקת תוצאה",
+        description: "רק מנהל הקבוצה יכול למחוק או לבטל תוצאה שכבר הוזנה.",
+        variant: "destructive",
+      });
+      return;
+    }
+  
     const round = currentEvening.rounds[currentRound];
-    if (!round) return;
-    const matchIdx = round.matches.findIndex(m => m.id === matchId);
-    if (matchIdx < 0) return;
-    const match = round.matches[matchIdx];
-    if (!match.completed) return;
 
     // Return clubs to pool by removing from used sets
     const c1 = match.clubs[0];
@@ -1755,18 +1780,20 @@ export const TournamentGame = ({ evening, onBack, onComplete, onGoHome, onUpdate
                         <span className="text-neon-green font-bold mx-2">{match.score?.[0]}-{match.score?.[1]}</span>
                         <span className="text-foreground">{match.clubs[1]?.name}</span>
                       </div>
-                      <div className="flex items-center gap-1 shrink-0">
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => {
-                          setEditingMatch(match);
-                          setEditScore1(match.score?.[0] ?? 0);
-                          setEditScore2(match.score?.[1] ?? 0);
-                        }}>
-                          <Pencil className="h-3 w-3" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => deleteMatch(match.id)}>
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </div>
+                      {canEditCompletedMatches && (
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => {
+                            setEditingMatch(match);
+                            setEditScore1(match.score?.[0] ?? 0);
+                            setEditScore2(match.score?.[1] ?? 0);
+                          }}>
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => deleteMatch(match.id)}>
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+)}
                     </div>
                   </Card>
                 ))}
