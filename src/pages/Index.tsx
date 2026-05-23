@@ -896,11 +896,13 @@ const handleGoHome = () => {
                   : undefined
             }
             onCloseTournament={
-              activeFP
-                ? () => handleStopTournament(fpEvening!.id, "fp")
-                : activeRegular
-                  ? handleCloseTournament
-                  : undefined
+              currentTeamEditReason === "owner_admin"
+                ? activeFP
+                  ? () => handleStopTournament(fpEvening!.id, "fp")
+                  : activeRegular
+                    ? handleCloseTournament
+                    : undefined
+                : undefined
             }
             onManageTeams={() => goTo('teams')}
             onFindTeam={() => goTo('find-team')}
@@ -1112,6 +1114,7 @@ const handleGoHome = () => {
               onUpdateEvening={handleUpdateEvening}
               onSaveEveningRemote={handleSaveEveningRemote}
               canStopTournament={currentTeamEditReason === "owner_admin"}
+              canEditCompletedMatches={currentTeamEditReason === "owner_admin"}
               onStopTournament={() => currentEvening && handleStopTournament(currentEvening.id, "regular")}
               onRoundModeSelection={(nextRoundIndex) => {
                 setPendingRoundIndex(nextRoundIndex);
