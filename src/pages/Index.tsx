@@ -460,66 +460,98 @@ useEffect(() => {
     }
   };
 
-  // Realtime sync: subscribe to current evening when in game state
+  // Realtime + polling sync: keep current live tournament updated while in game state
   useEffect(() => {
     if (appState !== 'game' || !currentEvening) return;
-
-    // Helpers for realtime conflict protection.
+  
+    let disposed = false;
+  
+    // Helpers for realtime/polling conflict protection.
     // A remote update is newer only if it has more completed matches,
     // or if completed count is equal but it does not lose existing match records.
     const countCompletedMatches = (e: Evening) =>
       e.rounds.reduce((sum, r) => sum + r.matches.filter(m => m.completed).length, 0);
-    
+  
     const countTotalMatches = (e: Evening) =>
       e.rounds.reduce((sum, r) => sum + r.matches.length, 0);
-
-    const unsubscribe = RemoteStorageService.subscribeToEvening(currentEvening.id, (remoteEvening) => {
+  
+    const applyRemoteEvening = (remoteEvening: Evening) => {
+      if (disposed) return;
+  
       if ((remoteEvening as any).cancelled === true) {
         handleCancelledEvening(remoteEvening);
         return;
       }
+  
       const local = currentEveningRef.current;
       if (!local) {
         setCurrentEvening(remoteEvening);
+        StorageService.saveActiveEvening(remoteEvening);
         return;
       }
-
+  
       const localProgress = countCompletedMatches(local);
       const remoteProgress = countCompletedMatches(remoteEvening);
-      
+  
       const localTotalMatches = countTotalMatches(local);
       const remoteTotalMatches = countTotalMatches(remoteEvening);
-      
+  
       const remoteIsNotStale =
         remoteProgress > localProgress ||
         (remoteProgress === localProgress && remoteTotalMatches >= localTotalMatches);
-      
+  
       // Only accept remote state if it does not remove local match records.
-      // This prevents a saved score update from overwriting the newly-created next match.
+      // This prevents saved score updates from overwriting a newly-created next match.
       if (remoteIsNotStale) {
         setCurrentEvening(remoteEvening);
+        StorageService.saveActiveEvening(remoteEvening);
       } else {
-        console.warn('[Realtime] Ignored stale remote state', {
+        console.warn('[Live Sync] Ignored stale remote state', {
           localProgress,
           remoteProgress,
           localTotalMatches,
           remoteTotalMatches,
         });
-      
+  
         if (currentTeamEditReason === "owner_admin" || currentTeamEditReason === null) {
           RemoteStorageService.upsertEveningLive(local).catch((error) => {
-            console.error("Failed to re-push local evening after stale realtime update:", error?.message || error);
+            console.error("Failed to re-push local evening after stale live update:", error?.message || error);
           });
         }
       }
-    }, () => {
-      toast({ title: "הטורניר הופסק" });
-      clearActiveEvening();
-      setCurrentEvening(null);
-      setCurrentTeamEditReason(null);
-      goTo('home');
-    });
-    return () => unsubscribe && unsubscribe();
+    };
+  
+    const unsubscribe = RemoteStorageService.subscribeToEvening(
+      currentEvening.id,
+      applyRemoteEvening,
+      () => {
+        if (disposed) return;
+        toast({ title: "הטורניר הופסק" });
+        clearActiveEvening();
+        setCurrentEvening(null);
+        setCurrentTeamEditReason(null);
+        goTo('home');
+      }
+    );
+  
+    // Fallback polling: Realtime is not always reliable on mobile / preview tabs.
+    // This keeps all users synced without leaving and re-entering the tournament.
+    const intervalId = window.setInterval(() => {
+      RemoteStorageService.loadEveningById(currentEvening.id)
+        .then((latest) => {
+          if (!latest) return;
+          applyRemoteEvening(latest);
+        })
+        .catch((error) => {
+          console.warn("[Live Sync] Polling failed:", error?.message || error);
+        });
+    }, 2000);
+  
+    return () => {
+      disposed = true;
+      window.clearInterval(intervalId);
+      unsubscribe?.();
+    };
   }, [appState, currentEvening?.id, currentTeamEditReason]);
 
   // Handle joined evening from deep link navigation
