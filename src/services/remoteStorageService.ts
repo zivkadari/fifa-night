@@ -252,15 +252,23 @@ export class RemoteStorageService {
 
   static async loadEveningById(eveningId: string): Promise<Evening | null> {
     if (!supabase) return null;
+  
     const { data, error } = await supabase
       .from(EVENINGS_TABLE)
-      .select("data")
+      .select("data, team_id")
       .eq("id", eveningId)
       .maybeSingle();
+  
     if (error) {
       throw new Error(error.message);
     }
-    return (data?.data as Evening | undefined) ?? null;
+  
+    const evening = (data?.data as Evening | undefined) ?? null;
+    if (evening && data?.team_id) {
+      (evening as any)._team_id = data.team_id;
+    }
+  
+    return evening;
   }
 
   static async loadAllFPEvenings(): Promise<any[]> {
