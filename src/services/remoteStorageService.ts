@@ -29,6 +29,48 @@ type SyncStatsResult = {
   error?: string;
 };
 
+function hasCompletedGamesInEvening(evening: any): boolean {
+  if (!evening) return false;
+
+  // 5-player doubles
+  if (Array.isArray(evening.schedule)) {
+    return evening.schedule.some((match: any) =>
+      match?.completed === true &&
+      match.scoreA !== null &&
+      match.scoreA !== undefined &&
+      match.scoreB !== null &&
+      match.scoreB !== undefined
+    );
+  }
+
+  // Singles
+  if (Array.isArray(evening.gameSequence)) {
+    return evening.gameSequence.some((game: any) =>
+      game?.completed === true &&
+      Array.isArray(game.score)
+    );
+  }
+
+  // Regular pairs
+  if (Array.isArray(evening.rounds)) {
+    return evening.rounds.some((round: any) =>
+      Array.isArray(round.matches) &&
+      round.matches.some((match: any) =>
+        match?.completed === true &&
+        Array.isArray(match.score)
+      )
+    );
+  }
+
+  return false;
+}
+
+function shouldShowInHistory(evening: any): boolean {
+  // Manual/history entries with completed games should remain.
+  // Cancelled/empty tournaments should not appear anywhere in history.
+  return hasCompletedGamesInEvening(evening);
+}
+
 export class RemoteStorageService {
   static isEnabled() {
     return Boolean(supabase);
@@ -199,11 +241,13 @@ export class RemoteStorageService {
       console.error("Supabase loadEvenings error:", error.message);
       return [];
     }
-    return (data || []).map((r: any) => {
-      const evening = r.data as Evening;
-      if (r.team_id) (evening as any)._team_id = r.team_id;
-      return evening;
-    });
+    return (data || [])
+      .map((r: any) => {
+        const evening = r.data as Evening;
+        if (r.team_id) (evening as any)._team_id = r.team_id;
+        return evening;
+      })
+      .filter((evening: any) => shouldShowInHistory(evening));
   }
 
   static async loadEveningById(eveningId: string): Promise<Evening | null> {
@@ -408,13 +452,15 @@ export class RemoteStorageService {
       .order("updated_at", { ascending: false });
 
     if (!error && data && data.length > 0) {
-      return data.map((r: any) => ({
-        ...(r.data as Evening),
-        teamId: r.team_id || undefined,
-        teamName: r.teams?.name || undefined,
-        _updatedAt: r.updated_at || undefined,
-        _createdAt: r.created_at || undefined,
-      }));
+      return data
+        .map((r: any) => ({
+          ...(r.data as Evening),
+          teamId: r.team_id || undefined,
+          teamName: r.teams?.name || undefined,
+          _updatedAt: r.updated_at || undefined,
+          _createdAt: r.created_at || undefined,
+        }))
+        .filter((evening: any) => shouldShowInHistory(evening));
     }
 
     if (error) {
@@ -446,13 +492,15 @@ export class RemoteStorageService {
       }
     }
 
-    return simpleData.map((r: any) => ({
-      ...(r.data as Evening),
-      teamId: r.team_id || undefined,
-      teamName: r.team_id ? teamMap[r.team_id] : undefined,
-      _updatedAt: r.updated_at || undefined,
-      _createdAt: r.created_at || undefined,
-    }));
+    return simpleData
+      .map((r: any) => ({
+        ...(r.data as Evening),
+        teamId: r.team_id || undefined,
+        teamName: r.team_id ? teamMap[r.team_id] : undefined,
+        _updatedAt: r.updated_at || undefined,
+        _createdAt: r.created_at || undefined,
+      }))
+      .filter((evening: any) => shouldShowInHistory(evening));
   }
 
   static async getTeamDiscoverySettings(teamId: string): Promise<{
