@@ -203,7 +203,7 @@ const Index = () => {
   
     if (openEvening) {
       RemoteStorageService.loadEveningById(openEvening)
-        .then((evening) => {
+        .then(async (evening) => {
           if (!evening) {
             toast({
               title: "לא ניתן לפתוח טורניר",
