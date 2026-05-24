@@ -40,6 +40,9 @@ export const FPSetup = ({ onBack, onStart, savedPlayers, teamPlayers }: FPSetupP
   const [groupName, setGroupName] = useState('');
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
+  const [showPlayerEditor, setShowPlayerEditor] = useState<boolean>(
+    !(hasTeamPlayers || savedPlayers?.length === 5)
+  );
 
   useEffect(() => {
     setSavedGroups(StorageService.loadFPGroups());
@@ -111,6 +114,7 @@ export const FPSetup = ({ onBack, onStart, savedPlayers, teamPlayers }: FPSetupP
     }));
     setPlayers(loaded);
     setFirstSittingOutPlayerId('');
+    setShowPlayerEditor(false);
     setMode('new');
   };
 
@@ -150,7 +154,15 @@ export const FPSetup = ({ onBack, onStart, savedPlayers, teamPlayers }: FPSetupP
               variant="gaming"
               size="lg"
               className="w-full"
-              onClick={() => setMode('new')}
+              onClick={() => {
+                setPlayers(Array.from({ length: 5 }, (_, i) => ({
+                  id: `player-${Date.now()}-${i}`,
+                  name: '',
+                })));
+                setFirstSittingOutPlayerId('');
+                setShowPlayerEditor(true);
+                setMode('new');
+              }}
             >
               <Users className="h-5 w-5" />
               הזן שחקנים חדשים
@@ -255,49 +267,84 @@ export const FPSetup = ({ onBack, onStart, savedPlayers, teamPlayers }: FPSetupP
 
       <div className="flex-1 flex flex-col items-center justify-center">
         <div className="w-full max-w-md space-y-4">
-          <Card className="bg-gradient-card border-neon-green/20 p-5 shadow-card">
-            <div className="flex items-center gap-2 mb-4">
-              <Users className="h-5 w-5 text-neon-green" />
-              <h2 className="text-base font-semibold text-foreground">הזינו 5 שחקנים</h2>
+          <Card className="bg-gradient-card border-neon-green/20 p-4 shadow-card">
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <div className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-neon-green" />
+                <div>
+                  <h2 className="text-base font-semibold text-foreground">
+                    שחקני הליגה
+                  </h2>
+                  <p className="text-xs text-muted-foreground">
+                    {players.filter(p => p.name.trim()).length}/5 שחקנים
+                  </p>
+                </div>
+              </div>
+          
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-neon-green/30 text-xs"
+                onClick={() => setShowPlayerEditor(prev => !prev)}
+              >
+                <Edit2 className="h-3.5 w-3.5" />
+                {showPlayerEditor ? 'סגור' : 'ערוך'}
+              </Button>
             </div>
-            <div className="space-y-3">
-              {players.map((player, idx) => (
-                <Input
-                  key={player.id}
-                  placeholder={`שחקן ${idx + 1}`}
-                  value={player.name}
-                  onChange={e => updateName(idx, e.target.value)}
-                  className="bg-gaming-surface border-border text-right"
-                />
-              ))}
-            </div>
+          
+            {!showPlayerEditor && (
+              <div className="flex flex-wrap gap-2">
+                {players.map((player, idx) => (
+                  <span
+                    key={player.id}
+                    className="rounded-full border border-border bg-gaming-surface px-3 py-1 text-xs text-foreground"
+                  >
+                    {player.name.trim() || `שחקן ${idx + 1}`}
+                  </span>
+                ))}
+              </div>
+            )}
+          
+            {showPlayerEditor && (
+              <div className="space-y-2">
+                {players.map((player, idx) => (
+                  <Input
+                    key={player.id}
+                    placeholder={`שחקן ${idx + 1}`}
+                    value={player.name}
+                    onChange={e => updateName(idx, e.target.value)}
+                    className="bg-gaming-surface border-border text-right h-10"
+                  />
+                ))}
+              </div>
+            )}
           </Card>
 
           {/* Optional first sitting out selection */}
-          <Card className="bg-gaming-surface/50 border-border/50 p-4">
+          <Card className="bg-gaming-surface/50 border-border/50 p-3">
             <div className="space-y-3">
               <div className="text-center">
                 <p className="text-sm font-semibold text-foreground">
                   מי יישב בחוץ ראשון?
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  לא חובה לבחור — כברירת מחדל המערכת תבחר רנדומלית
+                  ברירת מחדל: בחירה רנדומלית של המערכת
                 </p>
               </div>
           
-              <button
-                type="button"
-                onClick={() => setFirstSittingOutPlayerId('')}
-                className={`w-full rounded-lg border p-3 text-center transition-all ${
-                  !firstSittingOutPlayerId
-                    ? 'border-neon-green bg-neon-green/10 text-neon-green'
-                    : 'border-border bg-gaming-surface text-muted-foreground hover:border-muted-foreground/40'
-                }`}
-              >
-                בחירה רנדומלית של המערכת
-              </button>
-          
               <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setFirstSittingOutPlayerId('')}
+                  className={`rounded-lg border p-2 text-center text-sm transition-all ${
+                    !firstSittingOutPlayerId
+                      ? 'border-neon-green bg-neon-green/10 text-neon-green'
+                      : 'border-border bg-gaming-surface text-muted-foreground hover:border-muted-foreground/40'
+                  }`}
+                >
+                  רנדומלי
+                </button>
+          
                 {players.map((player, idx) => {
                   const name = player.name.trim() || `שחקן ${idx + 1}`;
                   const selected = firstSittingOutPlayerId === player.id;
