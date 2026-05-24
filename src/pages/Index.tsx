@@ -1331,9 +1331,28 @@ const handleGoHome = () => {
                   setCurrentTeamId(teamId);
                 }
                 // Create via RPC (enforces one active evening per team)
-                RemoteStorageService.createTeamEvening(resultWithSetupOptions as any, teamId).catch((error) => {
+                // IMPORTANT: wait for this before moving on, otherwise Home / other users may not see the active tournament.
+                try {
+                  await RemoteStorageService.createTeamEvening(resultWithSetupOptions as any, teamId);
+                
+                  if (teamId) {
+                    try {
+                      const updatedActive = await RemoteStorageService.listActiveEveningsForMyTeams();
+                      setActiveTeamEvenings(updatedActive);
+                    } catch (refreshError: any) {
+                      console.warn("Failed to refresh active team evenings:", refreshError?.message || refreshError);
+                    }
+                  }
+                } catch (error: any) {
                   console.error("Failed to create FP team evening:", error?.message || error);
-                });
+                  toast({
+                    title: "שגיאה ביצירת טורניר פעיל",
+                    description: error?.message || "לא ניתן היה לשמור את הטורניר כפעיל בקבוצה.",
+                    variant: "destructive",
+                  });
+                  return;
+                }
+                
                 goTo('fp-bank-overview');
               }}
             />
