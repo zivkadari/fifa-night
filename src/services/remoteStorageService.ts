@@ -682,25 +682,50 @@ export class RemoteStorageService {
 
   static async createTeam(name: string): Promise<{ id: string; name: string } | null> {
     if (!supabase) return null;
-    
-    // Validate team name
+  
     const validation = validateTeamName(name);
     if (!validation.valid) {
       console.error("createTeam validation error:", validation.error);
       throw new Error(validation.error);
     }
-    
+  
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
+  
     const { data, error } = await supabase
       .from(TEAMS_TABLE)
-      .insert({ name: validation.value, owner_id: user.id })
+      .insert({
+        name: validation.value,
+        owner_id: user.id,
+        visibility: "searchable",
+      } as any)
       .select("id, name")
       .maybeSingle();
-    if (error) {
-      console.error("createTeam error:", error.message);
+  
+    if (error || !data?.id) {
+      console.error("createTeam error:", error?.message);
       return null;
     }
+  
+    // IMPORTANT: "הקבוצות שלי" מבוסס על team_members.
+    // לכן חייבים לוודא שהיוצר משויך כ-owner.
+    const { error: memberError } = await supabase
+      .from(TEAM_MEMBERS_TABLE)
+      .upsert(
+        {
+          team_id: data.id,
+          user_id: user.id,
+          role: "owner",
+          member_mode: "unset",
+        },
+        { onConflict: "team_id,user_id" }
+      );
+  
+    if (memberError) {
+      console.error("createTeam member insert error:", memberError.message);
+      throw new Error("הקבוצה נוצרה, אבל לא הצלחנו לשייך אותך כבעלים שלה");
+    }
+  
     return data as { id: string; name: string };
   }
 
