@@ -1248,14 +1248,41 @@ const handleGoHome = () => {
                 setFpEvening(resultWithSetupOptions);
                 StorageService.saveFPActive(resultWithSetupOptions);
                 setCurrentTeamEditReason("owner_admin");
-                // Use active team context or auto-detect
+                // Use active team context, explicit team name, or auto-detect
                 let teamId = contextTeamId || fpTeamId;
+                const requestedTeamName = setupOptions?.teamName?.trim();
+                
+                if (!teamId && requestedTeamName && RemoteStorageService.isEnabled()) {
+                  try {
+                    const createdTeam = await RemoteStorageService.createTeam(requestedTeamName);
+                
+                    if (createdTeam?.id) {
+                      teamId = createdTeam.id;
+                
+                      for (const player of players) {
+                        await RemoteStorageService.addPlayerToTeamByName(teamId, player.name);
+                      }
+                    }
+                  } catch (error: any) {
+                    console.error("Failed to create named FP team:", error?.message || error);
+                    toast({
+                      title: "הטורניר נוצר, אבל הקבוצה לא נשמרה",
+                      description: error?.message || "לא ניתן היה ליצור את הקבוצה בשם שבחרת.",
+                      variant: "destructive",
+                    });
+                  }
+                }
+                
                 if (!teamId && RemoteStorageService.isEnabled()) {
                   try {
                     teamId = await RemoteStorageService.ensureTeamForPlayers(players, 5);
                   } catch {}
                 }
-                if (teamId) setFpTeamId(teamId);
+                
+                if (teamId) {
+                  setFpTeamId(teamId);
+                  setCurrentTeamId(teamId);
+                }
                 // Create via RPC (enforces one active evening per team)
                 RemoteStorageService.createTeamEvening(resultWithSetupOptions as any, teamId).catch((error) => {
                   console.error("Failed to create FP team evening:", error?.message || error);
