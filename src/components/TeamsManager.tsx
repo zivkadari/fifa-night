@@ -68,6 +68,7 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam, initialTeamId }: T
   const [showPlayers, setShowPlayers] = useState(false);
   const [showFullLeaderboard, setShowFullLeaderboard] = useState(false);
   const [showAdminSettings, setShowAdminSettings] = useState(false);
+  const [deletingTeam, setDeletingTeam] = useState(false);
   const selectedTeam = teams.find((t) => t.id === selectedTeamId) || null;
   const selectedTeamRole = selectedTeam?.role || "member";
   const canManageSelectedTeam =
@@ -265,6 +266,69 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam, initialTeamId }: T
       setTeamPlayers((prev) => prev.filter((p) => p.id !== pid));
     } else {
       toast({ title: "שגיאה במחיקה", variant: "destructive" });
+    }
+  };
+
+  const deleteSelectedTeam = async () => {
+    if (!selectedTeamId || !selectedTeam) return;
+  
+    if (selectedTeamRole !== "owner") {
+      toast({
+        title: "אין הרשאה למחוק קבוצה",
+        description: "רק בעל הקבוצה יכול למחוק אותה.",
+        variant: "destructive",
+      });
+      return;
+    }
+  
+    const confirmed = window.confirm(
+      `למחוק את הקבוצה "${selectedTeam.name}"?\n\nהפעולה תמחק את הקבוצה מרשימת הקבוצות לכל המשתמשים ולא ניתן יהיה לשחזר אותה.`
+    );
+  
+    if (!confirmed) return;
+  
+    setDeletingTeam(true);
+  
+    try {
+      const ok = await RemoteStorageService.deleteTeam(selectedTeamId);
+  
+      if (!ok) {
+        toast({
+          title: "שגיאה במחיקת הקבוצה",
+          variant: "destructive",
+        });
+        return;
+      }
+  
+      const freshTeams = await RemoteStorageService.listTeams();
+      setTeams(freshTeams);
+  
+      const nextTeamId = freshTeams[0]?.id ?? null;
+      setSelectedTeamId(nextTeamId);
+      setActiveTeamId(nextTeamId);
+  
+      if (!nextTeamId) {
+        setTeamPlayers([]);
+        setLeaderboard([]);
+        setInviteCode(null);
+        setJoinRequests([]);
+      }
+  
+      await refreshTeamsContext();
+  
+      toast({
+        title: "הקבוצה נמחקה",
+        description: selectedTeam.name,
+      });
+    } catch (error: any) {
+      console.error("deleteSelectedTeam failed:", error?.message || error);
+      toast({
+        title: "שגיאה במחיקת הקבוצה",
+        description: error?.message || "לא ניתן למחוק את הקבוצה כרגע.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingTeam(false);
     }
   };
 
@@ -723,7 +787,7 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam, initialTeamId }: T
                   <h3 className="font-semibold text-foreground text-sm">ניהול קבוצה</h3>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   <Button
                     variant="gaming"
                     size="sm"
@@ -753,6 +817,19 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam, initialTeamId }: T
                   >
                     הגדרות
                   </Button>
+
+                  {selectedTeamRole === "owner" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={deleteSelectedTeam}
+                      disabled={deletingTeam}
+                      className="text-destructive border-destructive/40 hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      {deletingTeam ? "מוחק..." : "מחק קבוצה"}
+                    </Button>
+                  )}
                 </div>
   
                 {showAdminSettings && (
