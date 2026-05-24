@@ -937,6 +937,7 @@ export const FPGame = ({ evening, onBack, onComplete, onGoHome, onUpdateEvening,
             <Card className="bg-gradient-card border-neon-green/20 p-3 shadow-card">
               <FPScheduleReorder
                 evening={currentEvening}
+                canEditSchedule={!!canStopTournament}
                 onUpdateEvening={(updated) => {
                   setCurrentEvening(updated);
                   onUpdateEvening(updated);
