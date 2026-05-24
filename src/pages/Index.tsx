@@ -120,6 +120,39 @@ const getFirstTimeRegularScoreSubmission = (previous: Evening | null, next: Even
   return submission;
 };
 
+const hasCompletedGamesAnyMode = (evening: any): boolean => {
+  if (!evening) return false;
+
+  if (Array.isArray(evening.schedule)) {
+    return evening.schedule.some((match: any) =>
+      match?.completed === true &&
+      match.scoreA !== null &&
+      match.scoreA !== undefined &&
+      match.scoreB !== null &&
+      match.scoreB !== undefined
+    );
+  }
+
+  if (Array.isArray(evening.gameSequence)) {
+    return evening.gameSequence.some((game: any) =>
+      game?.completed === true &&
+      Array.isArray(game.score)
+    );
+  }
+
+  if (Array.isArray(evening.rounds)) {
+    return evening.rounds.some((round: any) =>
+      Array.isArray(round.matches) &&
+      round.matches.some((match: any) =>
+        match?.completed === true &&
+        Array.isArray(match.score)
+      )
+    );
+  }
+
+  return false;
+};
+
 const Index = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -397,7 +430,16 @@ useEffect(() => {
 
   const handleStopTournament = async (eveningId: string, kind: "regular" | "fp" = "regular") => {
     try {
-      const cancelled = await RemoteStorageService.cancelTeamEvening(eveningId);
+      const localEvening = kind === "fp" ? fpEvening : currentEvening;
+      const hasGames = hasCompletedGamesAnyMode(localEvening);
+  
+      let cancelled: any = null;
+  
+      if (hasGames) {
+        cancelled = await RemoteStorageService.cancelTeamEvening(eveningId);
+      } else {
+        await RemoteStorageService.deleteEvening(eveningId);
+      }
       if (kind === "fp") {
         StorageService.clearFPActive();
         setFpEvening(null);
