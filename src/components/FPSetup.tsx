@@ -117,7 +117,6 @@ export const FPSetup = ({ onBack, onStart, savedPlayers, teamPlayers }: FPSetupP
     };
     StorageService.addFPGroup(newGroup);
     setSavedGroups(StorageService.loadFPGroups());
-    // setGroupName('');
     toast({ title: "הקבוצה נשמרה בהצלחה!" });
   };
 
@@ -126,7 +125,9 @@ export const FPSetup = ({ onBack, onStart, savedPlayers, teamPlayers }: FPSetupP
       id: `player-${Date.now()}-${i}`,
       name,
     }));
+  
     setPlayers(loaded);
+    setGroupName(group.name);
     setFirstSittingOutPlayerId('');
     setShowPlayerEditor(false);
     setMode('new');
