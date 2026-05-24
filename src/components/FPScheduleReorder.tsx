@@ -24,6 +24,7 @@ import { CSS } from "@dnd-kit/utilities";
 interface FPScheduleReorderProps {
   evening: FPEvening;
   onUpdateEvening: (evening: FPEvening) => void;
+  canEditSchedule?: boolean;
 }
 
 const pairName = (pair: { players: [{ name: string }, { name: string }] }) =>
@@ -125,7 +126,7 @@ function SortableMatchItem({
 }
 
 /* ─── Main component ─── */
-export const FPScheduleReorder = ({ evening, onUpdateEvening }: FPScheduleReorderProps) => {
+export const FPScheduleReorder = ({ evening, onUpdateEvening, canEditSchedule = false }: FPScheduleReorderProps) => {
   const { toast } = useToast();
   const [editMode, setEditMode] = useState(false);
 
@@ -190,7 +191,7 @@ export const FPScheduleReorder = ({ evening, onUpdateEvening }: FPScheduleReorde
           סדר משחקים
         </h3>
         <div className="flex gap-1.5">
-          {editMode && (
+          {canEditSchedule && editMode && (
             <Button
               variant="ghost"
               size="sm"
@@ -201,14 +202,21 @@ export const FPScheduleReorder = ({ evening, onUpdateEvening }: FPScheduleReorde
               איפוס
             </Button>
           )}
-          <Button
-            variant={editMode ? "neon" : "outline"}
-            size="sm"
-            className="h-7 text-xs"
-            onClick={() => setEditMode(!editMode)}
-          >
-            {editMode ? "סיום עריכה" : "ערוך סדר"}
-          </Button>
+          
+          {canEditSchedule ? (
+            <Button
+              variant={editMode ? "neon" : "outline"}
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => setEditMode(!editMode)}
+            >
+              {editMode ? "סיום עריכה" : "ערוך סדר"}
+            </Button>
+          ) : (
+            <Badge variant="outline" className="text-[10px] border-border/40 text-muted-foreground">
+              צפייה בלבד
+            </Badge>
+          )}
         </div>
       </div>
 
