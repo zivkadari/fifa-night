@@ -1,8 +1,24 @@
 import { useState } from "react";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  verticalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Copy, Check, Play, Edit2, ArrowLeftRight, X, AlertCircle } from "lucide-react";
+import { ArrowLeft, Copy, Check, Play, Edit2, ArrowLeftRight, X, AlertCircle, GripVertical } from "lucide-react";
 import { FPEvening, FPTeamBank, FPPair } from "@/types/fivePlayerTypes";
 import { Club } from "@/types/tournament";
 import { StarRating, starText } from "@/components/StarRating";
@@ -23,10 +39,89 @@ interface FPBankOverviewProps {
   onUpdateEvening: (evening: FPEvening) => void;
 }
 
+interface SortableMatchRowProps {
+  match: FPEvening["schedule"][number];
+  index: number;
+  pairName: (pair: FPPair) => string;
+}
+
+const SortableMatchRow = ({ match, index, pairName }: SortableMatchRowProps) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: match.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`flex items-center gap-2 text-xs bg-gaming-surface/50 border border-border/30 rounded-md p-2 ${
+        isDragging ? "opacity-70 border-neon-green/60 shadow-lg" : ""
+      }`}
+    >
+      <button
+        type="button"
+        className="h-8 w-8 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-gaming-surface active:scale-95 touch-none"
+        {...attributes}
+        {...listeners}
+        aria-label="גרור לשינוי סדר"
+      >
+        <GripVertical className="h-4 w-4" />
+      </button>
+
+      <span className="text-muted-foreground font-mono w-5 shrink-0">
+        {index + 1}.
+      </span>
+
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1 flex-wrap">
+          <span className="text-foreground font-medium">
+            {pairName(match.pairA)}
+          </span>
+          <span className="text-muted-foreground">vs</span>
+          <span className="text-foreground font-medium">
+            {pairName(match.pairB)}
+          </span>
+        </div>
+
+        <Badge
+          variant="outline"
+          className="text-[10px] px-1.5 py-0 mt-1 border-muted-foreground/30 text-muted-foreground"
+        >
+          🪑 {match.sittingOut.name}
+        </Badge>
+      </div>
+    </div>
+  );
+};
+
 export const FPBankOverview = ({ evening, allClubs, onContinue, onBack, onUpdateEvening }: FPBankOverviewProps) => {
   const { toast } = useToast();
   const [copiedPairId, setCopiedPairId] = useState<string | null>(null);
   const [copiedAll, setCopiedAll] = useState(false);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 180,
+        tolerance: 8,
+      },
+    })
+  );
 
   // Edit state
   const [editingPairId, setEditingPairId] = useState<string | null>(null);
@@ -36,7 +131,72 @@ export const FPBankOverview = ({ evening, allClubs, onContinue, onBack, onUpdate
 
   const pairName = (pair: FPPair) =>
     `${pair.players[0].name} & ${pair.players[1].name}`;
-
+  
+  const handleScheduleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+  
+    if (!over || active.id === over.id) return;
+  
+    const firstCycleLength = Math.min(15, evening.schedule.length);
+    const firstCycleIds = evening.schedule
+      .slice(0, firstCycleLength)
+      .map(match => match.id);
+  
+    const oldIndex = firstCycleIds.indexOf(String(active.id));
+    const newIndex = firstCycleIds.indexOf(String(over.id));
+  
+    if (oldIndex < 0 || newIndex < 0) return;
+  
+    const firstCycle = evening.schedule.slice(0, firstCycleLength);
+    const reorderedFirstCycle = arrayMove(firstCycle, oldIndex, newIndex).map((match, index) => ({
+      ...match,
+      globalIndex: index,
+      roundIndex: Math.floor(index / 5),
+      matchIndex: index % 5,
+    }));
+  
+    const updatedSchedule = [...evening.schedule];
+  
+    reorderedFirstCycle.forEach((match, index) => {
+      updatedSchedule[index] = match;
+    });
+  
+    // For 30-match tournaments, keep cycle 2 aligned with the edited first cycle.
+    if (evening.matchCount !== 15 && updatedSchedule.length > 15) {
+      for (let i = 0; i < firstCycleLength; i += 1) {
+        const source = updatedSchedule[i];
+        const targetIndex = i + 15;
+        const existingSecondCycleMatch = updatedSchedule[targetIndex];
+  
+        if (!existingSecondCycleMatch) continue;
+  
+        updatedSchedule[targetIndex] = {
+          ...source,
+          id: existingSecondCycleMatch.id,
+          globalIndex: targetIndex,
+          roundIndex: Math.floor(targetIndex / 5),
+          matchIndex: targetIndex % 5,
+          completed: existingSecondCycleMatch.completed,
+          scoreA: existingSecondCycleMatch.scoreA,
+          scoreB: existingSecondCycleMatch.scoreB,
+          clubA: existingSecondCycleMatch.clubA,
+          clubB: existingSecondCycleMatch.clubB,
+        };
+      }
+    }
+  
+    onUpdateEvening({
+      ...evening,
+      schedule: updatedSchedule,
+      setupOptions: {
+        ...evening.setupOptions,
+        scheduleManuallyReordered: true,
+      },
+    });
+  
+    toast({ title: "סדר המשחקים עודכן" });
+  };
+  
   const renderStars = (stars: number) => <StarRating stars={stars} size="xs" />;
   const renderStarsText = (stars: number) => starText(stars);
 
@@ -365,20 +525,36 @@ export const FPBankOverview = ({ evening, allClubs, onContinue, onBack, onUpdate
 
         {/* Match order template */}
         <Card className="bg-gradient-card border-border/40 p-3 shadow-card">
-          <h2 className="text-sm font-semibold text-foreground mb-2">📋 סדר משחקים (מחזור 1 מתוך 2)</h2>
-          <div className="space-y-1.5">
-            {firstCycle.map((m, i) => (
-              <div key={m.id} className="flex items-center gap-2 text-xs">
-                <span className="text-muted-foreground font-mono w-5">{i + 1}.</span>
-                <span className="text-foreground font-medium">{pairName(m.pairA)}</span>
-                <span className="text-muted-foreground">vs</span>
-                <span className="text-foreground font-medium">{pairName(m.pairB)}</span>
-                <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-muted-foreground/30 text-muted-foreground mr-auto">
-                  🪑 {m.sittingOut.name}
-                </Badge>
-              </div>
-            ))}
+          <div className="mb-2">
+            <h2 className="text-sm font-semibold text-foreground">
+              📋 סדר משחקים
+            </h2>
+            <p className="text-[11px] text-muted-foreground mt-1">
+              החזק וגרור משחק כדי לשנות את הסדר לפני תחילת הליגה
+            </p>
           </div>
+        
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleScheduleDragEnd}
+          >
+            <SortableContext
+              items={firstCycle.map(match => match.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              <div className="space-y-1.5">
+                {firstCycle.map((match, index) => (
+                  <SortableMatchRow
+                    key={match.id}
+                    match={match}
+                    index={index}
+                    pairName={pairName}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
         </Card>
 
         {/* Pair banks */}
