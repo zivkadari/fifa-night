@@ -12,7 +12,10 @@ interface FPSetupProps {
   onStart: (
     players: Player[],
     matchCount: 15 | 30,
-    setupOptions?: { firstSittingOutPlayerId?: string }
+    setupOptions?: {
+      firstSittingOutPlayerId?: string;
+      teamName?: string;
+    }
   ) => void;
   savedPlayers?: Player[];
   /** Team players to pre-fill when starting within a team context */
@@ -81,9 +84,20 @@ export const FPSetup = ({ onBack, onStart, savedPlayers, teamPlayers }: FPSetupP
       return;
     }
   
-    onStart([selectedPlayer, ...remainingPlayers], matchCount, firstSittingOutPlayerId
-      ? { firstSittingOutPlayerId }
-      : undefined
+    const setupOptions: { firstSittingOutPlayerId?: string; teamName?: string } = {};
+
+    if (firstSittingOutPlayerId) {
+      setupOptions.firstSittingOutPlayerId = firstSittingOutPlayerId;
+    }
+    
+    if (groupName.trim()) {
+      setupOptions.teamName = groupName.trim();
+    }
+    
+    onStart(
+      [selectedPlayer, ...remainingPlayers],
+      matchCount,
+      Object.keys(setupOptions).length > 0 ? setupOptions : undefined
     );
   };
 
