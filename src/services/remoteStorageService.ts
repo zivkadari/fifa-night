@@ -795,34 +795,51 @@ export class RemoteStorageService {
 
   static async addPlayerToTeamByName(teamId: string, name: string): Promise<boolean> {
     if (!supabase) return false;
-    
-    // Validate player name
+  
     const validation = validatePlayerName(name);
     if (!validation.valid) {
       console.error("addPlayerToTeamByName validation error:", validation.error);
       throw new Error(validation.error);
     }
-    
+  
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return false;
-
-    const playerId = `player-${slugify(validation.value)}`;
-    // Upsert player row
-    const { error: upErr } = await supabase
+  
+    // IMPORTANT:
+    // A player name is NOT a global identity.
+    // Different teams can have different players with the same display name.
+    const randomPart =
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  
+    const playerId = `player-${randomPart}`;
+  
+    const { error: insertPlayerErr } = await supabase
       .from(PLAYERS_TABLE)
-      .upsert({ id: playerId, display_name: validation.value, created_by: user.id }, { onConflict: "id" });
-    if (upErr) {
-      console.error("addPlayerToTeamByName/insert player error:", upErr.message);
+      .insert({
+        id: playerId,
+        display_name: validation.value,
+        created_by: user.id,
+      });
+  
+    if (insertPlayerErr) {
+      console.error("addPlayerToTeamByName/insert player error:", insertPlayerErr.message);
       return false;
     }
-
-    const { error: linkInsertErr } = await supabase
+  
+    const { error: linkErr } = await supabase
       .from(TEAM_PLAYERS_TABLE)
-      .insert({ team_id: teamId, player_id: playerId });
-    if (linkInsertErr) {
-      console.error("addPlayerToTeamByName/link error:", linkInsertErr.message);
+      .insert({
+        team_id: teamId,
+        player_id: playerId,
+      });
+  
+    if (linkErr) {
+      console.error("addPlayerToTeamByName/link error:", linkErr.message);
       return false;
     }
+  
     return true;
   }
 
