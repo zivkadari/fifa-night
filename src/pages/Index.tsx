@@ -1248,21 +1248,35 @@ const handleGoHome = () => {
                 setFpEvening(resultWithSetupOptions);
                 StorageService.saveFPActive(resultWithSetupOptions);
                 setCurrentTeamEditReason("owner_admin");
-                // Use active team context, explicit team name, or auto-detect
-                let teamId = contextTeamId || fpTeamId;
+                // Explicit team name from FP setup should create a NEW real team.
+                // Do not let contextTeamId/fpTeamId override the user's chosen new team name.
                 const requestedTeamName = setupOptions?.teamName?.trim();
+                let teamId: string | null = null;
                 
-                if (!teamId && requestedTeamName && RemoteStorageService.isEnabled()) {
+                if (requestedTeamName && RemoteStorageService.isEnabled()) {
                   try {
                     const createdTeam = await RemoteStorageService.createTeam(requestedTeamName);
                 
-                    if (createdTeam?.id) {
-                      teamId = createdTeam.id;
+                    if (!createdTeam?.id) {
+                      throw new Error("יצירת הקבוצה נכשלה");
+                    }
                 
-                      for (const player of players) {
-                        await RemoteStorageService.addPlayerToTeamByName(teamId, player.name);
+                    teamId = createdTeam.id;
+                
+                    for (const player of players) {
+                      const ok = await RemoteStorageService.addPlayerToTeamByName(teamId, player.name);
+                      if (!ok) {
+                        console.warn("Failed to add player to created FP team:", player.name);
                       }
                     }
+                
+                    // Make the new team searchable so other users can find it by name.
+                    await RemoteStorageService.updateTeamDiscoverySettings(teamId, "searchable", "");
+                
+                    toast({
+                      title: "קבוצה חדשה נוצרה",
+                      description: requestedTeamName,
+                    });
                   } catch (error: any) {
                     console.error("Failed to create named FP team:", error?.message || error);
                     toast({
@@ -1273,10 +1287,18 @@ const handleGoHome = () => {
                   }
                 }
                 
+                // Only if user did NOT request a new named team, use existing active context.
+                if (!teamId) {
+                  teamId = contextTeamId || fpTeamId || null;
+                }
+                
+                // If still no team, auto-detect/create by players.
                 if (!teamId && RemoteStorageService.isEnabled()) {
                   try {
                     teamId = await RemoteStorageService.ensureTeamForPlayers(players, 5);
-                  } catch {}
+                  } catch (error: any) {
+                    console.warn("ensureTeamForPlayers failed:", error?.message || error);
+                  }
                 }
                 
                 if (teamId) {
