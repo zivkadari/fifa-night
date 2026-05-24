@@ -117,7 +117,7 @@ export const FPSetup = ({ onBack, onStart, savedPlayers, teamPlayers }: FPSetupP
     };
     StorageService.addFPGroup(newGroup);
     setSavedGroups(StorageService.loadFPGroups());
-    setGroupName('');
+    // setGroupName('');
     toast({ title: "הקבוצה נשמרה בהצלחה!" });
   };
 
