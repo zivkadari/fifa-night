@@ -922,6 +922,11 @@ const handleGoHome = () => {
           tournamentProgress = `${completedMatches} משחקים שהושלמו`;
         }
         const currentActiveEveningId = activeFP ? fpEvening?.id : activeRegular ? currentEvening?.id : null;
+        const activeTournamentTeamName =
+          currentTeamId
+            ? activeTeamEvenings.find((entry) => entry.team_id === currentTeamId)?.team_name
+              ?? null
+            : null;
 
         return (
           <TeamDashboard
@@ -968,7 +973,11 @@ const handleGoHome = () => {
             isAuthed={isAuthed}
             userEmail={userEmail}
             onSignOut={handleSignOut}
-            activeTournamentMode={tournamentMode}
+            activeTournamentMode={
+              activeTournamentTeamName
+                ? `${tournamentMode} · ${activeTournamentTeamName}`
+                : tournamentMode
+            }
             activeTournamentProgress={tournamentProgress}
             activeTeamEvenings={activeTeamEvenings}
             currentActiveEveningId={currentActiveEveningId ?? null}
@@ -1248,12 +1257,19 @@ const handleGoHome = () => {
                 setFpEvening(resultWithSetupOptions);
                 StorageService.saveFPActive(resultWithSetupOptions);
                 setCurrentTeamEditReason("owner_admin");
-                // Explicit team name from FP setup should create a NEW real team.
-                // Do not let contextTeamId/fpTeamId override the user's chosen new team name.
                 const requestedTeamName = setupOptions?.teamName?.trim();
                 let teamId: string | null = null;
                 
-                if (requestedTeamName && RemoteStorageService.isEnabled()) {
+                if (requestedTeamName) {
+                  if (!RemoteStorageService.isEnabled()) {
+                    toast({
+                      title: "לא ניתן ליצור קבוצה",
+                      description: "צריך להיות מחובר כדי לשמור קבוצה חדשה.",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+                
                   try {
                     const createdTeam = await RemoteStorageService.createTeam(requestedTeamName);
                 
@@ -1266,12 +1282,12 @@ const handleGoHome = () => {
                     for (const player of players) {
                       const ok = await RemoteStorageService.addPlayerToTeamByName(teamId, player.name);
                       if (!ok) {
-                        console.warn("Failed to add player to created FP team:", player.name);
+                        throw new Error(`לא הצלחנו להוסיף את ${player.name} לקבוצה`);
                       }
                     }
                 
-                    // Make the new team searchable so other users can find it by name.
-                    await RemoteStorageService.updateTeamDiscoverySettings(teamId, "searchable", "");
+                    setFpTeamId(teamId);
+                    setCurrentTeamId(teamId);
                 
                     toast({
                       title: "קבוצה חדשה נוצרה",
@@ -1280,16 +1296,27 @@ const handleGoHome = () => {
                   } catch (error: any) {
                     console.error("Failed to create named FP team:", error?.message || error);
                     toast({
-                      title: "הטורניר נוצר, אבל הקבוצה לא נשמרה",
-                      description: error?.message || "לא ניתן היה ליצור את הקבוצה בשם שבחרת.",
+                      title: "לא ניתן ליצור את הקבוצה",
+                      description: error?.message || "נסה שוב או צור קבוצה ידנית ממסך הקבוצות.",
                       variant: "destructive",
                     });
+                    return;
                   }
-                }
-                
-                // Only if user did NOT request a new named team, use existing active context.
-                if (!teamId) {
+                } else {
                   teamId = contextTeamId || fpTeamId || null;
+                
+                  if (!teamId && RemoteStorageService.isEnabled()) {
+                    try {
+                      teamId = await RemoteStorageService.ensureTeamForPlayers(players, 5);
+                    } catch (error: any) {
+                      console.warn("ensureTeamForPlayers failed:", error?.message || error);
+                    }
+                  }
+                
+                  if (teamId) {
+                    setFpTeamId(teamId);
+                    setCurrentTeamId(teamId);
+                  }
                 }
                 
                 // If still no team, auto-detect/create by players.
