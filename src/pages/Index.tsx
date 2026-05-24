@@ -1247,6 +1247,7 @@ const handleGoHome = () => {
                 
                 setFpEvening(resultWithSetupOptions);
                 StorageService.saveFPActive(resultWithSetupOptions);
+                setCurrentTeamEditReason("owner_admin");
                 // Use active team context or auto-detect
                 let teamId = contextTeamId || fpTeamId;
                 if (!teamId && RemoteStorageService.isEnabled()) {
