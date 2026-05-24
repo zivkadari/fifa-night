@@ -222,16 +222,33 @@ const Index = () => {
           }
   
           const isFP = Array.isArray((evening as any)?.schedule);
-  
+
+          let editReason: TeamEveningEditReason = "playing";
+          const teamId = (evening as any)._team_id || null;
+          
+          if (teamId && RemoteStorageService.isEnabled()) {
+            try {
+              const memberStatus = await RemoteStorageService.getMyTeamMemberStatus(teamId);
+              const role = memberStatus?.role;
+              if (role === "owner" || role === "admin") {
+                editReason = "owner_admin";
+              }
+            } catch (error: any) {
+              console.warn("Failed to resolve openEvening permissions:", error?.message || error);
+            }
+          }
+          
           if (isFP) {
             setFpEvening(evening as any);
+            setFpTeamId(teamId);
             StorageService.saveFPActive(evening as any);
-            setCurrentTeamEditReason("playing");
+            setCurrentTeamEditReason(editReason);
             setAppState("fp-game");
           } else {
             setCurrentEvening(evening);
+            setCurrentTeamId(teamId);
             persistActiveEveningNow(evening);
-            setCurrentTeamEditReason("playing");
+            setCurrentTeamEditReason(editReason);
             setAppState("game");
           }
   
