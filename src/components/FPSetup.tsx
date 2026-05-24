@@ -127,7 +127,12 @@ export const FPSetup = ({ onBack, onStart, savedPlayers, teamPlayers }: FPSetupP
     }));
   
     setPlayers(loaded);
-    setGroupName(group.name);
+  
+    // IMPORTANT:
+    // A saved local FP group name should NOT automatically create a new Supabase team.
+    // Keep this empty unless the user explicitly types a new team name.
+    setGroupName('');
+  
     setFirstSittingOutPlayerId('');
     setShowPlayerEditor(false);
     setMode('new');
