@@ -1281,6 +1281,53 @@ const handleGoHome = () => {
                   ...result,
                   setupOptions,
                 };
+
+                let teamId = fpTeamId || null;
+
+                const requestedTeamName = setupOptions?.teamName?.trim();
+                const shouldCreateNewTeam = setupOptions?.createNewTeam === true;
+                
+                // If user selected an existing real team, fpTeamId already exists.
+                // If user chose to create a new team, create it now in Supabase.
+                if (!teamId && shouldCreateNewTeam && requestedTeamName) {
+                  const createdTeam = await RemoteStorageService.createTeam(requestedTeamName);
+                
+                  if (!createdTeam?.id) {
+                    toast({
+                      title: "לא ניתן ליצור את הקבוצה",
+                      description: "נסה שוב בעוד רגע.",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+                
+                  teamId = createdTeam.id;
+                
+                  for (const player of players) {
+                    const added = await RemoteStorageService.addPlayerToTeamByName(teamId, player.name);
+                
+                    if (!added) {
+                      toast({
+                        title: "לא ניתן ליצור את הקבוצה",
+                        description: `לא הצלחנו להוסיף את ${player.name} לקבוצה`,
+                        variant: "destructive",
+                      });
+                      return;
+                    }
+                  }
+                }
+                
+                // FP mode must always be connected to a real Supabase team.
+                if (!teamId) {
+                  toast({
+                    title: "צריך לבחור או ליצור קבוצה",
+                    description: "מוד 5 חייב להיות משויך לקבוצה אמיתית.",
+                    variant: "destructive",
+                  });
+                  return;
+                }
+                
+                setFpTeamId(teamId);
                 
                 setFpEvening(resultWithSetupOptions);
                 StorageService.saveFPActive(resultWithSetupOptions);
