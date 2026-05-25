@@ -1,11 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { ArrowLeft, Play, Users, Edit2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Play, Users, Save, Trash2, Edit2, Check, X, FolderOpen } from "lucide-react";
 import { Player } from "@/types/tournament";
 import { useToast } from "@/hooks/use-toast";
-import { StorageService, FPSavedGroup } from "@/services/storageService";
 
 interface FPSetupProps {
   onBack: () => void;
@@ -15,6 +14,7 @@ interface FPSetupProps {
     setupOptions?: {
       firstSittingOutPlayerId?: string;
       teamName?: string;
+      createNewTeam?: boolean;
     }
   ) => void;
   savedPlayers?: Player[];
@@ -24,14 +24,9 @@ interface FPSetupProps {
   teamName?: string | null;
 }
 
-type SetupMode = 'choose' | 'new' | 'saved';
-
 export const FPSetup = ({ onBack, onStart, savedPlayers, teamPlayers, teamId, teamName }: FPSetupProps) => {
   const { toast } = useToast();
   const hasTeamPlayers = teamPlayers && teamPlayers.length === 5;
-  const [mode, setMode] = useState<SetupMode>(
-    hasTeamPlayers || savedPlayers?.length === 5 ? 'new' : 'choose'
-  );
   const [players, setPlayers] = useState<Player[]>(
     hasTeamPlayers
       ? teamPlayers
@@ -39,19 +34,13 @@ export const FPSetup = ({ onBack, onStart, savedPlayers, teamPlayers, teamId, te
         ? savedPlayers
         : Array.from({ length: 5 }, (_, i) => ({ id: `player-${Date.now()}-${i}`, name: '' }))
   );
+  
   const [matchCount, setMatchCount] = useState<15 | 30>(30);
   const [firstSittingOutPlayerId, setFirstSittingOutPlayerId] = useState<string>('');
-  const [savedGroups, setSavedGroups] = useState<FPSavedGroup[]>([]);
   const [groupName, setGroupName] = useState('');
-  const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
-  const [editName, setEditName] = useState('');
   const [showPlayerEditor, setShowPlayerEditor] = useState<boolean>(
     !(hasTeamPlayers || savedPlayers?.length === 5)
   );
-
-  useEffect(() => {
-    setSavedGroups(StorageService.loadFPGroups());
-  }, []);
 
   const updateName = (index: number, name: string) => {
     const updated = [...players];
@@ -86,13 +75,25 @@ export const FPSetup = ({ onBack, onStart, savedPlayers, teamPlayers, teamId, te
       return;
     }
   
-    const setupOptions: { firstSittingOutPlayerId?: string; teamName?: string } = {};
+    const setupOptions: {
+      firstSittingOutPlayerId?: string;
+      teamName?: string;
+      createNewTeam?: boolean;
+    } = {};
 
     if (firstSittingOutPlayerId) {
       setupOptions.firstSittingOutPlayerId = firstSittingOutPlayerId;
     }
     
-    if (!teamId && groupName.trim()) {
+    if (!teamId) {
+      if (!groupName.trim()) {
+        toast({
+          title: "יש להזין שם לקבוצה החדשה",
+          variant: "destructive",
+        });
+        return;
+      }
+    
       setupOptions.teamName = groupName.trim();
       setupOptions.createNewTeam = true;
     }
@@ -104,187 +105,31 @@ export const FPSetup = ({ onBack, onStart, savedPlayers, teamPlayers, teamId, te
     );
   };
 
-  const handleSaveGroup = () => {
-    if (!groupName.trim()) {
-      toast({ title: "יש להזין שם לקבוצה", variant: "destructive" });
-      return;
-    }
-    if (!allFilled || hasDuplicates) {
-      toast({ title: "יש למלא 5 שמות ייחודיים לפני שמירה", variant: "destructive" });
-      return;
-    }
-    const newGroup: FPSavedGroup = {
-      id: `fp-group-${Date.now()}`,
-      name: groupName.trim(),
-      players: players.map(p => p.name.trim()),
-    };
-    StorageService.addFPGroup(newGroup);
-    setSavedGroups(StorageService.loadFPGroups());
-    toast({ title: "הקבוצה נשמרה בהצלחה!" });
-  };
-
-  const handleSelectGroup = (group: FPSavedGroup) => {
-    const loaded = group.players.map((name, i) => ({
-      id: `player-${Date.now()}-${i}`,
-      name,
-    }));
-  
-    setPlayers(loaded);
-  
-    // IMPORTANT:
-    // A saved local FP group name should NOT automatically create a new Supabase team.
-    // Keep this empty unless the user explicitly types a new team name.
-    setGroupName('');
-  
-    setFirstSittingOutPlayerId('');
-    setShowPlayerEditor(false);
-    setMode('new');
-  };
-
-  const handleDeleteGroup = (groupId: string) => {
-    StorageService.deleteFPGroup(groupId);
-    setSavedGroups(StorageService.loadFPGroups());
-    toast({ title: "הקבוצה נמחקה" });
-  };
-
-  const handleEditGroupSave = (group: FPSavedGroup) => {
-    if (!editName.trim()) return;
-    StorageService.updateFPGroup({ ...group, name: editName.trim() });
-    setSavedGroups(StorageService.loadFPGroups());
-    setEditingGroupId(null);
-    setEditName('');
-  };
-
-  // Choose mode screen
-  if (mode === 'choose') {
-    return (
-      <div className="min-h-[100svh] bg-gaming-bg flex flex-col p-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]" dir="rtl">
-        <div className="flex items-center gap-3 mb-4">
-          <Button variant="ghost" size="icon" onClick={onBack}>
-            <ArrowLeft className="h-5 w-5 rotate-180" />
-          </Button>
-          <div>
-            <h1 className="text-xl font-bold text-foreground">ליגת זוגות (5 שחקנים)</h1>
-            <p className="text-xs text-muted-foreground">
-              {matchCount === 15 ? '3 סיבובים • 15 משחקים • 3 קבוצות לזוג' : '6 סיבובים • 30 משחקים • 6 קבוצות לזוג'}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex-1 flex flex-col items-center justify-center">
-          <div className="w-full max-w-md space-y-4">
-            <Button
-              variant="gaming"
-              size="lg"
-              className="w-full"
-              onClick={() => {
-                setPlayers(Array.from({ length: 5 }, (_, i) => ({
-                  id: `player-${Date.now()}-${i}`,
-                  name: '',
-                })));
-                setFirstSittingOutPlayerId('');
-                setShowPlayerEditor(true);
-                setMode('new');
-              }}
-            >
-              <Users className="h-5 w-5" />
-              הזן שחקנים חדשים
-            </Button>
-
-            {savedGroups.length > 0 && (
-              <Button
-                variant="outline"
-                size="lg"
-                className="w-full border-neon-green/30 text-foreground"
-                onClick={() => setMode('saved')}
-              >
-                <FolderOpen className="h-5 w-5" />
-                בחר קבוצה שמורה ({savedGroups.length})
-              </Button>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Saved groups browser
-  if (mode === 'saved') {
-    return (
-      <div className="min-h-[100svh] bg-gaming-bg flex flex-col p-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]" dir="rtl">
-        <div className="flex items-center gap-3 mb-4">
-          <Button variant="ghost" size="icon" onClick={() => setMode('choose')}>
-            <ArrowLeft className="h-5 w-5 rotate-180" />
-          </Button>
-          <h1 className="text-xl font-bold text-foreground">קבוצות שמורות</h1>
-        </div>
-
-        <div className="flex-1 space-y-3 max-w-md mx-auto w-full">
-          {savedGroups.map(group => (
-            <Card key={group.id} className="bg-gradient-card border-neon-green/20 p-4 shadow-card">
-              <div className="flex items-center justify-between mb-2">
-                {editingGroupId === group.id ? (
-                  <div className="flex items-center gap-2 flex-1">
-                    <Input
-                      value={editName}
-                      onChange={e => setEditName(e.target.value)}
-                      className="bg-gaming-surface border-border text-right text-sm h-8"
-                      autoFocus
-                    />
-                    <Button size="icon" variant="ghost" onClick={() => handleEditGroupSave(group)} className="h-8 w-8">
-                      <Check className="h-4 w-4 text-neon-green" />
-                    </Button>
-                    <Button size="icon" variant="ghost" onClick={() => setEditingGroupId(null)} className="h-8 w-8">
-                      <X className="h-4 w-4 text-muted-foreground" />
-                    </Button>
-                  </div>
-                ) : (
-                  <>
-                    <h3 className="text-sm font-semibold text-foreground">{group.name}</h3>
-                    <div className="flex items-center gap-1">
-                      <Button size="icon" variant="ghost" onClick={() => { setEditingGroupId(group.id); setEditName(group.name); }} className="h-7 w-7">
-                        <Edit2 className="h-3.5 w-3.5 text-muted-foreground" />
-                      </Button>
-                      <Button size="icon" variant="ghost" onClick={() => handleDeleteGroup(group.id)} className="h-7 w-7">
-                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                      </Button>
-                    </div>
-                  </>
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground mb-3">{group.players.join(' • ')}</p>
-              <Button
-                variant="gaming"
-                size="sm"
-                className="w-full"
-                onClick={() => handleSelectGroup(group)}
-              >
-                <Play className="h-4 w-4" />
-                בחר קבוצה זו
-              </Button>
-            </Card>
-          ))}
-
-          {savedGroups.length === 0 && (
-            <p className="text-center text-muted-foreground text-sm">אין קבוצות שמורות עדיין</p>
-          )}
-        </div>
-      </div>
-    );
-  }
-
   // New / manual entry
   return (
     <div className="min-h-[100svh] bg-gaming-bg flex flex-col p-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]" dir="rtl">
       <div className="flex items-center gap-3 mb-4">
-        <Button variant="ghost" size="icon" onClick={() => savedGroups.length > 0 ? setMode('choose') : onBack()}>
+        <Button variant="ghost" size="icon" onClick={onBack}>
           <ArrowLeft className="h-5 w-5 rotate-180" />
         </Button>
         <div>
-            <h1 className="text-xl font-bold text-foreground">ליגת זוגות (5 שחקנים)</h1>
-            <p className="text-xs text-muted-foreground">
-              {matchCount === 15 ? '3 סיבובים • 15 משחקים • 3 קבוצות לזוג' : '6 סיבובים • 30 משחקים • 6 קבוצות לזוג'}
+          <h1 className="text-xl font-bold text-foreground">ליגת זוגות (5 שחקנים)</h1>
+        
+          {teamId && teamName && (
+            <p className="text-xs text-neon-green">
+              קבוצה קיימת: {teamName}
             </p>
+          )}
+        
+          {!teamId && (
+            <p className="text-xs text-neon-green">
+              יצירת קבוצה חדשה
+            </p>
+          )}
+        
+          <p className="text-xs text-muted-foreground">
+            {matchCount === 15 ? '3 סיבובים • 15 משחקים • 3 קבוצות לזוג' : '6 סיבובים • 30 משחקים • 6 קבוצות לזוג'}
+          </p>
         </div>
       </div>
 
@@ -343,6 +188,47 @@ export const FPSetup = ({ onBack, onStart, savedPlayers, teamPlayers, teamId, te
             )}
           </Card>
 
+          <Card className="bg-gaming-surface/50 border-border/50 p-3">
+            <div className="space-y-3">
+              <div className="text-center">
+                <p className="text-sm font-semibold text-foreground">
+                  כמה משחקים בליגה?
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  ניתן לבחור ליגה קצרה או מלאה
+                </p>
+              </div>
+          
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setMatchCount(15)}
+                  className={`rounded-lg border p-3 text-center transition-all ${
+                    matchCount === 15
+                      ? 'border-neon-green bg-neon-green/10 text-neon-green'
+                      : 'border-border bg-gaming-surface text-muted-foreground hover:border-muted-foreground/40'
+                  }`}
+                >
+                  <p className="text-sm font-bold">15 משחקים</p>
+                  <p className="text-xs mt-1">3 סיבובים</p>
+                </button>
+          
+                <button
+                  type="button"
+                  onClick={() => setMatchCount(30)}
+                  className={`rounded-lg border p-3 text-center transition-all ${
+                    matchCount === 30
+                      ? 'border-neon-green bg-neon-green/10 text-neon-green'
+                      : 'border-border bg-gaming-surface text-muted-foreground hover:border-muted-foreground/40'
+                  }`}
+                >
+                  <p className="text-sm font-bold">30 משחקים</p>
+                  <p className="text-xs mt-1">6 סיבובים</p>
+                </button>
+              </div>
+            </div>
+          </Card>
+
           {/* Optional first sitting out selection */}
           <Card className="bg-gaming-surface/50 border-border/50 p-3">
             <div className="space-y-3">
@@ -391,27 +277,22 @@ export const FPSetup = ({ onBack, onStart, savedPlayers, teamPlayers, teamId, te
             </div>
           </Card>
 
-          {/* Save group option */}
-          <Card className="bg-gaming-surface/50 border-border/50 p-3">
-            <div className="flex items-center gap-2">
+          {!teamId && (
+            <Card className="bg-gaming-surface/50 border-border/50 p-4">
+              <p className="text-sm font-semibold text-foreground mb-2 text-right">
+                שם הקבוצה החדשה
+              </p>
               <Input
-                placeholder="שם הקבוצה (לשמירה)"
+                placeholder="לדוגמה: epsilons"
                 value={groupName}
                 onChange={e => setGroupName(e.target.value)}
-                className="bg-gaming-surface border-border text-right text-sm flex-1"
+                className="bg-gaming-surface border-border text-right"
               />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleSaveGroup}
-                disabled={!allFilled || hasDuplicates || !groupName.trim()}
-                className="border-neon-green/30 whitespace-nowrap"
-              >
-                <Save className="h-4 w-4" />
-                שמור
-              </Button>
-            </div>
-          </Card>
+              <p className="text-xs text-muted-foreground mt-2">
+                הקבוצה תישמר ב״הקבוצות שלי״ ותהיה ניתנת לחיפוש.
+              </p>
+            </Card>
+          )}
 
           <Card className="bg-gaming-surface/50 border-border/50 p-4">
             <div className="text-center space-y-1">
