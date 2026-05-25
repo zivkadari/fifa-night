@@ -20,11 +20,13 @@ interface FPSetupProps {
   savedPlayers?: Player[];
   /** Team players to pre-fill when starting within a team context */
   teamPlayers?: Player[];
+  teamId?: string | null;
+  teamName?: string | null;
 }
 
 type SetupMode = 'choose' | 'new' | 'saved';
 
-export const FPSetup = ({ onBack, onStart, savedPlayers, teamPlayers }: FPSetupProps) => {
+export const FPSetup = ({ onBack, onStart, savedPlayers, teamPlayers, teamId, teamName }: FPSetupProps) => {
   const { toast } = useToast();
   const hasTeamPlayers = teamPlayers && teamPlayers.length === 5;
   const [mode, setMode] = useState<SetupMode>(
@@ -90,8 +92,9 @@ export const FPSetup = ({ onBack, onStart, savedPlayers, teamPlayers }: FPSetupP
       setupOptions.firstSittingOutPlayerId = firstSittingOutPlayerId;
     }
     
-    if (groupName.trim()) {
+    if (!teamId && groupName.trim()) {
       setupOptions.teamName = groupName.trim();
+      setupOptions.createNewTeam = true;
     }
     
     onStart(
