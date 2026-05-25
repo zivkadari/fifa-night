@@ -36,8 +36,9 @@ import { FPEvening } from "@/types/fivePlayerTypes";
 import { createFPEvening } from "@/services/fivePlayerEngine";
 import { FPBankOverview } from "@/components/FPBankOverview";
 import { useTeam } from "@/contexts/TeamContext";
+import { FPTeamSelection } from "@/components/FPTeamSelection";
 
-type AppState = 'home' | 'setup' | 'tournament-type' | 'singles-setup' | 'singles-clubs' | 'singles-schedule' | 'game' | 'summary' | 'history' | 'teams' | 'find-team' | 'join' | 'pairs-mode-selection' | 'tier-question-flow' | 'fp-setup' | 'fp-bank-overview' | 'fp-game' | 'fp-summary';
+type AppState = 'home' | 'setup' | 'tournament-type' | 'singles-setup' | 'singles-clubs' | 'singles-schedule' | 'game' | 'summary' | 'history' | 'teams' | 'find-team' | 'join' | 'pairs-mode-selection' | 'tier-question-flow' | 'fp-team-selection' | 'fp-setup' | 'fp-bank-overview' | 'fp-game' | 'fp-summary';
 type TeamEveningEditReason = "owner_admin" | "playing" | "view_only" | null;
 type MatchScoreSubmission = {
   roundIndex: number | null;
@@ -180,6 +181,7 @@ const Index = () => {
   const [fpDeadlockPlayers, setFpDeadlockPlayers] = useState<Player[] | null>(null);
   const [showFpDeadlock, setShowFpDeadlock] = useState(false);
   const [teamPlayersForFP, setTeamPlayersForFP] = useState<Player[] | null>(null);
+  const [fpSelectedTeamName, setFpSelectedTeamName] = useState<string | null>(null);
   const [activeTeamEvenings, setActiveTeamEvenings] = useState<Awaited<ReturnType<typeof RemoteStorageService.listActiveEveningsForMyTeams>>>([]);
   const [routeTeamId, setRouteTeamId] = useState<string | null>(null);
 
@@ -931,23 +933,11 @@ const handleGoHome = () => {
         return (
           <TeamDashboard
             onStartNew={handleStartNewEvening}
-            onStartFivePlayer={async () => {
-              // Load team players if we have an active team with exactly 5 players
-              if (contextTeamId && RemoteStorageService.isEnabled()) {
-                try {
-                  const tp = await RemoteStorageService.listTeamPlayers(contextTeamId);
-                  if (tp.length === 5) {
-                    setTeamPlayersForFP(tp.map(p => ({ id: p.id, name: p.name })));
-                  } else {
-                    setTeamPlayersForFP(null);
-                  }
-                } catch {
-                  setTeamPlayersForFP(null);
-                }
-              } else {
-                setTeamPlayersForFP(null);
-              }
-              goTo('fp-setup');
+            onStartFivePlayer={() => {
+              setTeamPlayersForFP(null);
+              setFpTeamId(null);
+              setFpSelectedTeamName(null);
+              goTo('fp-team-selection');
             }}
             onStartPairs={() => { setSelectedTournamentType('pairs'); goTo('setup'); }}
             onStartSingles={() => { setSelectedTournamentType('singles'); goTo('singles-setup'); }}
@@ -1230,6 +1220,44 @@ const handleGoHome = () => {
             <JoinEvening
               onBack={() => window.history.back()}
               onJoinSuccess={handleJoinSuccess}
+            />
+          );
+
+        case 'fp-team-selection':
+          return (
+            <FPTeamSelection
+              onBack={() => window.history.back()}
+              onCreateNew={() => {
+                setTeamPlayersForFP(null);
+                setFpTeamId(null);
+                setFpSelectedTeamName(null);
+                goTo('fp-setup');
+              }}
+              onSelectTeam={async (teamId, teamName) => {
+                try {
+                  const players = await RemoteStorageService.listTeamPlayers(teamId);
+        
+                  if (players.length !== 5) {
+                    toast({
+                      title: "מוד 5 דורש בדיוק 5 שחקנים",
+                      description: `בקבוצה ${teamName} יש ${players.length} שחקנים.`,
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+        
+                  setFpTeamId(teamId);
+                  setFpSelectedTeamName(teamName);
+                  setTeamPlayersForFP(players.map(p => ({ id: p.id, name: p.name })));
+                  goTo('fp-setup');
+                } catch (error: any) {
+                  toast({
+                    title: "שגיאה בטעינת הקבוצה",
+                    description: error?.message || "לא ניתן לטעון את שחקני הקבוצה.",
+                    variant: "destructive",
+                  });
+                }
+              }}
             />
           );
         
