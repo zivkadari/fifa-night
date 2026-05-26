@@ -1302,18 +1302,44 @@ const handleGoHome = () => {
                   }
                 
                   teamId = createdTeam.id;
-                
-                  for (const player of players) {
-                    const added = await RemoteStorageService.addPlayerToTeamByName(teamId, player.name);
-                
-                    if (!added) {
+
+                  // Make player creation idempotent.
+                  // If something already added players to this new team, do not add them again.
+                  const existingPlayers = await RemoteStorageService.listTeamPlayers(teamId);
+                  
+                  if (existingPlayers.length === 0) {
+                    const uniquePlayerNames = [
+                      ...new Set(players.map((p) => p.name.trim()).filter(Boolean)),
+                    ];
+                  
+                    if (uniquePlayerNames.length !== 5) {
                       toast({
                         title: "לא ניתן ליצור את הקבוצה",
-                        description: `לא הצלחנו להוסיף את ${player.name} לקבוצה`,
+                        description: "מוד 5 דורש בדיוק 5 שמות שחקנים ייחודיים.",
                         variant: "destructive",
                       });
                       return;
                     }
+                  
+                    for (const playerName of uniquePlayerNames) {
+                      const added = await RemoteStorageService.addPlayerToTeamByName(teamId, playerName);
+                  
+                      if (!added) {
+                        toast({
+                          title: "לא ניתן ליצור את הקבוצה",
+                          description: `לא הצלחנו להוסיף את ${playerName} לקבוצה`,
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+                    }
+                  } else if (existingPlayers.length !== 5) {
+                    toast({
+                      title: "הקבוצה נוצרה עם מספר שחקנים לא תקין",
+                      description: `נמצאו ${existingPlayers.length} שחקנים במקום 5.`,
+                      variant: "destructive",
+                    });
+                    return;
                   }
                 }
                 
