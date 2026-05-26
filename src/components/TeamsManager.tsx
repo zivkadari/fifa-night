@@ -65,6 +65,7 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam, initialTeamId }: T
   const [joinRequests, setJoinRequests] = useState<TeamJoinRequest[]>([]);
   const [handlingRequestId, setHandlingRequestId] = useState<string | null>(null);
   const [showCreateTeam, setShowCreateTeam] = useState(false);
+  const [showTeamPicker, setShowTeamPicker] = useState(false);
   const [showPlayers, setShowPlayers] = useState(false);
   const [showFullLeaderboard, setShowFullLeaderboard] = useState(false);
   const [showAdminSettings, setShowAdminSettings] = useState(false);
@@ -498,10 +499,15 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam, initialTeamId }: T
       : `${playerNames.slice(0, 3).join(", ")} ועוד ${playerNames.length - 3}`;
   
   const topLeaderboard = leaderboard.slice(0, 3);
+  const formatTeamPreview = (players: Array<{ id: string; name: string }>) => {
+    if (!players.length) return "אין שחקנים בקבוצה";
+    if (players.length <= 3) return players.map((p) => p.name).join(", ");
+    return `${players.slice(0, 3).map((p) => p.name).join(", ")} ועוד ${players.length - 3}`;
+  };
 
   return (
-    <div className="min-h-screen bg-gaming-bg p-4 mobile-optimized">
-      <div className="max-w-md mx-auto">
+    <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-gaming-bg p-4 mobile-optimized">
+      <div className="w-full max-w-md mx-auto min-w-0 overflow-x-hidden">
         {/* Header */}
         <div className="flex items-center gap-4 mb-5">
           <Button variant="ghost" size="icon" onClick={onBack} aria-label="חזרה">
@@ -553,23 +559,75 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam, initialTeamId }: T
             </div>
           )}
   
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            {teams.map((t) => (
-              <Button
-                key={t.id}
-                variant={t.id === selectedTeamId ? "secondary" : "outline"}
-                size="sm"
-                onClick={() => {
-                  setSelectedTeamId(t.id);
-                  setShowPlayers(false);
-                  setShowFullLeaderboard(false);
-                  setShowAdminSettings(false);
-                }}
-                className="shrink-0"
-              >
-                {t.name}
-              </Button>
-            ))}
+          <div className="space-y-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full justify-between border-border bg-gaming-surface text-right h-auto py-3"
+              onClick={() => setShowTeamPicker((prev) => !prev)}
+            >
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold text-foreground truncate">
+                  {selectedTeamName}
+                </p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {teamPlayers.length
+                    ? `${teamPlayers.length} שחקנים · ${playerPreview}`
+                    : "בחר קבוצה"}
+                </p>
+              </div>
+          
+              <span className="text-xs text-muted-foreground shrink-0">
+                {showTeamPicker ? "סגור" : "החלף"}
+              </span>
+            </Button>
+          
+            {showTeamPicker && (
+              <div className="max-h-72 overflow-y-auto rounded-lg border border-border/50 bg-gaming-bg/40 p-2 space-y-2">
+                {teams.map((t) => {
+                  const selected = t.id === selectedTeamId;
+          
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedTeamId(t.id);
+                        setShowPlayers(false);
+                        setShowFullLeaderboard(false);
+                        setShowAdminSettings(false);
+                        setShowTeamPicker(false);
+                      }}
+                      className={`w-full rounded-lg border p-3 text-right transition-all ${
+                        selected
+                          ? "border-neon-green bg-neon-green/10"
+                          : "border-border bg-gaming-surface hover:border-muted-foreground/40"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-bold text-foreground truncate">
+                          {t.name}
+                        </span>
+          
+                        {selected && (
+                          <span className="text-xs text-neon-green shrink-0">
+                            נבחרה
+                          </span>
+                        )}
+                      </div>
+          
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {t.role === "owner"
+                          ? "מנהל הקבוצה"
+                          : t.role === "admin"
+                            ? "אדמין"
+                            : "חבר קבוצה"}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
   
           {!teams.length && (
