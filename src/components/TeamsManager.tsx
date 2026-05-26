@@ -60,6 +60,7 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam, initialTeamId }: T
   const [editingTeamName, setEditingTeamName] = useState("");
   const [inviteCode, setInviteCode] = useState<string | null>(null);
   const [teamVisibility, setTeamVisibility] = useState<"private" | "searchable" | "public">("private");
+  const [teamPlayersPreview, setTeamPlayersPreview] = useState<Record<string, Array<{ id: string; name: string }>>>({});
   const [teamDescription, setTeamDescription] = useState("");
   const [savingDiscovery, setSavingDiscovery] = useState(false);
   const [joinRequests, setJoinRequests] = useState<TeamJoinRequest[]>([]);
@@ -79,12 +80,21 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam, initialTeamId }: T
     const load = async () => {
       const list = await RemoteStorageService.listTeams();
       setTeams(list);
-  
+      
+      const previewsEntries = await Promise.all(
+        list.map(async (team) => {
+          const players = await RemoteStorageService.listTeamPlayers(team.id);
+          return [team.id, players] as const;
+        })
+      );
+      
+      setTeamPlayersPreview(Object.fromEntries(previewsEntries));
+      
       if (list.length && !selectedTeamId) {
         const initialExists = initialTeamId
           ? list.some((team) => team.id === initialTeamId)
           : false;
-  
+      
         setSelectedTeamId(initialExists ? initialTeamId! : list[0].id);
       }
     };
@@ -207,6 +217,14 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam, initialTeamId }: T
         // Refresh teams list from server to ensure RLS/membership is properly reflected
         const freshTeams = await RemoteStorageService.listTeams();
         setTeams(freshTeams);
+        const previewsEntries = await Promise.all(
+          freshTeams.map(async (team) => {
+            const players = await RemoteStorageService.listTeamPlayers(team.id);
+            return [team.id, players] as const;
+          })
+        );
+        
+        setTeamPlayersPreview(Object.fromEntries(previewsEntries));
         setNewTeamName("");
         setSelectedTeamId(created.id);
         toast({ title: "קבוצה נוצרה", description: validation.value });
@@ -236,6 +254,10 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam, initialTeamId }: T
         setNewPlayerName("");
         const players = await RemoteStorageService.listTeamPlayers(selectedTeamId);
         setTeamPlayers(players);
+        setTeamPlayersPreview((prev) => ({
+          ...prev,
+          [selectedTeamId]: players,
+        }));
       } else {
         toast({ title: "שגיאה בהוספת שחקן", variant: "destructive" });
       }
@@ -251,6 +273,10 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam, initialTeamId }: T
       if (ok) {
         const players = await RemoteStorageService.listTeamPlayers(selectedTeamId);
         setTeamPlayers(players);
+        setTeamPlayersPreview((prev) => ({
+          ...prev,
+          [selectedTeamId]: players,
+        }));
         toast({ title: "שחקן נוסף", description: playerName });
       } else {
         toast({ title: "שגיאה בהוספת שחקן", variant: "destructive" });
@@ -264,7 +290,16 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam, initialTeamId }: T
     if (!selectedTeamId) return;
     const ok = await RemoteStorageService.removePlayerFromTeam(selectedTeamId, pid);
     if (ok) {
-      setTeamPlayers((prev) => prev.filter((p) => p.id !== pid));
+      setTeamPlayers((prev) => {
+        const updated = prev.filter((p) => p.id !== pid);
+      
+        setTeamPlayersPreview((previewPrev) => ({
+          ...previewPrev,
+          [selectedTeamId]: updated,
+        }));
+      
+        return updated;
+      });
     } else {
       toast({ title: "שגיאה במחיקה", variant: "destructive" });
     }
@@ -304,6 +339,15 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam, initialTeamId }: T
       const freshTeams = await RemoteStorageService.listTeams();
       setTeams(freshTeams);
   
+      const previewsEntries = await Promise.all(
+        freshTeams.map(async (team) => {
+          const players = await RemoteStorageService.listTeamPlayers(team.id);
+          return [team.id, players] as const;
+        })
+      );
+      
+      setTeamPlayersPreview(Object.fromEntries(previewsEntries));
+
       const nextTeamId = freshTeams[0]?.id ?? null;
       setSelectedTeamId(nextTeamId);
       setActiveTeamId(nextTeamId);
@@ -347,6 +391,15 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam, initialTeamId }: T
     if (ok) {
       const freshTeams = await RemoteStorageService.listTeams();
       setTeams(freshTeams);
+
+      const previewsEntries = await Promise.all(
+        freshTeams.map(async (team) => {
+          const players = await RemoteStorageService.listTeamPlayers(team.id);
+          return [team.id, players] as const;
+        })
+      );
+      
+      setTeamPlayersPreview(Object.fromEntries(previewsEntries));
     
       const nextTeamId = freshTeams[0]?.id ?? null;
       setSelectedTeamId(nextTeamId);
@@ -499,8 +552,8 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam, initialTeamId }: T
       : `${playerNames.slice(0, 3).join(", ")} ועוד ${playerNames.length - 3}`;
   
   const topLeaderboard = leaderboard.slice(0, 3);
-  const formatTeamPreview = (players: Array<{ id: string; name: string }>) => {
-    if (!players.length) return "אין שחקנים בקבוצה";
+  const formatPlayersPreview = (players: Array<{ id: string; name: string }>) => {
+    if (!players.length) return "אין שחקנים";
     if (players.length <= 3) return players.map((p) => p.name).join(", ");
     return `${players.slice(0, 3).map((p) => p.name).join(", ")} ועוד ${players.length - 3}`;
   };
@@ -586,6 +639,7 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam, initialTeamId }: T
               <div className="max-h-72 overflow-y-auto rounded-lg border border-border/50 bg-gaming-bg/40 p-2 space-y-2">
                 {teams.map((t) => {
                   const selected = t.id === selectedTeamId;
+                  const previewPlayers = teamPlayersPreview[t.id] || [];
           
                   return (
                     <button
@@ -622,6 +676,12 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam, initialTeamId }: T
                           : t.role === "admin"
                             ? "אדמין"
                             : "חבר קבוצה"}
+                      </p>
+                      
+                      <p className="text-xs text-muted-foreground mt-1 truncate">
+                        {previewPlayers.length > 0
+                          ? `${previewPlayers.length} שחקנים · ${formatPlayersPreview(previewPlayers)}`
+                          : "אין שחקנים בקבוצה"}
                       </p>
                     </button>
                   );
