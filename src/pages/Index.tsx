@@ -1277,7 +1277,7 @@ const handleGoHome = () => {
                   setShowFpDeadlock(true);
                   return;
                 }
-                const resultWithSetupOptions = {
+                let resultWithSetupOptions = {
                   ...result,
                   setupOptions,
                 };
@@ -1333,14 +1333,62 @@ const handleGoHome = () => {
                         return;
                       }
                     }
-                  } else if (existingPlayers.length !== 5) {
+                  }
+                  
+                  const createdTeamPlayers = await RemoteStorageService.listTeamPlayers(teamId);
+                  
+                  if (createdTeamPlayers.length !== 5) {
                     toast({
                       title: "הקבוצה נוצרה עם מספר שחקנים לא תקין",
-                      description: `נמצאו ${existingPlayers.length} שחקנים במקום 5.`,
+                      description: `נמצאו ${createdTeamPlayers.length} שחקנים במקום 5.`,
                       variant: "destructive",
                     });
                     return;
                   }
+                  
+                  const playersByName = new Map(
+                    createdTeamPlayers.map((p) => [p.name.trim().toLowerCase(), p])
+                  );
+                  
+                  const serverPlayers = players.map((player) => {
+                    const serverPlayer = playersByName.get(player.name.trim().toLowerCase());
+                  
+                    if (!serverPlayer) {
+                      return null;
+                    }
+                  
+                    return {
+                      id: serverPlayer.id,
+                      name: serverPlayer.name,
+                    };
+                  });
+                  
+                  if (serverPlayers.some((player) => player === null)) {
+                    toast({
+                      title: "לא ניתן ליצור את הקבוצה",
+                      description: "לא הצלחנו להתאים בין השחקנים שהוזנו לשחקנים שנוצרו בקבוצה.",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+                  
+                  const recreatedResult = createFPEvening(
+                    serverPlayers as { id: string; name: string }[],
+                    clubsWithOverrides,
+                    2,
+                    matchCount
+                  );
+                  
+                  if (typeof recreatedResult === "string") {
+                    setFpDeadlockPlayers(serverPlayers as { id: string; name: string }[]);
+                    setShowFpDeadlock(true);
+                    return;
+                  }
+                  
+                  resultWithSetupOptions = {
+                    ...recreatedResult,
+                    setupOptions,
+                  };
                 }
                 
                 // FP mode must always be connected to a real Supabase team.
