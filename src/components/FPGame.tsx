@@ -403,8 +403,12 @@ export const FPGame = ({ evening, onBack, onComplete, onGoHome, onUpdateEvening,
         {isActive && (
           <div className="space-y-1 mt-2">
             {bank.clubs.map(club => {
-              const isUsed = bank.usedClubIds.includes(club.id);
               const isSelected = selected?.id === club.id;
+            
+              // אם הקבוצה כבר ב-usedClubIds אבל היא הבחירה הנוכחית,
+              // עדיין נציג אותה כבחירה ירוקה ולא כ"שוחק".
+              const isUsed = bank.usedClubIds.includes(club.id) && !isSelected;
+            
               return (
                 <div
                   key={club.id}
@@ -412,22 +416,41 @@ export const FPGame = ({ evening, onBack, onComplete, onGoHome, onUpdateEvening,
                     isSelected
                       ? 'border-neon-green bg-neon-green/15 scale-[1.01]'
                       : isUsed
-                        ? 'border-border/20 bg-gaming-surface/20 opacity-30 pointer-events-none'
+                        ? 'border-border/20 bg-gaming-surface/20 opacity-40 cursor-not-allowed'
                         : 'border-border/40 bg-gaming-surface/80 cursor-pointer hover:border-neon-green/50 hover:bg-gaming-surface active:scale-[0.98]'
                   }`}
                   onClick={() => {
-                    if (!isUsed) onSelect(club);
+                    if (isUsed) return;
+                    onSelect(club);
                   }}
                 >
-                  <div className="flex items-center gap-2">
-                    {isUsed && !isSelected && (
-                      <span className="text-[10px] text-muted-foreground/50 bg-muted/20 px-1.5 py-0.5 rounded">שוחק</span>
+                  <div className="flex items-center gap-2 min-w-0">
+                    {isUsed && (
+                      <span className="text-[10px] text-muted-foreground/60 bg-muted/20 px-1.5 py-0.5 rounded shrink-0">
+                        שוחק
+                      </span>
                     )}
-                    <span className={`${isUsed && !isSelected ? 'line-through text-muted-foreground/40' : 'text-foreground'}`}>
+            
+                    {isSelected && (
+                      <span className="text-[10px] text-neon-green bg-neon-green/10 px-1.5 py-0.5 rounded shrink-0">
+                        נבחרה
+                      </span>
+                    )}
+            
+                    <span
+                      className={`truncate ${
+                        isUsed
+                          ? 'line-through text-muted-foreground/40'
+                          : isSelected
+                            ? 'text-neon-green font-semibold'
+                            : 'text-foreground'
+                      }`}
+                    >
                       {club.name}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2">
+            
+                  <div className="flex items-center gap-2 shrink-0">
                     {renderStars(club.stars)}
                     {isSelected && <Check className="h-3.5 w-3.5 text-neon-green" />}
                   </div>
