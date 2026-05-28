@@ -1467,10 +1467,39 @@ const handleGoHome = () => {
               onStopTournament={() => fpEvening && handleStopTournament(fpEvening.id, "fp")}
               onUpdateEvening={(ev) => {
                 setFpEvening(ev);
-                if (!ev.completed) StorageService.saveFPActive(ev);
-                RemoteStorageService.upsertEveningLiveWithTeam(ev as any, fpTeamId ?? null).catch((error) => {
-                  console.error("Failed to save FP evening update:", error?.message || error);
-                });
+              
+                if (!ev.completed) {
+                  StorageService.saveFPActive(ev);
+                }
+              
+                if (currentTeamEditReason === "playing") {
+                  RemoteStorageService.submitTournamentScore(ev as any)
+                    .then((serverEvening) => {
+                      setFpEvening(serverEvening as any);
+                      StorageService.saveFPActive(serverEvening as any);
+                    })
+                    .catch((error) => {
+                      console.error("Failed to submit FP score:", error?.message || error);
+                      toast({
+                        title: "שגיאה בשמירת התוצאה",
+                        description: error?.message || "לא ניתן לשמור את התוצאה. נסה שוב בעוד רגע.",
+                        variant: "destructive",
+                      });
+                    });
+              
+                  return;
+                }
+              
+                if (currentTeamEditReason === "owner_admin") {
+                  RemoteStorageService.upsertEveningLiveWithTeam(ev as any, fpTeamId ?? null).catch((error) => {
+                    console.error("Failed to save FP evening update:", error?.message || error);
+                    toast({
+                      title: "שגיאה בשמירת הטורניר",
+                      description: error?.message || "לא ניתן לשמור את העדכון כרגע.",
+                      variant: "destructive",
+                    });
+                  });
+                }
               }}
             />
           ) : null;
