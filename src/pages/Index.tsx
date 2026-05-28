@@ -380,6 +380,71 @@ useEffect(() => {
     return () => { mounted = false; };
   }, [isAuthed, appState, currentEvening?.id, fpEvening?.id]);
 
+  useEffect(() => {
+    if (!isAuthed || !RemoteStorageService.isEnabled()) return;
+  
+    const shouldRefreshLive =
+      appState === "home" ||
+      appState === "game" ||
+      appState === "fp-game";
+  
+    if (!shouldRefreshLive) return;
+  
+    let cancelled = false;
+  
+    const refreshActiveEvenings = async () => {
+      try {
+        const list = await RemoteStorageService.listActiveEveningsForMyTeams();
+  
+        if (cancelled) return;
+  
+        setActiveTeamEvenings(list);
+  
+        if (currentEvening?.id) {
+          const updatedRegular = list.find(
+            (entry) =>
+              entry.evening_id === currentEvening.id &&
+              !Array.isArray((entry.evening as any)?.schedule)
+          );
+  
+          if (updatedRegular) {
+            setCurrentEvening(updatedRegular.evening);
+            setCurrentTeamId(updatedRegular.team_id);
+            setCurrentTeamEditReason(updatedRegular.reason);
+          }
+        }
+  
+        if (fpEvening?.id) {
+          const updatedFP = list.find(
+            (entry) =>
+              entry.evening_id === fpEvening.id &&
+              Array.isArray((entry.evening as any)?.schedule)
+          );
+  
+          if (updatedFP) {
+            const latestFpEvening = updatedFP.evening as any;
+  
+            setFpEvening(latestFpEvening);
+            setFpTeamId(updatedFP.team_id);
+            setCurrentTeamEditReason(updatedFP.reason);
+            StorageService.saveFPActive(latestFpEvening);
+          }
+        }
+      } catch (error: any) {
+        console.warn("Failed to refresh active team evenings:", error?.message || error);
+      }
+    };
+  
+    refreshActiveEvenings();
+  
+    const intervalId = window.setInterval(refreshActiveEvenings, 2500);
+  
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [isAuthed, appState, currentEvening?.id, fpEvening?.id]);
+
   const handleOpenTeamEvening = (entry: typeof activeTeamEvenings[number]) => {
     if (entry.can_edit) {
       const isFP = Array.isArray((entry.evening as any)?.schedule);
