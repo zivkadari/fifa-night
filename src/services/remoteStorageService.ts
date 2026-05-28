@@ -1989,15 +1989,44 @@ export class RemoteStorageService {
   static async submitFPMatchScore(evening: any): Promise<any> {
     if (!supabase) throw new Error("Supabase is not configured");
   
-    const match = evening.schedule?.[evening.currentMatchIndex];
+    const schedule = evening.schedule || [];
   
-    if (!match) {
-      throw new Error("Match not found");
+    if (!Array.isArray(schedule) || schedule.length === 0) {
+      throw new Error("Schedule not found");
     }
+  
+    // After saving a result, FPGame usually advances currentMatchIndex to the next match.
+    // So the submitted match is usually currentMatchIndex - 1.
+    const candidateIndexes = [
+      typeof evening.currentMatchIndex === "number" ? evening.currentMatchIndex - 1 : -1,
+      typeof evening.currentMatchIndex === "number" ? evening.currentMatchIndex : -1,
+      ...schedule.map((_: any, index: number) => index).reverse(),
+    ];
+  
+    const targetIndex = candidateIndexes.find((index) => {
+      if (index < 0 || index >= schedule.length) return false;
+  
+      const match = schedule[index];
+  
+      return (
+        match &&
+        match.completed === true &&
+        match.scoreA !== undefined &&
+        match.scoreB !== undefined &&
+        match.clubA &&
+        match.clubB
+      );
+    });
+  
+    if (targetIndex === undefined) {
+      throw new Error("Could not find submitted FP match");
+    }
+  
+    const match = schedule[targetIndex];
   
     const { data, error } = await supabase.rpc("submit_fp_match_score", {
       _evening_id: evening.id,
-      _match_global_index: evening.currentMatchIndex,
+      _match_global_index: targetIndex,
       _score_a: match.scoreA,
       _score_b: match.scoreB,
       _club_a: match.clubA,
