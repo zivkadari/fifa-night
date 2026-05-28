@@ -1986,6 +1986,31 @@ export class RemoteStorageService {
     return true;
   }
 
+  static async submitFPMatchScore(evening: any): Promise<any> {
+    if (!supabase) throw new Error("Supabase is not configured");
+  
+    const match = evening.schedule?.[evening.currentMatchIndex];
+  
+    if (!match) {
+      throw new Error("Match not found");
+    }
+  
+    const { data, error } = await supabase.rpc("submit_fp_match_score", {
+      _evening_id: evening.id,
+      _match_global_index: evening.currentMatchIndex,
+      _score_a: match.scoreA,
+      _score_b: match.scoreB,
+      _club_a: match.clubA,
+      _club_b: match.clubB,
+    });
+  
+    if (error) {
+      throw new Error(error.message);
+    }
+  
+    return data;
+  }
+
   // ========== Active team evenings (home dashboard) ==========
   /**
    * List active (non-completed) evenings across all teams the current user belongs to.
