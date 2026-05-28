@@ -1473,7 +1473,7 @@ const handleGoHome = () => {
                 }
               
                 if (currentTeamEditReason === "playing") {
-                  RemoteStorageService.submitTournamentScore(ev as any)
+                  RemoteStorageService.submitFPMatchScore(ev as any)
                     .then((serverEvening) => {
                       setFpEvening(serverEvening as any);
                       StorageService.saveFPActive(serverEvening as any);
