@@ -77,6 +77,7 @@
         "globals": "^15.9.0",
         "lovable-tagger": "^1.1.7",
         "postcss": "^8.4.47",
+        "supabase": "^2.98.2",
         "tailwindcss": "^3.4.11",
         "typescript": "^5.5.3",
         "typescript-eslint": "^8.0.1",
@@ -378,6 +379,22 @@
     "@rollup/rollup-win32-x64-msvc": ["@rollup/rollup-win32-x64-msvc@4.24.0", "", { "os": "win32", "cpu": "x64" }, "sha512-fbMkAF7fufku0N2dE5TBXcNlg0pt0cJue4xBRE2Qc5Vqikxr4VCgKj/ht6SMdFcOacVA9rqF70APJ8RN/4vMJw=="],
 
     "@supabase/auth-js": ["@supabase/auth-js@2.71.1", "", { "dependencies": { "@supabase/node-fetch": "^2.6.14" } }, "sha512-mMIQHBRc+SKpZFRB2qtupuzulaUhFYupNyxqDj5Jp/LyPvcWvjaJzZzObv6URtL/O6lPxkanASnotGtNpS3H2Q=="],
+
+    "@supabase/cli-darwin-arm64": ["@supabase/cli-darwin-arm64@2.104.0", "https://europe-west1-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/@supabase/cli-darwin-arm64/-/cli-darwin-arm64-2.104.0.tgz", { "os": "darwin", "cpu": "arm64" }, "sha512-cFCNtrdfDvaNFR28PEsokuZfxCFSfDJOrzKZOEAR7WbygNRRABd4ufw6GWGHm+djshM5nDkv72et+isTFK63kw=="],
+
+    "@supabase/cli-darwin-x64": ["@supabase/cli-darwin-x64@2.104.0", "https://europe-west1-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/@supabase/cli-darwin-x64/-/cli-darwin-x64-2.104.0.tgz", { "os": "darwin", "cpu": "x64" }, "sha512-jX4vUCfMxUb/juhEqlAY6kKueHlXaoK2SbuRxaIWaYVhtxX0HVyC6Jg4dxyIoGCj9QdKpTkDkZYBBHbSy39QIA=="],
+
+    "@supabase/cli-linux-arm64": ["@supabase/cli-linux-arm64@2.104.0", "https://europe-west1-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/@supabase/cli-linux-arm64/-/cli-linux-arm64-2.104.0.tgz", { "os": "linux", "cpu": "arm64" }, "sha512-3t4DMk6rCb/6Ujk6M4z41Et3ar/gQCqprsJ7rXYdTF98eTCmbk1wr6qz3CoA0A4/CoZfyw4iF9vY5iRdVbDiNw=="],
+
+    "@supabase/cli-linux-arm64-musl": ["@supabase/cli-linux-arm64-musl@2.104.0", "https://europe-west1-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/@supabase/cli-linux-arm64-musl/-/cli-linux-arm64-musl-2.104.0.tgz", { "os": "linux", "cpu": "arm64" }, "sha512-ELG6O67UHn+9+nADtvFUyHWs78A5cPEWlEA5tBgknTsMp4dKLaqbdY6W7W9Ej+jNRKzXP5/z+7gXWknOCpqiZg=="],
+
+    "@supabase/cli-linux-x64": ["@supabase/cli-linux-x64@2.104.0", "https://europe-west1-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/@supabase/cli-linux-x64/-/cli-linux-x64-2.104.0.tgz", { "os": "linux", "cpu": "x64" }, "sha512-2ZmgMv/ViJY3TYEna0Ed0YNcFvBLYT+4k9RCRcly1HMuMebZ85D06s6km5YHQdo/3L/BoSYHh5kuN5xI6P94lw=="],
+
+    "@supabase/cli-linux-x64-musl": ["@supabase/cli-linux-x64-musl@2.104.0", "https://europe-west1-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/@supabase/cli-linux-x64-musl/-/cli-linux-x64-musl-2.104.0.tgz", { "os": "linux", "cpu": "x64" }, "sha512-a6qt47EtNmWAc+Nmjt6slXvJfMCTTxl7Zio47Baj8M57UHKkF6hDQhkhlrJyj7ZI/1uKeEEAuzI+GP9q1Gq9CQ=="],
+
+    "@supabase/cli-windows-arm64": ["@supabase/cli-windows-arm64@2.104.0", "https://europe-west1-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/@supabase/cli-windows-arm64/-/cli-windows-arm64-2.104.0.tgz", { "os": "win32", "cpu": "arm64" }, "sha512-v+lBzh7C3PiKKdsgymdmCu5JhSBqpn+lx+c4/btpmg8ytJYVxzJ35YzsKXgPT8syfuJd/5pnowOqR5vltmCOmQ=="],
+
+    "@supabase/cli-windows-x64": ["@supabase/cli-windows-x64@2.104.0", "https://europe-west1-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/@supabase/cli-windows-x64/-/cli-windows-x64-2.104.0.tgz", { "os": "win32", "cpu": "x64" }, "sha512-8jXnURCDTenYo+7bwja3RrLCuYRcQp7pbwbrzRhHsjkwtljK4d5Q/UDENYvgjBHe8q50olla+sbZYyjYvOaK2g=="],
 
     "@supabase/functions-js": ["@supabase/functions-js@2.4.5", "", { "dependencies": { "@supabase/node-fetch": "^2.6.14" } }, "sha512-v5GSqb9zbosquTo6gBwIiq7W9eQ7rE5QazsK/ezNiQXdCbY+bH8D9qEaBIkhVvX4ZRW5rP03gEfw5yw9tiq4EQ=="],
 
@@ -952,6 +969,8 @@
     "strip-json-comments": ["strip-json-comments@3.1.1", "", {}, "sha512-6fPc+R4ihwqP6N/aIv2f1gMH8lOVtWQHoqC4yK6oSDVVocumAsfCqjkXnqiYMhmMwS/mEHLp7Vehlt3ql6lEig=="],
 
     "sucrase": ["sucrase@3.35.0", "", { "dependencies": { "@jridgewell/gen-mapping": "^0.3.2", "commander": "^4.0.0", "glob": "^10.3.10", "lines-and-columns": "^1.1.6", "mz": "^2.7.0", "pirates": "^4.0.1", "ts-interface-checker": "^0.1.9" }, "bin": { "sucrase": "bin/sucrase", "sucrase-node": "bin/sucrase-node" } }, "sha512-8EbVDiu9iN/nESwxeSxDKe0dunta1GOlHufmSSXxMD2z2/tMZpDMpvXQGsc+ajGo8y2uYUmixaSRUc/QPoQ0GA=="],
+
+    "supabase": ["supabase@2.104.0", "https://europe-west1-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/supabase/-/supabase-2.104.0.tgz", { "optionalDependencies": { "@supabase/cli-darwin-arm64": "2.104.0", "@supabase/cli-darwin-x64": "2.104.0", "@supabase/cli-linux-arm64": "2.104.0", "@supabase/cli-linux-arm64-musl": "2.104.0", "@supabase/cli-linux-x64": "2.104.0", "@supabase/cli-linux-x64-musl": "2.104.0", "@supabase/cli-windows-arm64": "2.104.0", "@supabase/cli-windows-x64": "2.104.0" }, "bin": { "supabase": "dist/supabase.js" } }, "sha512-RAX5ZQSX3BkdBEbG737idbVaVxbRxfsGsRQ7GPzM9F/xQbt9xF3Kf0x7x87mcBv9Vwog8eg/REjGWZxiWOHnXw=="],
 
     "supports-color": ["supports-color@7.2.0", "", { "dependencies": { "has-flag": "^4.0.0" } }, "sha512-qpCAvRl9stuOHveKsn7HncJRvv501qIacKzQlO/+Lwxc9+0q2wLyv4Dfvt80/DPn2pqOBsJdDiogXGR9+OvwRw=="],
 
