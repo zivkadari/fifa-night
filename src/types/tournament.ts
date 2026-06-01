@@ -11,6 +11,7 @@ export interface Club {
   isPrime?: boolean;
   league: string;
   defaultAdded?: boolean;
+  worldCup26?: boolean;
 }
 
 export interface Pair {
