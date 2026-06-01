@@ -623,10 +623,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      cancel_team_evening: {
-        Args: { _evening_id: string }
-        Returns: Json
+      _is_first_time_pairs_score_update: {
+        Args: { _new_data: Json; _old_data: Json }
+        Returns: boolean
       }
+      _is_first_time_singles_score_update: {
+        Args: { _new_data: Json; _old_data: Json }
+        Returns: boolean
+      }
+      _is_valid_score_array: { Args: { _score: Json }; Returns: boolean }
+      cancel_team_evening: { Args: { _evening_id: string }; Returns: Json }
       cleanup_old_join_attempts: { Args: never; Returns: undefined }
       create_team_evening: {
         Args: { _data: Json; _evening_id: string; _team_id: string }
@@ -704,28 +710,6 @@ export type Database = {
         Args: { _team_id: string }
         Returns: string
       }
-      review_team_join_request: {
-        Args: { _approved: boolean; _request_id: string }
-        Returns: boolean
-      }
-      sync_identity_required_notifications: { Args: never; Returns: number }
-      sync_join_request_notifications: { Args: never; Returns: number }
-      submit_match_score: {
-        Args: {
-          _club_a?: Json | null
-          _club_b?: Json | null
-          _evening_id: string
-          _match_index: number
-          _round_index: number | null
-          _score_a: number
-          _score_b: number
-        }
-        Returns: Json
-      }
-      submit_tournament_score: {
-        Args: { _data: Json; _evening_id: string }
-        Returns: Json
-      }
       resolve_invite_code: {
         Args: { _code: string }
         Returns: {
@@ -735,11 +719,45 @@ export type Database = {
           team_name: string
         }[]
       }
+      review_team_join_request: {
+        Args: { _approved: boolean; _request_id: string }
+        Returns: boolean
+      }
+      submit_fp_match_score: {
+        Args: {
+          _club_a: Json
+          _club_b: Json
+          _evening_id: string
+          _match_global_index: number
+          _score_a: number
+          _score_b: number
+        }
+        Returns: Json
+      }
+      submit_match_score: {
+        Args: {
+          _club_a?: Json
+          _club_b?: Json
+          _evening_id: string
+          _match_index: number
+          _round_index: number
+          _score_a: number
+          _score_b: number
+        }
+        Returns: Json
+      }
+      submit_tournament_score: {
+        Args: { _data: Json; _evening_id: string }
+        Returns: Json
+      }
+      sync_identity_required_notifications: { Args: never; Returns: number }
+      sync_join_request_notifications: { Args: never; Returns: number }
+      sync_team_evening_notifications: { Args: never; Returns: number }
+      trigger_stats_backfill: { Args: never; Returns: undefined }
       update_evening_live_admin: {
         Args: { _data: Json; _evening_id: string }
         Returns: Json
       }
-      trigger_stats_backfill: { Args: never; Returns: undefined }
       user_evening_ids: { Args: { _user_id: string }; Returns: string[] }
       user_team_ids: { Args: { _user_id: string }; Returns: string[] }
     }
