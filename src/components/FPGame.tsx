@@ -424,6 +424,7 @@ export const FPGame = ({
               // אם הקבוצה כבר ב-usedClubIds אבל היא הבחירה הנוכחית,
               // עדיין נציג אותה כבחירה ירוקה ולא כ"שוחק".
               const isUsed = bank.usedClubIds.includes(club.id) && !isSelected;
+              const isDisabled = isUsed || !canSubmitNewScore;
             
               return (
                 <div
@@ -431,12 +432,12 @@ export const FPGame = ({
                   className={`flex items-center justify-between p-2.5 rounded-lg text-sm border transition-all ${
                     isSelected
                       ? 'border-neon-green bg-neon-green/15 scale-[1.01]'
-                      : isUsed
+                      : isDisabled
                         ? 'border-border/20 bg-gaming-surface/20 opacity-40 cursor-not-allowed'
                         : 'border-border/40 bg-gaming-surface/80 cursor-pointer hover:border-neon-green/50 hover:bg-gaming-surface active:scale-[0.98]'
                   }`}
                   onClick={() => {
-                    if (isUsed) return;
+                    if (isDisabled) return;
                     onSelect(club);
                   }}
                 >
