@@ -444,17 +444,11 @@ export const FPGame = ({
                   className={`flex items-center justify-between p-2.5 rounded-lg text-sm border transition-all ${
                     isSelected
                       ? 'border-neon-green bg-neon-green/15 scale-[1.01]'
-                      : isUsed
-                        ? 'border-border/20 bg-gaming-surface/20 opacity-30 pointer-events-none'
-                        : canSubmitNewScore
-                          ? 'border-border/40 bg-gaming-surface/80 cursor-pointer hover:border-neon-green/50 hover:bg-gaming-surface active:scale-[0.98]'
-                          : 'border-border/40 bg-gaming-surface/40 opacity-60'
                       : isDisabled
                         ? 'border-border/20 bg-gaming-surface/20 opacity-40 cursor-not-allowed'
                         : 'border-border/40 bg-gaming-surface/80 cursor-pointer hover:border-neon-green/50 hover:bg-gaming-surface active:scale-[0.98]'
                   }`}
                   onClick={() => {
-                    if (!isUsed && canSubmitNewScore) onSelect(club);
                     if (isDisabled) return;
                     onSelect(club);
                   }}
