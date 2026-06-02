@@ -967,8 +967,8 @@ export const FPGame = ({
 
             <Button
               variant="gaming"
-              className={`w-full transition-all duration-200 ${canSubmit ? 'scale-[1.02] shadow-lg shadow-neon-green/20' : ''}`}
-              disabled={!canSubmit}
+              className={`w-full transition-all duration-200 ${canSubmit && canSubmitNewScore ? 'scale-[1.02] shadow-lg shadow-neon-green/20' : ''}`}
+              disabled={!canSubmit || !canSubmitNewScore}
               onClick={handleSubmitResult}
             >
               {currentEvening.currentMatchIndex + 1 >= totalMatches ? 'סיים ליגה' : 'שמור תוצאה ← הבא'}
