@@ -263,7 +263,7 @@ export class RemoteStorageService {
       throw new Error(error.message);
     }
   
-    const evening = (data?.data as Evening | undefined) ?? null;
+    const evening = (data?.data as unknown as Evening | undefined) ?? null;
     if (evening && data?.team_id) {
       (evening as any)._team_id = data.team_id;
     }
