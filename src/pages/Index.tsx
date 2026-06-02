@@ -1352,11 +1352,21 @@ const handleGoHome = () => {
                     teamId = await RemoteStorageService.ensureTeamForPlayers(players, 5);
                   } catch {}
                 }
-                if (teamId) setFpTeamId(teamId);
+                if (!teamId) {
+                  toast({
+                    title: "צריך לבחור או ליצור קבוצה",
+                    description: "מוד 5 חייב להיות משויך לקבוצה אמיתית.",
+                    variant: "destructive",
+                  });
+                  return;
+                }
+                
+                setFpTeamId(teamId);
+                
                 // Create via RPC (enforces one active evening per team)
                 // IMPORTANT: wait for this before moving on, otherwise Home / other users may not see the active tournament.
                 try {
-                  await RemoteStorageService.createTeamEvening(resultWithSetupOptions as any, teamId);
+                  await RemoteStorageService.createTeamEvening(result as any, teamId);
                 
                   if (teamId) {
                     try {
