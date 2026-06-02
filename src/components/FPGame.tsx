@@ -40,6 +40,10 @@ interface FPGameProps {
   onUpdateEvening: (evening: FPEvening) => void;
   canStopTournament?: boolean;
   onStopTournament?: () => void;
+  canSubmitNewScore?: boolean;
+  canEditExistingResults?: boolean;
+  canReorderSchedule?: boolean;
+  isViewOnly?: boolean;
 }
 
 type MatchStep = 'teamA' | 'teamB' | 'score';
@@ -54,7 +58,19 @@ const WINNER_SHORTCUTS: Record<string, [number, number][]> = {
   B: [[0, 1], [0, 2], [1, 2], [1, 3], [0, 3]],
 };
 
-export const FPGame = ({ evening, onBack, onComplete, onGoHome, onUpdateEvening, canStopTournament, onStopTournament }: FPGameProps) => {
+export const FPGame = ({
+  evening,
+  onBack,
+  onComplete,
+  onGoHome,
+  onUpdateEvening,
+  canStopTournament,
+  onStopTournament,
+  canSubmitNewScore = true,
+  canEditExistingResults = true,
+  canReorderSchedule = true,
+  isViewOnly = false,
+}: FPGameProps) => {
   const { toast } = useToast();
   const [currentEvening, setCurrentEvening] = useState(evening);
   const [scoreA, setScoreA] = useState('');
@@ -408,6 +424,7 @@ export const FPGame = ({ evening, onBack, onComplete, onGoHome, onUpdateEvening,
               // אם הקבוצה כבר ב-usedClubIds אבל היא הבחירה הנוכחית,
               // עדיין נציג אותה כבחירה ירוקה ולא כ"שוחק".
               const isUsed = bank.usedClubIds.includes(club.id) && !isSelected;
+              const isDisabled = isUsed || !canSubmitNewScore;
             
               return (
                 <div
@@ -415,12 +432,12 @@ export const FPGame = ({ evening, onBack, onComplete, onGoHome, onUpdateEvening,
                   className={`flex items-center justify-between p-2.5 rounded-lg text-sm border transition-all ${
                     isSelected
                       ? 'border-neon-green bg-neon-green/15 scale-[1.01]'
-                      : isUsed
+                      : isDisabled
                         ? 'border-border/20 bg-gaming-surface/20 opacity-40 cursor-not-allowed'
                         : 'border-border/40 bg-gaming-surface/80 cursor-pointer hover:border-neon-green/50 hover:bg-gaming-surface active:scale-[0.98]'
                   }`}
                   onClick={() => {
-                    if (isUsed) return;
+                    if (isDisabled) return;
                     onSelect(club);
                   }}
                 >
@@ -761,16 +778,18 @@ export const FPGame = ({ evening, onBack, onComplete, onGoHome, onUpdateEvening,
             }`}>
               {resultLabel}
             </Badge>
-            <button
-              onClick={() => {
-                setEditingMatchIdx(match.globalIndex);
-                setEditScoreA(String(match.scoreA ?? ''));
-                setEditScoreB(String(match.scoreB ?? ''));
-              }}
-              className="p-1 rounded hover:bg-gaming-surface/80 transition-colors"
-            >
-              <Edit2 className="h-3 w-3 text-muted-foreground" />
-            </button>
+            {canEditExistingResults && (
+              <button
+                onClick={() => {
+                  setEditingMatchIdx(match.globalIndex);
+                  setEditScoreA(String(match.scoreA ?? ''));
+                  setEditScoreB(String(match.scoreB ?? ''));
+                }}
+                className="p-1 rounded hover:bg-gaming-surface/80 transition-colors"
+              >
+                <Edit2 className="h-3 w-3 text-muted-foreground" />
+              </button>
+            )}
           </div>
         </div>
         <div className="flex items-center justify-between mt-1.5">
@@ -852,7 +871,14 @@ export const FPGame = ({ evening, onBack, onComplete, onGoHome, onUpdateEvening,
               <ArrowLeft className="h-5 w-5 rotate-180" />
             </Button>
             <div>
-              <h1 className="text-base font-bold text-foreground">ליגת 5 שחקנים</h1>
+              <h1 className="text-base font-bold text-foreground flex items-center gap-2">
+                ליגת 5 שחקנים
+                {isViewOnly && (
+                  <Badge variant="outline" className="text-[10px] border-border/40 text-muted-foreground font-normal">
+                    צפייה בלבד
+                  </Badge>
+                )}
+              </h1>
               <p className="text-xs text-muted-foreground">
                 סיבוב {roundNum} • משחק {matchInRound}/5 • סה״כ {currentEvening.currentMatchIndex + 1}/{totalMatches}
               </p>
@@ -948,8 +974,8 @@ export const FPGame = ({ evening, onBack, onComplete, onGoHome, onUpdateEvening,
 
             <Button
               variant="gaming"
-              className={`w-full transition-all duration-200 ${canSubmit ? 'scale-[1.02] shadow-lg shadow-neon-green/20' : ''}`}
-              disabled={!canSubmit}
+              className={`w-full transition-all duration-200 ${canSubmit && canSubmitNewScore ? 'scale-[1.02] shadow-lg shadow-neon-green/20' : ''}`}
+              disabled={!canSubmit || !canSubmitNewScore}
               onClick={handleSubmitResult}
             >
               {currentEvening.currentMatchIndex + 1 >= totalMatches ? 'סיים ליגה' : 'שמור תוצאה ← הבא'}
@@ -960,7 +986,7 @@ export const FPGame = ({ evening, onBack, onComplete, onGoHome, onUpdateEvening,
             <Card className="bg-gradient-card border-neon-green/20 p-3 shadow-card">
               <FPScheduleReorder
                 evening={currentEvening}
-                canEditSchedule={!!canStopTournament}
+                canEditSchedule={canReorderSchedule}
                 onUpdateEvening={(updated) => {
                   setCurrentEvening(updated);
                   onUpdateEvening(updated);

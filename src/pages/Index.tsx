@@ -1530,6 +1530,10 @@ const handleGoHome = () => {
               onGoHome={() => goTo('home')}
               canStopTournament={currentTeamEditReason === "owner_admin"}
               onStopTournament={() => fpEvening && handleStopTournament(fpEvening.id, "fp")}
+              canSubmitNewScore={currentTeamEditReason === "owner_admin" || currentTeamEditReason === "playing"}
+              canEditExistingResults={currentTeamEditReason === "owner_admin"}
+              canReorderSchedule={currentTeamEditReason === "owner_admin"}
+              isViewOnly={currentTeamEditReason !== "owner_admin" && currentTeamEditReason !== "playing"}
               onUpdateEvening={(ev) => {
                 setFpEvening(ev);
               
