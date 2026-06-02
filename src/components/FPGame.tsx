@@ -871,7 +871,14 @@ export const FPGame = ({
               <ArrowLeft className="h-5 w-5 rotate-180" />
             </Button>
             <div>
-              <h1 className="text-base font-bold text-foreground">ליגת 5 שחקנים</h1>
+              <h1 className="text-base font-bold text-foreground flex items-center gap-2">
+                ליגת 5 שחקנים
+                {isViewOnly && (
+                  <Badge variant="outline" className="text-[10px] border-border/40 text-muted-foreground font-normal">
+                    צפייה בלבד
+                  </Badge>
+                )}
+              </h1>
               <p className="text-xs text-muted-foreground">
                 סיבוב {roundNum} • משחק {matchInRound}/5 • סה״כ {currentEvening.currentMatchIndex + 1}/{totalMatches}
               </p>
