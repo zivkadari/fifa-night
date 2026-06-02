@@ -215,7 +215,7 @@ export class RemoteStorageService {
     if (error) {
       throw new Error(error.message);
     }
-    return data as Evening;
+    return data as unknown as Evening;
   }
 
   static async cancelTeamEvening(eveningId: string): Promise<Evening> {
