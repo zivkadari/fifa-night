@@ -778,16 +778,18 @@ export const FPGame = ({
             }`}>
               {resultLabel}
             </Badge>
-            <button
-              onClick={() => {
-                setEditingMatchIdx(match.globalIndex);
-                setEditScoreA(String(match.scoreA ?? ''));
-                setEditScoreB(String(match.scoreB ?? ''));
-              }}
-              className="p-1 rounded hover:bg-gaming-surface/80 transition-colors"
-            >
-              <Edit2 className="h-3 w-3 text-muted-foreground" />
-            </button>
+            {canEditExistingResults && (
+              <button
+                onClick={() => {
+                  setEditingMatchIdx(match.globalIndex);
+                  setEditScoreA(String(match.scoreA ?? ''));
+                  setEditScoreB(String(match.scoreB ?? ''));
+                }}
+                className="p-1 rounded hover:bg-gaming-surface/80 transition-colors"
+              >
+                <Edit2 className="h-3 w-3 text-muted-foreground" />
+              </button>
+            )}
           </div>
         </div>
         <div className="flex items-center justify-between mt-1.5">
