@@ -979,7 +979,7 @@ export const FPGame = ({
             <Card className="bg-gradient-card border-neon-green/20 p-3 shadow-card">
               <FPScheduleReorder
                 evening={currentEvening}
-                canEditSchedule={!!canStopTournament}
+                canEditSchedule={canReorderSchedule}
                 onUpdateEvening={(updated) => {
                   setCurrentEvening(updated);
                   onUpdateEvening(updated);
