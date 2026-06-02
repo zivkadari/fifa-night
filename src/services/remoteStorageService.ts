@@ -152,7 +152,7 @@ export class RemoteStorageService {
       throw new Error(error.message);
     }
   
-    return (data as Evening) ?? evening;
+    return (data as unknown as Evening) ?? evening;
   }
 
   static async upsertEveningLiveWithTeam(evening: Evening, teamId: string | null): Promise<void> {
