@@ -214,7 +214,7 @@ export const FPScheduleReorder = ({ evening, onUpdateEvening, canEditSchedule = 
             </Button>
           ) : (
             <Badge variant="outline" className="text-[10px] border-border/40 text-muted-foreground">
-              צפייה בלבד
+              אין הרשאה לשינוי סדר
             </Badge>
           )}
         </div>

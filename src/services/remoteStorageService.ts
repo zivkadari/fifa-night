@@ -152,7 +152,7 @@ export class RemoteStorageService {
       throw new Error(error.message);
     }
   
-    return (data as Evening) ?? evening;
+    return (data as unknown as Evening) ?? evening;
   }
 
   static async upsertEveningLiveWithTeam(evening: Evening, teamId: string | null): Promise<void> {
@@ -188,7 +188,7 @@ export class RemoteStorageService {
     if (error) {
       throw new Error(error.message);
     }
-    return data as Evening;
+    return data as unknown as Evening;
   }
 
   static async submitMatchScore(
@@ -215,7 +215,7 @@ export class RemoteStorageService {
     if (error) {
       throw new Error(error.message);
     }
-    return data as Evening;
+    return data as unknown as Evening;
   }
 
   static async cancelTeamEvening(eveningId: string): Promise<Evening> {
@@ -226,7 +226,7 @@ export class RemoteStorageService {
     if (error) {
       throw new Error(error.message);
     }
-    return data as Evening;
+    return data as unknown as Evening;
   }
 
   static async loadEvenings(): Promise<Evening[]> {
@@ -263,7 +263,7 @@ export class RemoteStorageService {
       throw new Error(error.message);
     }
   
-    const evening = (data?.data as Evening | undefined) ?? null;
+    const evening = (data?.data as unknown as Evening | undefined) ?? null;
     if (evening && data?.team_id) {
       (evening as any)._team_id = data.team_id;
     }
