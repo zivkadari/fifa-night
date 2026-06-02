@@ -44,10 +44,6 @@ interface FPGameProps {
   canEditExistingResults?: boolean;
   canReorderSchedule?: boolean;
   isViewOnly?: boolean;
-  canSubmitNewScore?: boolean;
-  canEditExistingResults?: boolean;
-  canReorderSchedule?: boolean;
-  isViewOnly?: boolean;
 }
 
 type MatchStep = 'teamA' | 'teamB' | 'score';
@@ -62,19 +58,6 @@ const WINNER_SHORTCUTS: Record<string, [number, number][]> = {
   B: [[0, 1], [0, 2], [1, 2], [1, 3], [0, 3]],
 };
 
-export const FPGame = ({
-  evening,
-  onBack,
-  onComplete,
-  onGoHome,
-  onUpdateEvening,
-  canStopTournament,
-  onStopTournament,
-  canSubmitNewScore = true,
-  canEditExistingResults = true,
-  canReorderSchedule = true,
-  isViewOnly = false,
-}: FPGameProps) => {
 export const FPGame = ({
   evening,
   onBack,
