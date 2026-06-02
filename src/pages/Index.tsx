@@ -1342,136 +1342,17 @@ const handleGoHome = () => {
                   setShowFpDeadlock(true);
                   return;
                 }
-                let resultWithSetupOptions = {
-                  ...result,
-                  setupOptions,
-                };
-
-                let teamId = fpTeamId || null;
-
-                const requestedTeamName = setupOptions?.teamName?.trim();
-                const shouldCreateNewTeam = setupOptions?.createNewTeam === true;
-                
-                // If user selected an existing real team, fpTeamId already exists.
-                // If user chose to create a new team, create it now in Supabase.
-                if (!teamId && shouldCreateNewTeam && requestedTeamName) {
-                  const createdTeam = await RemoteStorageService.createTeam(requestedTeamName);
-                
-                  if (!createdTeam?.id) {
-                    toast({
-                      title: "לא ניתן ליצור את הקבוצה",
-                      description: "נסה שוב בעוד רגע.",
-                      variant: "destructive",
-                    });
-                    return;
-                  }
-                
-                  teamId = createdTeam.id;
-
-                  // Make player creation idempotent.
-                  // If something already added players to this new team, do not add them again.
-                  const existingPlayers = await RemoteStorageService.listTeamPlayers(teamId);
-                  
-                  if (existingPlayers.length === 0) {
-                    const uniquePlayerNames = [
-                      ...new Set(players.map((p) => p.name.trim()).filter(Boolean)),
-                    ];
-                  
-                    if (uniquePlayerNames.length !== 5) {
-                      toast({
-                        title: "לא ניתן ליצור את הקבוצה",
-                        description: "מוד 5 דורש בדיוק 5 שמות שחקנים ייחודיים.",
-                        variant: "destructive",
-                      });
-                      return;
-                    }
-                  
-                    for (const playerName of uniquePlayerNames) {
-                      const added = await RemoteStorageService.addPlayerToTeamByName(teamId, playerName);
-                  
-                      if (!added) {
-                        toast({
-                          title: "לא ניתן ליצור את הקבוצה",
-                          description: `לא הצלחנו להוסיף את ${playerName} לקבוצה`,
-                          variant: "destructive",
-                        });
-                        return;
-                      }
-                    }
-                  }
-                  
-                  const createdTeamPlayers = await RemoteStorageService.listTeamPlayers(teamId);
-                  
-                  if (createdTeamPlayers.length !== 5) {
-                    toast({
-                      title: "הקבוצה נוצרה עם מספר שחקנים לא תקין",
-                      description: `נמצאו ${createdTeamPlayers.length} שחקנים במקום 5.`,
-                      variant: "destructive",
-                    });
-                    return;
-                  }
-                  
-                  const playersByName = new Map(
-                    createdTeamPlayers.map((p) => [p.name.trim().toLowerCase(), p])
-                  );
-                  
-                  const serverPlayers = players.map((player) => {
-                    const serverPlayer = playersByName.get(player.name.trim().toLowerCase());
-                  
-                    if (!serverPlayer) {
-                      return null;
-                    }
-                  
-                    return {
-                      id: serverPlayer.id,
-                      name: serverPlayer.name,
-                    };
-                  });
-                  
-                  if (serverPlayers.some((player) => player === null)) {
-                    toast({
-                      title: "לא ניתן ליצור את הקבוצה",
-                      description: "לא הצלחנו להתאים בין השחקנים שהוזנו לשחקנים שנוצרו בקבוצה.",
-                      variant: "destructive",
-                    });
-                    return;
-                  }
-                  
-                  const recreatedResult = createFPEvening(
-                    serverPlayers as { id: string; name: string }[],
-                    clubsWithOverrides,
-                    2,
-                    matchCount
-                  );
-                  
-                  if (typeof recreatedResult === "string") {
-                    setFpDeadlockPlayers(serverPlayers as { id: string; name: string }[]);
-                    setShowFpDeadlock(true);
-                    return;
-                  }
-                  
-                  resultWithSetupOptions = {
-                    ...recreatedResult,
-                    setupOptions,
-                  };
-                }
-                
-                // FP mode must always be connected to a real Supabase team.
-                if (!teamId) {
-                  toast({
-                    title: "צריך לבחור או ליצור קבוצה",
-                    description: "מוד 5 חייב להיות משויך לקבוצה אמיתית.",
-                    variant: "destructive",
-                  });
-                  return;
-                }
-                
-                setFpTeamId(teamId);
-                
-                setFpEvening(resultWithSetupOptions);
-                StorageService.saveFPActive(resultWithSetupOptions);
+                setFpEvening(result);
                 setCurrentTeamEditReason("owner_admin");
-                
+                StorageService.saveFPActive(result);
+                // Use active team context or auto-detect
+                let teamId = contextTeamId || fpTeamId;
+                if (!teamId && RemoteStorageService.isEnabled()) {
+                  try {
+                    teamId = await RemoteStorageService.ensureTeamForPlayers(players, 5);
+                  } catch {}
+                }
+                if (teamId) setFpTeamId(teamId);
                 // Create via RPC (enforces one active evening per team)
                 // IMPORTANT: wait for this before moving on, otherwise Home / other users may not see the active tournament.
                 try {
@@ -1530,10 +1411,10 @@ const handleGoHome = () => {
               onGoHome={() => goTo('home')}
               canStopTournament={currentTeamEditReason === "owner_admin"}
               onStopTournament={() => fpEvening && handleStopTournament(fpEvening.id, "fp")}
-              canSubmitNewScore={currentTeamEditReason === "owner_admin" || currentTeamEditReason === "playing"}
+              canSubmitNewScore={currentTeamEditReason !== "view_only"}
               canEditExistingResults={currentTeamEditReason === "owner_admin"}
               canReorderSchedule={currentTeamEditReason === "owner_admin"}
-              isViewOnly={currentTeamEditReason !== "owner_admin" && currentTeamEditReason !== "playing"}
+              isViewOnly={currentTeamEditReason === "view_only"}
               onUpdateEvening={(ev) => {
                 setFpEvening(ev);
               
@@ -1643,6 +1524,7 @@ const handleGoHome = () => {
                 setShowFpDeadlock(false);
                 setFpDeadlockPlayers(null);
                 setFpEvening(result);
+                setCurrentTeamEditReason("owner_admin");
                 StorageService.saveFPActive(result);
                 goTo('fp-bank-overview');
               }}

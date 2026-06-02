@@ -44,6 +44,10 @@ interface FPGameProps {
   canEditExistingResults?: boolean;
   canReorderSchedule?: boolean;
   isViewOnly?: boolean;
+  canSubmitNewScore?: boolean;
+  canEditExistingResults?: boolean;
+  canReorderSchedule?: boolean;
+  isViewOnly?: boolean;
 }
 
 type MatchStep = 'teamA' | 'teamB' | 'score';
@@ -58,6 +62,19 @@ const WINNER_SHORTCUTS: Record<string, [number, number][]> = {
   B: [[0, 1], [0, 2], [1, 2], [1, 3], [0, 3]],
 };
 
+export const FPGame = ({
+  evening,
+  onBack,
+  onComplete,
+  onGoHome,
+  onUpdateEvening,
+  canStopTournament,
+  onStopTournament,
+  canSubmitNewScore = true,
+  canEditExistingResults = true,
+  canReorderSchedule = true,
+  isViewOnly = false,
+}: FPGameProps) => {
 export const FPGame = ({
   evening,
   onBack,
@@ -128,15 +145,17 @@ export const FPGame = ({
   }, [currentEvening.currentMatchIndex]);
 
   const handleSelectClubA = useCallback((club: Club) => {
+    if (!canSubmitNewScore) return;
     if (selectedClubA?.id === club.id) {
       setSelectedClubA(null);
       return;
     }
     setSelectedClubA(club);
     setTimeout(() => setActiveStep('teamB'), 200);
-  }, [selectedClubA]);
+  }, [canSubmitNewScore, selectedClubA]);
 
   const handleSelectClubB = useCallback((club: Club) => {
+    if (!canSubmitNewScore) return;
     if (selectedClubB?.id === club.id) {
       setSelectedClubB(null);
       return;
@@ -146,9 +165,10 @@ export const FPGame = ({
       setActiveStep('score');
       setTimeout(() => scoreRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
     }, 200);
-  }, [selectedClubB]);
+  }, [canSubmitNewScore, selectedClubB]);
 
   const handleQuickScore = useCallback((side: 'A' | 'B', value: number) => {
+    if (!canSubmitNewScore) return;
     if (side === 'A') {
       setScoreA(String(value));
       setManualScoreSide(null);
@@ -156,15 +176,20 @@ export const FPGame = ({
       setScoreB(String(value));
       setManualScoreSide(null);
     }
-  }, []);
+  }, [canSubmitNewScore]);
 
   const handleWinnerShortcut = useCallback((scores: [number, number]) => {
+    if (!canSubmitNewScore) return;
     setScoreA(String(scores[0]));
     setScoreB(String(scores[1]));
     setManualScoreSide(null);
-  }, []);
+  }, [canSubmitNewScore]);
 
   const handleSubmitResult = useCallback(() => {
+    if (!canSubmitNewScore) {
+      toast({ title: "צפייה בלבד", description: "אין לך הרשאה לעדכן תוצאה", variant: "destructive" });
+      return;
+    }
     if (!currentMatch || !selectedClubA || !selectedClubB || scoreA === '' || scoreB === '') return;
     const sA = parseInt(scoreA, 10);
     const sB = parseInt(scoreB, 10);
@@ -236,10 +261,14 @@ export const FPGame = ({
         onComplete(updated);
       }
     }, 600);
-  }, [currentEvening, currentMatch, selectedClubA, selectedClubB, scoreA, scoreB, onComplete, onUpdateEvening, toast]);
+  }, [canSubmitNewScore, currentEvening, currentMatch, selectedClubA, selectedClubB, scoreA, scoreB, onComplete, onUpdateEvening, toast]);
 
   // Edit existing result
   const handleSaveEdit = useCallback((matchGlobalIdx: number) => {
+    if (!canEditExistingResults) {
+      toast({ title: "אין הרשאה לעריכת תוצאות", variant: "destructive" });
+      return;
+    }
     const sA = parseInt(editScoreA, 10);
     const sB = parseInt(editScoreB, 10);
     if (isNaN(sA) || isNaN(sB) || sA < 0 || sB < 0) {
@@ -266,7 +295,7 @@ export const FPGame = ({
     onUpdateEvening(updated);
     setEditingMatchIdx(null);
     toast({ title: "התוצאה עודכנה בהצלחה" });
-  }, [currentEvening, editScoreA, editScoreB, onUpdateEvening, toast]);
+  }, [canEditExistingResults, currentEvening, editScoreA, editScoreB, onUpdateEvening, toast]);
 
   const pairStats = calculatePairStats(currentEvening);
   const playerStats = calculatePlayerStats(currentEvening);
@@ -331,7 +360,7 @@ export const FPGame = ({
   const bankA = currentEvening.teamBanks.find(b => b.pairId === currentMatch.pairA.id)!;
   const bankB = currentEvening.teamBanks.find(b => b.pairId === currentMatch.pairB.id)!;
 
-  const canSubmit = selectedClubA && selectedClubB && scoreA !== '' && scoreB !== '';
+  const canSubmit = canSubmitNewScore && selectedClubA && selectedClubB && scoreA !== '' && scoreB !== '';
   const bothTeamsSelected = !!selectedClubA && !!selectedClubB;
 
   const pairName = (pair: { players: [{ name: string }, { name: string }] }) =>
@@ -384,7 +413,7 @@ export const FPGame = ({
   ) => {
     const isActive = activeStep === step;
     const isCompleted = !!selected;
-    const isLocked = step === 'teamB' && !selectedClubA;
+    const isLocked = !canSubmitNewScore || (step === 'teamB' && !selectedClubA);
 
     return (
       <Card className={`border p-3 transition-all duration-200 ${
@@ -432,11 +461,17 @@ export const FPGame = ({
                   className={`flex items-center justify-between p-2.5 rounded-lg text-sm border transition-all ${
                     isSelected
                       ? 'border-neon-green bg-neon-green/15 scale-[1.01]'
+                      : isUsed
+                        ? 'border-border/20 bg-gaming-surface/20 opacity-30 pointer-events-none'
+                        : canSubmitNewScore
+                          ? 'border-border/40 bg-gaming-surface/80 cursor-pointer hover:border-neon-green/50 hover:bg-gaming-surface active:scale-[0.98]'
+                          : 'border-border/40 bg-gaming-surface/40 opacity-60'
                       : isDisabled
                         ? 'border-border/20 bg-gaming-surface/20 opacity-40 cursor-not-allowed'
                         : 'border-border/40 bg-gaming-surface/80 cursor-pointer hover:border-neon-green/50 hover:bg-gaming-surface active:scale-[0.98]'
                   }`}
                   onClick={() => {
+                    if (!isUsed && canSubmitNewScore) onSelect(club);
                     if (isDisabled) return;
                     onSelect(club);
                   }}
@@ -582,6 +617,15 @@ export const FPGame = ({
   );
 
   const renderScoreEntry = () => {
+    if (!canSubmitNewScore) {
+      return (
+        <Card className="bg-gaming-surface/40 border-border/40 p-3 text-center">
+          <p className="text-sm font-medium text-foreground">צפייה בלבד</p>
+          <p className="text-xs text-muted-foreground mt-1">אין לך הרשאה להזין תוצאה בטורניר הזה.</p>
+        </Card>
+      );
+    }
+
     const isActive = activeStep === 'score';
     const isLocked = !bothTeamsSelected;
 
@@ -684,7 +728,7 @@ export const FPGame = ({
   };
 
   const renderMatchRow = (match: FPMatch, perspectivePairId?: string, perspectivePlayerId?: string) => {
-    const isEditing = editingMatchIdx === match.globalIndex;
+    const isEditing = canEditExistingResults && editingMatchIdx === match.globalIndex;
     
     // Determine "our" side
     let isOurSideA = true;
@@ -778,6 +822,18 @@ export const FPGame = ({
             }`}>
               {resultLabel}
             </Badge>
+            {canEditExistingResults && (
+              <button
+                onClick={() => {
+                  setEditingMatchIdx(match.globalIndex);
+                  setEditScoreA(String(match.scoreA ?? ''));
+                  setEditScoreB(String(match.scoreB ?? ''));
+                }}
+                className="p-1 rounded hover:bg-gaming-surface/80 transition-colors"
+              >
+                <Edit2 className="h-3 w-3 text-muted-foreground" />
+              </button>
+            )}
             {canEditExistingResults && (
               <button
                 onClick={() => {
@@ -923,6 +979,12 @@ export const FPGame = ({
           </div>
         </div>
 
+        {isViewOnly && (
+          <Badge variant="outline" className="mb-2 text-xs">
+            צפייה בלבד
+          </Badge>
+        )}
+
         <Tabs defaultValue="match" className="w-full">
           <TabsList className="w-full grid grid-cols-4 mb-2">
             <TabsTrigger value="match">משחק</TabsTrigger>
@@ -984,6 +1046,19 @@ export const FPGame = ({
 
           <TabsContent value="schedule">
             <Card className="bg-gradient-card border-neon-green/20 p-3 shadow-card">
+              {canReorderSchedule ? (
+                <FPScheduleReorder
+                  evening={currentEvening}
+                  onUpdateEvening={(updated) => {
+                    setCurrentEvening(updated);
+                    onUpdateEvening(updated);
+                  }}
+                />
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  סידור המשחקים זמין למנהל בלבד.
+                </p>
+              )}
               <FPScheduleReorder
                 evening={currentEvening}
                 canEditSchedule={canReorderSchedule}

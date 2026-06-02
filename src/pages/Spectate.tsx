@@ -30,6 +30,7 @@ import { FPTimingCard } from "@/components/FPTimingCard";
 import InsightCards from "@/components/spectate/InsightCards";
 import TeamSetupButton from "@/components/spectate/TeamSetupButton";
 import CouplesSpectateView from "@/components/spectate/CouplesSpectateView";
+import { FPGame } from "@/components/FPGame";
 import { TIER_LABELS, TIER_EMOJIS, TIER_COLORS, TIER_TEXT, computeTierIndices } from "@/lib/tierRanking";
 
 const SUPABASE_PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID || "ikbywydyidnkohbdrqdk";
@@ -44,6 +45,7 @@ function getStorageKey(code: string) {
 
 export default function Spectate() {
   const { code } = useParams<{ code: string }>();
+  const navigate = useNavigate();
   const [state, setState] = useState<SpectateState>("loading");
   const [evening, setEvening] = useState<FPEvening | null>(null);
   const [couplesEvening, setCouplesEvening] = useState<Evening | null>(null);
@@ -86,7 +88,7 @@ export default function Spectate() {
       if (json.updated_at !== lastUpdatedAt.current) {
         lastUpdatedAt.current = json.updated_at;
         const data = json.data;
-        if (data && data.mode === "five-player-doubles") {
+        if (data && (data.mode === "five-player-doubles" || Array.isArray(data.schedule))) {
           setEvening(data as FPEvening);
           setEveningMode("five-player");
           if (json.team_id) setTeamId(json.team_id);
@@ -154,6 +156,24 @@ export default function Spectate() {
           <p className="text-sm text-muted-foreground">{errorMsg}</p>
         </Card>
       </div>
+    );
+  }
+
+  // Five-player mode uses the unified game screen in view-only mode.
+  if (eveningMode === "five-player" && evening) {
+    return (
+      <FPGame
+        evening={evening}
+        onBack={() => navigate(-1)}
+        onComplete={() => {}}
+        onGoHome={() => navigate("/")}
+        onUpdateEvening={() => {}}
+        canSubmitNewScore={false}
+        canEditExistingResults={false}
+        canReorderSchedule={false}
+        isViewOnly={true}
+        canStopTournament={false}
+      />
     );
   }
 
