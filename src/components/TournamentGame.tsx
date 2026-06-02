@@ -876,6 +876,8 @@ export const TournamentGame = ({
     }
   
     const round = currentEvening.rounds[currentRound];
+    const match = round.matches.find(m => m.id === matchId);
+    if (!match) return;
 
     // Return clubs to pool by removing from used sets
     const c1 = match.clubs[0];
