@@ -173,9 +173,16 @@ export default function Spectate() {
         canReorderSchedule={false}
         isViewOnly={true}
         canStopTournament={false}
+        spectatorContext={{
+          shareCode: code,
+          teamId,
+          selectedPlayerId,
+          onSwitchPlayer: clearPlayer,
+        }}
       />
     );
   }
+
 
   // Determine players for picker
   const allPlayers = eveningMode === "five-player" ? evening!.players : couplesEvening!.players;
