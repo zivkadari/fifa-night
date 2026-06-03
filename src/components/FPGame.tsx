@@ -1146,7 +1146,18 @@ export const FPGame = ({
               </Table>
             </Card>
           </TabsContent>
+
+          <TabsContent value="insights">
+            <FPInsightsTab
+              evening={currentEvening}
+              shareCode={spectatorContext?.shareCode}
+              initialPlayerId={spectatorContext?.selectedPlayerId ?? null}
+              onSwitchPlayer={spectatorContext?.onSwitchPlayer}
+              isCompleted={currentEvening.completed}
+            />
+          </TabsContent>
         </Tabs>
+
       </div>
 
       {/* Details Drawer */}
