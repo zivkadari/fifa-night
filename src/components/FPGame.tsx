@@ -44,7 +44,14 @@ interface FPGameProps {
   canEditExistingResults?: boolean;
   canReorderSchedule?: boolean;
   isViewOnly?: boolean;
+  spectatorContext?: {
+    shareCode?: string;
+    teamId?: string | null;
+    selectedPlayerId?: string | null;
+    onSwitchPlayer?: () => void;
+  };
 }
+
 
 type MatchStep = 'teamA' | 'teamB' | 'score';
 type ScoreMode = 'quick' | 'winner' | 'manual';
