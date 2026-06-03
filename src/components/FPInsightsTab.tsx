@@ -114,7 +114,7 @@ export default function FPInsightsTab({
       />
       <PersonalInsights personal={personal} />
       {allTimeStats && <AllTimeStatsCard stats={allTimeStats} />}
-      {allPlayersAllTime.length > 0 && (
+      {allPlayersAllTime.size > 0 && (
         <AllTimeLeaderboard
           allPlayersStats={allPlayersAllTime}
           selectedPlayerId={selectedPlayerId}
@@ -123,10 +123,10 @@ export default function FPInsightsTab({
       {insights.length > 0 && (
         <Card className="bg-gradient-card border-border/40 p-3 shadow-card space-y-1.5">
           <h4 className="text-xs font-semibold text-muted-foreground">תובנות</h4>
-          {insights.map((ins, i) => (
-            <p key={i} className="text-xs text-foreground">
-              • {ins.title}
-              {ins.detail ? <span className="text-muted-foreground"> — {ins.detail}</span> : null}
+          {insights.map((ins) => (
+            <p key={ins.id} className="text-xs text-foreground">
+              <span className="mr-1">{ins.icon}</span>
+              {ins.text}
             </p>
           ))}
         </Card>
@@ -134,3 +134,4 @@ export default function FPInsightsTab({
     </div>
   );
 }
+
