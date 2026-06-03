@@ -77,7 +77,9 @@ export const FPGame = ({
   canEditExistingResults = true,
   canReorderSchedule = true,
   isViewOnly = false,
+  spectatorContext,
 }: FPGameProps) => {
+
   const { toast } = useToast();
   const [currentEvening, setCurrentEvening] = useState(evening);
   const [scoreA, setScoreA] = useState('');
