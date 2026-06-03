@@ -5,7 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { ArrowLeft, Home, Trophy, Users, Check, ChevronDown, Edit2, X, Save, ListOrdered, Share2, Copy, Eye, StopCircle } from "lucide-react";
+import { ArrowLeft, Home, Trophy, Users, Check, ChevronDown, Edit2, X, Save, ListOrdered, Share2, Copy, Eye, StopCircle, Sparkles } from "lucide-react";
+import FPInsightsTab from "@/components/FPInsightsTab";
+
 import { FPEvening, FPTeamBank, FPMatch, FPPair, FPBlockTiming } from "@/types/fivePlayerTypes";
 import { Club } from "@/types/tournament";
 import { StarRating } from "@/components/StarRating";
