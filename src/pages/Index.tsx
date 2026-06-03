@@ -1425,6 +1425,8 @@ const handleGoHome = () => {
               canEditExistingResults={currentTeamEditReason === "owner_admin"}
               canReorderSchedule={currentTeamEditReason === "owner_admin"}
               isViewOnly={currentTeamEditReason === "view_only"}
+              spectatorContext={{ teamId: fpTeamId }}
+
               onUpdateEvening={(ev) => {
                 setFpEvening(ev);
               

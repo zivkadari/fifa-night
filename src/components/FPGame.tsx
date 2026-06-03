@@ -5,7 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { ArrowLeft, Home, Trophy, Users, Check, ChevronDown, Edit2, X, Save, ListOrdered, Share2, Copy, Eye, StopCircle } from "lucide-react";
+import { ArrowLeft, Home, Trophy, Users, Check, ChevronDown, Edit2, X, Save, ListOrdered, Share2, Copy, Eye, StopCircle, Sparkles } from "lucide-react";
+import FPInsightsTab from "@/components/FPInsightsTab";
+
 import { FPEvening, FPTeamBank, FPMatch, FPPair, FPBlockTiming } from "@/types/fivePlayerTypes";
 import { Club } from "@/types/tournament";
 import { StarRating } from "@/components/StarRating";
@@ -44,7 +46,14 @@ interface FPGameProps {
   canEditExistingResults?: boolean;
   canReorderSchedule?: boolean;
   isViewOnly?: boolean;
+  spectatorContext?: {
+    shareCode?: string;
+    teamId?: string | null;
+    selectedPlayerId?: string | null;
+    onSwitchPlayer?: () => void;
+  };
 }
+
 
 type MatchStep = 'teamA' | 'teamB' | 'score';
 type ScoreMode = 'quick' | 'winner' | 'manual';
@@ -70,7 +79,9 @@ export const FPGame = ({
   canEditExistingResults = true,
   canReorderSchedule = true,
   isViewOnly = false,
+  spectatorContext,
 }: FPGameProps) => {
+
   const { toast } = useToast();
   const [currentEvening, setCurrentEvening] = useState(evening);
   const [scoreA, setScoreA] = useState('');
@@ -963,15 +974,20 @@ export const FPGame = ({
         )}
 
         <Tabs defaultValue="match" className="w-full">
-          <TabsList className="w-full grid grid-cols-4 mb-2">
-            <TabsTrigger value="match">משחק</TabsTrigger>
-            <TabsTrigger value="schedule">
+          <TabsList className="w-full grid grid-cols-5 mb-2">
+            <TabsTrigger value="match" className="text-xs">משחק</TabsTrigger>
+            <TabsTrigger value="schedule" className="text-xs">
               <ListOrdered className="h-3.5 w-3.5 ml-1" />
               סדר
             </TabsTrigger>
-            <TabsTrigger value="pairs">זוגות</TabsTrigger>
-            <TabsTrigger value="players">שחקנים</TabsTrigger>
+            <TabsTrigger value="pairs" className="text-xs">זוגות</TabsTrigger>
+            <TabsTrigger value="players" className="text-xs">שחקנים</TabsTrigger>
+            <TabsTrigger value="insights" className="text-xs">
+              <Sparkles className="h-3.5 w-3.5 ml-1" />
+              תובנות
+            </TabsTrigger>
           </TabsList>
+
 
           <TabsContent value="match" className="space-y-2">
             {showSaved && (
@@ -1130,7 +1146,18 @@ export const FPGame = ({
               </Table>
             </Card>
           </TabsContent>
+
+          <TabsContent value="insights">
+            <FPInsightsTab
+              evening={currentEvening}
+              shareCode={spectatorContext?.shareCode}
+              initialPlayerId={spectatorContext?.selectedPlayerId ?? null}
+              onSwitchPlayer={spectatorContext?.onSwitchPlayer}
+              isCompleted={currentEvening.completed}
+            />
+          </TabsContent>
         </Tabs>
+
       </div>
 
       {/* Details Drawer */}
