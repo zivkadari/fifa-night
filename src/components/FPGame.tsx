@@ -974,15 +974,20 @@ export const FPGame = ({
         )}
 
         <Tabs defaultValue="match" className="w-full">
-          <TabsList className="w-full grid grid-cols-4 mb-2">
-            <TabsTrigger value="match">משחק</TabsTrigger>
-            <TabsTrigger value="schedule">
+          <TabsList className="w-full grid grid-cols-5 mb-2">
+            <TabsTrigger value="match" className="text-xs">משחק</TabsTrigger>
+            <TabsTrigger value="schedule" className="text-xs">
               <ListOrdered className="h-3.5 w-3.5 ml-1" />
               סדר
             </TabsTrigger>
-            <TabsTrigger value="pairs">זוגות</TabsTrigger>
-            <TabsTrigger value="players">שחקנים</TabsTrigger>
+            <TabsTrigger value="pairs" className="text-xs">זוגות</TabsTrigger>
+            <TabsTrigger value="players" className="text-xs">שחקנים</TabsTrigger>
+            <TabsTrigger value="insights" className="text-xs">
+              <Sparkles className="h-3.5 w-3.5 ml-1" />
+              תובנות
+            </TabsTrigger>
           </TabsList>
+
 
           <TabsContent value="match" className="space-y-2">
             {showSaved && (
