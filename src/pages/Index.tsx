@@ -1356,8 +1356,9 @@ const handleGoHome = () => {
                 setFpEvening(result);
                 setCurrentTeamEditReason("owner_admin");
                 StorageService.saveFPActive(result);
-                // Use active team context or auto-detect
-                let teamId = contextTeamId || fpTeamId;
+                // Five-player selected team must always win — do NOT fall back to contextTeamId,
+                // which is the globally selected team from TeamContext and may differ from the FP team.
+                let teamId: string | null = fpTeamId || null;
                 if (!teamId && RemoteStorageService.isEnabled()) {
                   try {
                     teamId = await RemoteStorageService.ensureTeamForPlayers(players, 5);
