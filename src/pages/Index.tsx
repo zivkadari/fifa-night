@@ -549,6 +549,16 @@ useEffect(() => {
   const handleResumeActiveTournament = async (kind: "regular" | "fp") => {
     const eveningId = kind === "fp" ? fpEvening?.id : currentEvening?.id;
     if (!eveningId) return;
+
+    // Resolve role/team from the active team evenings list so that linked
+    // players resume as participants (not view-only) and the correct team_id
+    // is attached for live sync. Falls through to raw load if no entry exists.
+    const entry = activeTeamEvenings.find((e) => e.evening_id === eveningId);
+    if (entry) {
+      handleOpenTeamEvening(entry);
+      return;
+    }
+
     try {
       const latest = await RemoteStorageService.loadEveningById(eveningId);
       if (!latest) {
