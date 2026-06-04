@@ -513,8 +513,32 @@ useEffect(() => {
   };
 
   const handleStopTournament = async (eveningId: string, kind: "regular" | "fp" = "regular") => {
+    const localEvening = kind === "fp" ? fpEvening : currentEvening;
+  
+    if (!localEvening) {
+      toast({
+        title: "שגיאה בהפסקת הטורניר",
+        description: "לא נמצא טורניר פעיל לעצירה.",
+        variant: "destructive",
+      });
+      return null;
+    }
+  
+    const cleanupAfterStop = () => {
+      if (kind === "fp") {
+        StorageService.clearFPActive();
+        setFpEvening(null);
+      } else {
+        clearActiveEvening();
+        setCurrentEvening(null);
+      }
+  
+      setCurrentTeamEditReason(null);
+      toast({ title: "הטורניר הופסק" });
+      goTo("home");
+    };
+  
     try {
-      const localEvening = kind === "fp" ? fpEvening : currentEvening;
       const hasGames = hasCompletedGamesAnyMode(localEvening);
   
       let cancelled: any = null;
@@ -524,25 +548,40 @@ useEffect(() => {
       } else {
         await RemoteStorageService.deleteEvening(eveningId);
       }
-      if (kind === "fp") {
-        StorageService.clearFPActive();
-        setFpEvening(null);
-      } else {
-        clearActiveEvening();
-        setCurrentEvening(null);
-      }
-      setCurrentTeamEditReason(null);
-      toast({ title: "הטורניר הופסק" });
-      goTo('home');
+  
+      cleanupAfterStop();
       return cancelled;
     } catch (error: any) {
-      console.error("cancelTeamEvening failed:", error?.message || error);
-      toast({
-        title: "שגיאה בהפסקת הטורניר",
-        description: error?.message || "לא ניתן להפסיק את הטורניר כרגע.",
-        variant: "destructive",
-      });
-      return null;
+      console.error("Primary stop tournament failed:", error?.message || error);
+  
+      try {
+        const cancelledFallback = {
+          ...(localEvening as any),
+          cancelled: true,
+          completed: true,
+          cancelled_at: new Date().toISOString(),
+        };
+  
+        const teamId =
+          kind === "fp"
+            ? fpTeamId ?? ((localEvening as any)._team_id ?? null)
+            : currentTeamId ?? contextTeamId ?? ((localEvening as any)._team_id ?? null);
+  
+        await RemoteStorageService.upsertEveningLiveWithTeam(cancelledFallback as any, teamId);
+  
+        cleanupAfterStop();
+        return cancelledFallback;
+      } catch (fallbackError: any) {
+        console.error("Fallback stop tournament failed:", fallbackError?.message || fallbackError);
+  
+        toast({
+          title: "שגיאה בהפסקת הטורניר",
+          description: fallbackError?.message || error?.message || "לא ניתן להפסיק את הטורניר כרגע.",
+          variant: "destructive",
+        });
+  
+        return null;
+      }
     }
   };
 
