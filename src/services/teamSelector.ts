@@ -642,13 +642,14 @@ export class TeamSelector {
       }
     }
 
-    return { pools, recycledClubIds };
-  }
-
-/**
- * World Cup 26 distribution per pair, keyed by winsToComplete.
- */
-export function getWorldCup26DistributionForWins(wins: number): Array<{ stars: number; count: number }> {
+        return { pools, recycledClubIds };
+      }
+    }
+    
+    /**
+     * World Cup 26 distribution per pair, keyed by winsToComplete.
+     */
+    export function getWorldCup26DistributionForWins(wins: number): Array<{ stars: number; count: number }> {
   switch (wins) {
     case 4:
       return [
