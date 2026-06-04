@@ -1,17 +1,19 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, Shuffle, HelpCircle } from "lucide-react";
+import { ArrowLeft, Shuffle, HelpCircle, Globe } from "lucide-react";
 
 interface PairsGameModeSelectionProps {
   onBack: () => void;
   onSelectRandom: () => void;
   onSelectTierQuestion: () => void;
+  onSelectWorldCup26: () => void;
 }
 
 export const PairsGameModeSelection = ({
   onBack,
   onSelectRandom,
   onSelectTierQuestion,
+  onSelectWorldCup26,
 }: PairsGameModeSelectionProps) => {
   return (
     <div className="min-h-screen bg-gaming-bg p-4" dir="rtl">
@@ -77,6 +79,32 @@ export const PairsGameModeSelection = ({
                   </span>
                   <span className="text-xs bg-gaming-surface px-2 py-1 rounded-md text-muted-foreground">
                     ⚖️ הוגן
+                  </span>
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          {/* World Cup 26 Mode */}
+          <Card
+            className="bg-gradient-card border-neon-blue/30 p-6 cursor-pointer hover:border-neon-blue/60 transition-all hover:scale-[1.02]"
+            onClick={onSelectWorldCup26}
+          >
+            <div className="flex items-start gap-4">
+              <div className="p-3 rounded-full bg-neon-blue/20">
+                <Globe className="h-6 w-6 text-neon-blue" />
+              </div>
+              <div className="flex-1">
+                <h2 className="text-lg font-bold text-foreground mb-1">מוד מונדיאל 26</h2>
+                <p className="text-sm text-muted-foreground">
+                  רק נבחרות שמשחקות במונדיאל 2026
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <span className="text-xs bg-gaming-surface px-2 py-1 rounded-md text-muted-foreground">
+                    🌍 מונדיאל
+                  </span>
+                  <span className="text-xs bg-gaming-surface px-2 py-1 rounded-md text-muted-foreground">
+                    🏳️ נבחרות בלבד
                   </span>
                 </div>
               </div>

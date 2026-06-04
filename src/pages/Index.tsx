@@ -751,6 +751,39 @@ useEffect(() => {
     await startEvening(players, winsToComplete, teamId);
   };
 
+  const startWorldCup26Evening = async (players: Player[], winsToComplete: number, teamId?: string) => {
+    const pairSchedule = TournamentEngine.generatePairs(players);
+    const newEvening: Evening = {
+      id: `evening-${Date.now()}`,
+      date: new Date().toISOString(),
+      players,
+      rounds: [],
+      winsToComplete,
+      completed: false,
+      type: 'pairs',
+      pairSchedule,
+      teamSelectionMode: 'world-cup-26',
+    };
+    persistActiveEveningNow(newEvening);
+    let effectiveTeamId = teamId ?? currentTeamId ?? contextTeamId ?? null;
+    if (!effectiveTeamId && RemoteStorageService.isEnabled()) {
+      try {
+        effectiveTeamId = await RemoteStorageService.ensureTeamForPlayers(players);
+      } catch {}
+    }
+    setCurrentEvening(newEvening);
+    setCurrentTeamId(effectiveTeamId);
+    setCurrentTeamEditReason("owner_admin");
+    try {
+      await RemoteStorageService.createTeamEvening(newEvening, effectiveTeamId);
+    } catch (err: any) {
+      if (err?.message?.includes('team already has an active evening')) {
+        console.warn('Team already has an active evening – creation blocked');
+      }
+    }
+    goTo('game');
+  };
+
   const handleStartCustomEvening = async (players: Player[], winsToComplete: number, customTeams: [string[], string[]], teamId?: string) => {
     // TODO: Implement custom teams logic here
     // For now, just start with random mode
@@ -1122,6 +1155,17 @@ const handleGoHome = () => {
                 setCurrentTeamId(pendingTeamId ?? null);
                 setCurrentTeamEditReason("owner_admin");
                 goTo('tier-question-flow');
+              }
+            }}
+            onSelectWorldCup26={() => {
+              if (currentEvening && currentEvening.rounds.length > 0) {
+                // Mid-tournament: mark mode and go back to game (next round will use WC26 pools)
+                const updated: Evening = { ...currentEvening, teamSelectionMode: 'world-cup-26' };
+                persistActiveEveningNow(updated);
+                setCurrentEvening(updated);
+                goTo('game');
+              } else if (pendingPairsPlayers) {
+                startWorldCup26Evening(pendingPairsPlayers, pendingWinsToComplete, pendingTeamId);
               }
             }}
           />

@@ -69,7 +69,7 @@ export interface Evening {
   gameSequence?: SinglesGame[]; // Pre-generated sequence of games
   currentGameIndex?: number;
   // Tier Question Mode fields (for pairs tournaments)
-  teamSelectionMode?: 'random' | 'tier-question';
+  teamSelectionMode?: 'random' | 'tier-question' | 'world-cup-26';
   tierQuestionState?: TierQuestionRoundState;
 }
 

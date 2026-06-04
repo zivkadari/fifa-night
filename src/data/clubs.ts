@@ -258,34 +258,38 @@ export const FIFA_CLUBS: Club[] = [
   { id: 'charleroi', name: 'Sporting Charleroi', stars: 3.5, league: 'Belgium', defaultAdded: true },
 
     // 🗺️ International (National Teams)
-  // Regular national teams that already existed in the game/app
-  { id: 'france', name: 'France', stars: 5, league: 'International', isNational: true },
-  { id: 'england', name: 'England', stars: 5, league: 'International', isNational: true },
-  { id: 'spain', name: 'Spain', stars: 5, league: 'International', isNational: true },
-  { id: 'argentina', name: 'Argentina', stars: 5, league: 'International', isNational: true },
-  { id: 'germany', name: 'Germany', stars: 5, league: 'International', isNational: true },
+  // worldCup26: true means the national team is playing in World Cup 2026.
+  // 5 stars
+  { id: 'france', name: 'France', stars: 5, league: 'International', isNational: true, worldCup26: true },
+  { id: 'england', name: 'England', stars: 5, league: 'International', isNational: true, worldCup26: true },
+  { id: 'spain', name: 'Spain', stars: 5, league: 'International', isNational: true, worldCup26: true },
+  { id: 'argentina', name: 'Argentina', stars: 5, league: 'International', isNational: true, worldCup26: true },
+  { id: 'germany', name: 'Germany', stars: 5, league: 'International', isNational: true, worldCup26: true },
+  { id: 'portugal', name: 'Portugal', stars: 5, league: 'International', isNational: true, worldCup26: true },
+  { id: 'brazil', name: 'Brazil', stars: 5, league: 'International', isNational: true, worldCup26: true },
+  // 5-star national teams not in WC26
   { id: 'italy', name: 'Italy', stars: 5, league: 'International', isNational: true },
-  { id: 'netherlands', name: 'Netherlands', stars: 4.5, league: 'International', isNational: true },
-  { id: 'portugal', name: 'Portugal', stars: 5, league: 'International', isNational: true },
-  { id: 'croatia', name: 'Croatia', stars: 4.5, league: 'International', isNational: true },
-  { id: 'morocco', name: 'Morocco', stars: 4.5, league: 'International', isNational: true },
-  { id: 'czechia', name: 'Czechia', stars: 4, league: 'International', isNational: true },
-  { id: 'ghana', name: 'Ghana', stars: 4, league: 'International', isNational: true },
-  { id: 'mexico', name: 'Mexico', stars: 4, league: 'International', isNational: true },
-  { id: 'norway', name: 'Norway', stars: 4.5, league: 'International', isNational: true },
-  { id: 'scotland', name: 'Scotland', stars: 4, league: 'International', isNational: true },
-  { id: 'sweden', name: 'Sweden', stars: 4, league: 'International', isNational: true },
-  { id: 'united-states', name: 'United States', stars: 4, league: 'International', isNational: true },
-  { id: 'poland', name: 'Poland', stars: 4, league: 'International', isNational: true },
-  { id: 'ukraine', name: 'Ukraine', stars: 4, league: 'International', isNational: true },
-  { id: 'denmark', name: 'Denmark', stars: 4, league: 'International', isNational: true },
 
-  // 🏆 World Cup 26 national teams
-  // These are separated by worldCup26 so they can be filtered/hidden later if needed.
+  // 4.5 stars
+  { id: 'netherlands', name: 'Netherlands', stars: 4.5, league: 'International', isNational: true, worldCup26: true },
+  { id: 'croatia', name: 'Croatia', stars: 4.5, league: 'International', isNational: true, worldCup26: true },
+  { id: 'morocco', name: 'Morocco', stars: 4.5, league: 'International', isNational: true, worldCup26: true },
+  { id: 'norway', name: 'Norway', stars: 4.5, league: 'International', isNational: true, worldCup26: true },
+  { id: 'belgium', name: 'Belgium', stars: 4.5, league: 'International', isNational: true, worldCup26: true },
+  { id: 'senegal', name: 'Senegal', stars: 4.5, league: 'International', isNational: true, worldCup26: true },
+  { id: 'turkiye', name: 'Türkiye', stars: 4.5, league: 'International', isNational: true, worldCup26: true },
+  { id: 'uruguay', name: 'Uruguay', stars: 4.5, league: 'International', isNational: true, worldCup26: true },
+
+  // 4 stars — WC26
+  { id: 'czechia', name: 'Czechia', stars: 4, league: 'International', isNational: true, worldCup26: true },
+  { id: 'ghana', name: 'Ghana', stars: 4, league: 'International', isNational: true, worldCup26: true },
+  { id: 'mexico', name: 'Mexico', stars: 4, league: 'International', isNational: true, worldCup26: true },
+  { id: 'scotland', name: 'Scotland', stars: 4, league: 'International', isNational: true, worldCup26: true },
+  { id: 'sweden', name: 'Sweden', stars: 4, league: 'International', isNational: true, worldCup26: true },
+  { id: 'united-states', name: 'United States', stars: 4, league: 'International', isNational: true, worldCup26: true },
+  { id: 'denmark', name: 'Denmark', stars: 4, league: 'International', isNational: true, worldCup26: true },
   { id: 'algeria', name: 'Algeria', stars: 4, league: 'International', isNational: true, worldCup26: true },
   { id: 'austria', name: 'Austria', stars: 4, league: 'International', isNational: true, worldCup26: true },
-  { id: 'belgium', name: 'Belgium', stars: 4.5, league: 'International', isNational: true, worldCup26: true },
-  { id: 'brazil', name: 'Brazil', stars: 5, league: 'International', isNational: true, worldCup26: true },
   { id: 'canada', name: 'Canada', stars: 4, league: 'International', isNational: true, worldCup26: true },
   { id: 'colombia', name: 'Colombia', stars: 4, league: 'International', isNational: true, worldCup26: true },
   { id: 'cote-divoire', name: "Côte d'Ivoire", stars: 4, league: 'International', isNational: true, worldCup26: true },
@@ -293,11 +297,20 @@ export const FIFA_CLUBS: Club[] = [
   { id: 'japan', name: 'Japan', stars: 4, league: 'International', isNational: true, worldCup26: true },
   { id: 'korea-republic', name: 'Korea Republic', stars: 4, league: 'International', isNational: true, worldCup26: true },
   { id: 'paraguay', name: 'Paraguay', stars: 4, league: 'International', isNational: true, worldCup26: true },
-  { id: 'senegal', name: 'Senegal', stars: 4.5, league: 'International', isNational: true, worldCup26: true },
   { id: 'switzerland', name: 'Switzerland', stars: 4, league: 'International', isNational: true, worldCup26: true },
-  { id: 'turkiye', name: 'Türkiye', stars: 4.5, league: 'International', isNational: true, worldCup26: true },
-  { id: 'uruguay', name: 'Uruguay', stars: 4.5, league: 'International', isNational: true, worldCup26: true },
-  { id: 'wales', name: 'Wales', stars: 4, league: 'International', isNational: true, worldCup26: true },
+  // 4-star national teams not in WC26
+  { id: 'poland', name: 'Poland', stars: 4, league: 'International', isNational: true },
+  { id: 'ukraine', name: 'Ukraine', stars: 4, league: 'International', isNational: true },
+  { id: 'wales', name: 'Wales', stars: 4, league: 'International', isNational: true },
+
+  // 3.5 stars — WC26
+  { id: 'australia', name: 'Australia', stars: 3.5, league: 'International', isNational: true, worldCup26: true },
+  { id: 'bosnia-herzegovina', name: 'Bosnia and Herzegovina', stars: 3.5, league: 'International', isNational: true, worldCup26: true },
+  { id: 'dr-congo', name: 'DR Congo', stars: 3.5, league: 'International', isNational: true, worldCup26: true },
+  { id: 'egypt', name: 'Egypt', stars: 3.5, league: 'International', isNational: true, worldCup26: true },
+  { id: 'iran', name: 'Iran', stars: 3.5, league: 'International', isNational: true, worldCup26: true },
+  { id: 'saudi-arabia-national', name: 'Saudi Arabia', stars: 3.5, league: 'International', isNational: true, worldCup26: true },
+  { id: 'tunisia', name: 'Tunisia', stars: 3.5, league: 'International', isNational: true, worldCup26: true },
 
   // 🏆 Prime Teams
   { id: 'serie-a-xi', name: 'Serie A XI', stars: 5, league: 'Prime', isPrime: true },
@@ -392,6 +405,14 @@ export const getClubsOnly = (stars?: number, clubs: Club[] = FIFA_CLUBS): Club[]
 
 export const getNationalTeamsByStars = (stars: number, clubs: Club[] = FIFA_CLUBS): Club[] => {
   return clubs.filter(club => club.isNational && club.stars === stars);
+};
+
+export const getWorldCup26Teams = (clubs: Club[] = FIFA_CLUBS): Club[] => {
+  return clubs.filter(club => club.isNational && club.worldCup26);
+};
+
+export const getWorldCup26TeamsByStars = (stars: number, clubs: Club[] = FIFA_CLUBS): Club[] => {
+  return clubs.filter(club => club.isNational && club.worldCup26 && club.stars === stars);
 };
 
 export const getRandomClub = (excludeIds: string[] = [], minStars?: number, maxStars?: number, clubs: Club[] = FIFA_CLUBS): Club => {
