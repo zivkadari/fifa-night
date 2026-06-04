@@ -85,6 +85,32 @@ export const PairsGameModeSelection = ({
             </div>
           </Card>
 
+          {/* World Cup 26 Mode */}
+          <Card
+            className="bg-gradient-card border-neon-blue/30 p-6 cursor-pointer hover:border-neon-blue/60 transition-all hover:scale-[1.02]"
+            onClick={onSelectWorldCup26}
+          >
+            <div className="flex items-start gap-4">
+              <div className="p-3 rounded-full bg-neon-blue/20">
+                <Globe className="h-6 w-6 text-neon-blue" />
+              </div>
+              <div className="flex-1">
+                <h2 className="text-lg font-bold text-foreground mb-1">מוד מונדיאל 26</h2>
+                <p className="text-sm text-muted-foreground">
+                  רק נבחרות שמשחקות במונדיאל 2026
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <span className="text-xs bg-gaming-surface px-2 py-1 rounded-md text-muted-foreground">
+                    🌍 מונדיאל
+                  </span>
+                  <span className="text-xs bg-gaming-surface px-2 py-1 rounded-md text-muted-foreground">
+                    🏳️ נבחרות בלבד
+                  </span>
+                </div>
+              </div>
+            </div>
+          </Card>
+
           {/* Info Box */}
           <div className="bg-gaming-surface/50 rounded-lg p-4 border border-border/50">
             <h3 className="text-sm font-medium text-foreground mb-2">📋 מצב שאלות טריוויה</h3>
