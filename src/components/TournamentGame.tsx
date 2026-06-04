@@ -610,9 +610,12 @@ export const TournamentGame = ({
       const maxMatches = currentEvening.winsToComplete * 2 - 1;
       const eveningMaxed = Object.keys(counts).filter((id) => (counts[id] ?? 0) >= 1);
       const excludeIds = [...new Set([...eveningMaxed, ...consumedThisRound])];
-      const poolConfigs = await fetchPoolConfigs();
-      const poolConfig = getPoolConfigForWins(poolConfigs, currentEvening.winsToComplete);
-      const poolResult = poolConfig
+      const isWorldCup26 = currentEvening.teamSelectionMode === 'world-cup-26';
+      const poolConfigs = isWorldCup26 ? [] : await fetchPoolConfigs();
+      const poolConfig = isWorldCup26 ? undefined : getPoolConfigForWins(poolConfigs, currentEvening.winsToComplete);
+      const poolResult = isWorldCup26
+        ? teamSelector.generateWorldCup26TeamPools(roundPairs, excludeIds, getWorldCup26DistributionForWins(currentEvening.winsToComplete))
+        : poolConfig
         ? teamSelector.generateTeamPoolsFromConfig(roundPairs, poolConfig, excludeIds)
         : teamSelector.generateTeamPools(roundPairs, excludeIds, maxMatches);
       // Track recycled clubs
