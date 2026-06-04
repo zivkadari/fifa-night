@@ -470,10 +470,13 @@ export const TournamentGame = ({
             (id) => (usedClubCounts[id] ?? 0) >= 1
           );
   
-          const poolConfigs = await fetchPoolConfigs();
-          const poolConfig = getPoolConfigForWins(poolConfigs, currentEvening.winsToComplete);
+          const isWorldCup26 = currentEvening.teamSelectionMode === 'world-cup-26';
+          const poolConfigs = isWorldCup26 ? [] : await fetchPoolConfigs();
+          const poolConfig = isWorldCup26 ? undefined : getPoolConfigForWins(poolConfigs, currentEvening.winsToComplete);
   
-          const poolResult = poolConfig
+          const poolResult = isWorldCup26
+            ? teamSelector.generateWorldCup26TeamPools(roundPairs, actuallyPlayedClubIds, getWorldCup26DistributionForWins(currentEvening.winsToComplete))
+            : poolConfig
             ? teamSelector.generateTeamPoolsFromConfig(roundPairs, poolConfig, actuallyPlayedClubIds)
             : teamSelector.generateTeamPools(roundPairs, actuallyPlayedClubIds, maxMatches);
   
