@@ -1,17 +1,19 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, Shuffle, HelpCircle } from "lucide-react";
+import { ArrowLeft, Shuffle, HelpCircle, Globe } from "lucide-react";
 
 interface PairsGameModeSelectionProps {
   onBack: () => void;
   onSelectRandom: () => void;
   onSelectTierQuestion: () => void;
+  onSelectWorldCup26: () => void;
 }
 
 export const PairsGameModeSelection = ({
   onBack,
   onSelectRandom,
   onSelectTierQuestion,
+  onSelectWorldCup26,
 }: PairsGameModeSelectionProps) => {
   return (
     <div className="min-h-screen bg-gaming-bg p-4" dir="rtl">
