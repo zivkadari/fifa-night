@@ -548,9 +548,14 @@ export class TeamSelector {
     return { pools, recycledClubIds };
   }
 
-  /**
+    /**
    * Generate team pools using ONLY World Cup 2026 national teams.
-   * Distribution is per-pair; defaults to the 6-win profile.
+   * Distribution is per-pair.
+   *
+   * Important repetition rule:
+   * For each star tier, do not recycle a team until ALL World Cup 26 teams
+   * in that exact star tier have already been used in previous completed matches
+   * or allocated in the current round.
    */
   generateWorldCup26TeamPools(
     pairs: Pair[],
@@ -565,33 +570,73 @@ export class TeamSelector {
     ];
 
     const pools: Club[][] = pairs.map(() => []);
-    const banned = new Set<string>(excludeClubIds);
-    const usedClubsMap = new Map<string, Club>();
-    const recycledClubIds = new Set<string>();
+    const usedBeforeThisRound = new Set<string>(excludeClubIds);
     const allocatedThisRound = new Set<string>();
+    const recycledClubIds = new Set<string>();
 
-    excludeClubIds.forEach(id => {
-      const club = this.clubs.find(c => c.id === id);
-      if (club) usedClubsMap.set(id, club);
-    });
+    const pickWorldCupTeam = (
+      pool: Club[],
+      sourceClubs: Club[],
+      stars: number
+    ): Club | null => {
+      const isInCurrentPool = (club: Club) => pool.some(c => c.id === club.id);
 
-    const pickAndBan = (pool: Club[], sourceClubs: Club[], stars: number): Club | null => {
-      const roundSafeSource = sourceClubs.filter(c => !allocatedThisRound.has(c.id));
-      const result = pickClubWithFallback(roundSafeSource, banned, usedClubsMap, stars, pool);
-      if (result.club) {
-        banned.add(result.club.id);
-        allocatedThisRound.add(result.club.id);
-        usedClubsMap.set(result.club.id, result.club);
-        if (result.isRecycled) recycledClubIds.add(result.club.id);
+      // 1. Best case:
+      // Team was not used in previous completed matches,
+      // not already allocated to another pool in this round,
+      // and not already inside this pair's pool.
+      const freshAvailable = sourceClubs.filter(
+        club =>
+          !usedBeforeThisRound.has(club.id) &&
+          !allocatedThisRound.has(club.id) &&
+          !isInCurrentPool(club)
+      );
+
+      if (freshAvailable.length > 0) {
+        const club = freshAvailable[Math.floor(Math.random() * freshAvailable.length)];
+        allocatedThisRound.add(club.id);
+        return club;
       }
-      return result.club;
+
+      // 2. If there are no fresh teams left, first allow teams that were used before
+      // but are not already allocated in this current round.
+      // This only happens after the entire star tier is exhausted.
+      const recycledAvailable = sourceClubs.filter(
+        club =>
+          !allocatedThisRound.has(club.id) &&
+          !isInCurrentPool(club)
+      );
+
+      if (recycledAvailable.length > 0) {
+        const club = recycledAvailable[Math.floor(Math.random() * recycledAvailable.length)];
+        allocatedThisRound.add(club.id);
+        recycledClubIds.add(club.id);
+        return club;
+      }
+
+      // 3. Last resort:
+      // If the tier is so small that even round-level uniqueness is impossible,
+      // allow a recycled team not already in the same pair pool.
+      // This should be rare, and mainly protects against crashes.
+      const lastResort = sourceClubs.filter(
+        club => !isInCurrentPool(club)
+      );
+
+      if (lastResort.length > 0) {
+        const club = lastResort[Math.floor(Math.random() * lastResort.length)];
+        recycledClubIds.add(club.id);
+        return club;
+      }
+
+      return null;
     };
 
     for (const entry of dist) {
       const source = getWorldCup26TeamsByStars(entry.stars, this.clubs);
+
       for (let i = 0; i < entry.count; i++) {
         for (let p = 0; p < pairs.length; p++) {
-          const team = pickAndBan(pools[p], source, entry.stars);
+          const team = pickWorldCupTeam(pools[p], source, entry.stars);
           if (team) pools[p].push(team);
         }
       }
@@ -599,7 +644,6 @@ export class TeamSelector {
 
     return { pools, recycledClubIds };
   }
-}
 
 /**
  * World Cup 26 distribution per pair, keyed by winsToComplete.
