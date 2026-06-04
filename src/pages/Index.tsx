@@ -988,9 +988,24 @@ const handleGoHome = () => {
       return;
     }
   
-    RemoteStorageService.upsertEveningLive(evening)
+    const teamId =
+      currentTeamId ??
+      contextTeamId ??
+      ((evening as any)._team_id ?? null);
+    
+    if (!teamId) {
+      console.error("Missing teamId for evening save", { eveningId: evening.id });
+      toast({
+        title: "שגיאה בשמירת הטורניר",
+        description: "לא נמצאה קבוצה משויכת לטורניר.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    RemoteStorageService.upsertEveningLiveWithTeam(evening, teamId)
       .catch((error) => {
-        console.error("upsertEveningLive failed:", error?.message || error);
+        console.error("upsertEveningLiveWithTeam failed:", error?.message || error);
         toast({
           title: "שגיאה בשמירת הטורניר",
           description: error?.message || "לא ניתן לשמור את העדכון כרגע.",
