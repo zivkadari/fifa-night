@@ -1157,6 +1157,17 @@ const handleGoHome = () => {
                 goTo('tier-question-flow');
               }
             }}
+            onSelectWorldCup26={() => {
+              if (currentEvening && currentEvening.rounds.length > 0) {
+                // Mid-tournament: mark mode and go back to game (next round will use WC26 pools)
+                const updated: Evening = { ...currentEvening, teamSelectionMode: 'world-cup-26' };
+                persistActiveEveningNow(updated);
+                setCurrentEvening(updated);
+                goTo('game');
+              } else if (pendingPairsPlayers) {
+                startWorldCup26Evening(pendingPairsPlayers, pendingWinsToComplete, pendingTeamId);
+              }
+            }}
           />
         );
       
