@@ -407,6 +407,14 @@ export const getNationalTeamsByStars = (stars: number, clubs: Club[] = FIFA_CLUB
   return clubs.filter(club => club.isNational && club.stars === stars);
 };
 
+export const getWorldCup26Teams = (clubs: Club[] = FIFA_CLUBS): Club[] => {
+  return clubs.filter(club => club.isNational && club.worldCup26);
+};
+
+export const getWorldCup26TeamsByStars = (stars: number, clubs: Club[] = FIFA_CLUBS): Club[] => {
+  return clubs.filter(club => club.isNational && club.worldCup26 && club.stars === stars);
+};
+
 export const getRandomClub = (excludeIds: string[] = [], minStars?: number, maxStars?: number, clubs: Club[] = FIFA_CLUBS): Club => {
   const baseClubs = clubs.filter(club => !excludeIds.includes(club.id) && !club.isNational);
 
