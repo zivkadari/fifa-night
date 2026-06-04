@@ -999,11 +999,12 @@ const handleGoHome = () => {
           tournamentProgress = `${completedMatches} משחקים שהושלמו`;
         }
         const currentActiveEveningId = activeFP ? fpEvening?.id : activeRegular ? currentEvening?.id : null;
-        const activeTournamentTeamName =
-          currentTeamId
-            ? activeTeamEvenings.find((entry) => entry.team_id === currentTeamId)?.team_name
-              ?? null
-            : null;
+        // Resolve the team name from the actual active evening's team_id,
+        // not from the user's currently-selected team (which may differ).
+        const activeTournamentTeamName = currentActiveEveningId
+          ? activeTeamEvenings.find((entry) => entry.evening_id === currentActiveEveningId)?.team_name ?? null
+          : null;
+
 
         return (
           <TeamDashboard
