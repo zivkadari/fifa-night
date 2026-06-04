@@ -547,4 +547,86 @@ export class TeamSelector {
 
     return { pools, recycledClubIds };
   }
+
+  /**
+   * Generate team pools using ONLY World Cup 2026 national teams.
+   * Distribution is per-pair; defaults to the 6-win profile.
+   */
+  generateWorldCup26TeamPools(
+    pairs: Pair[],
+    excludeClubIds: string[] = [],
+    distribution?: Array<{ stars: number; count: number }>
+  ): TeamPoolResult {
+    const dist = distribution ?? [
+      { stars: 5, count: 3 },
+      { stars: 4.5, count: 3 },
+      { stars: 4, count: 4 },
+      { stars: 3.5, count: 1 },
+    ];
+
+    const pools: Club[][] = pairs.map(() => []);
+    const banned = new Set<string>(excludeClubIds);
+    const usedClubsMap = new Map<string, Club>();
+    const recycledClubIds = new Set<string>();
+    const allocatedThisRound = new Set<string>();
+
+    excludeClubIds.forEach(id => {
+      const club = this.clubs.find(c => c.id === id);
+      if (club) usedClubsMap.set(id, club);
+    });
+
+    const pickAndBan = (pool: Club[], sourceClubs: Club[], stars: number): Club | null => {
+      const roundSafeSource = sourceClubs.filter(c => !allocatedThisRound.has(c.id));
+      const result = pickClubWithFallback(roundSafeSource, banned, usedClubsMap, stars, pool);
+      if (result.club) {
+        banned.add(result.club.id);
+        allocatedThisRound.add(result.club.id);
+        usedClubsMap.set(result.club.id, result.club);
+        if (result.isRecycled) recycledClubIds.add(result.club.id);
+      }
+      return result.club;
+    };
+
+    for (const entry of dist) {
+      const source = getWorldCup26TeamsByStars(entry.stars, this.clubs);
+      for (let i = 0; i < entry.count; i++) {
+        for (let p = 0; p < pairs.length; p++) {
+          const team = pickAndBan(pools[p], source, entry.stars);
+          if (team) pools[p].push(team);
+        }
+      }
+    }
+
+    return { pools, recycledClubIds };
+  }
+}
+
+/**
+ * World Cup 26 distribution per pair, keyed by winsToComplete.
+ */
+export function getWorldCup26DistributionForWins(wins: number): Array<{ stars: number; count: number }> {
+  switch (wins) {
+    case 4:
+      return [
+        { stars: 5, count: 2 },
+        { stars: 4.5, count: 2 },
+        { stars: 4, count: 2 },
+        { stars: 3.5, count: 1 },
+      ];
+    case 5:
+      return [
+        { stars: 5, count: 2 },
+        { stars: 4.5, count: 3 },
+        { stars: 4, count: 3 },
+        { stars: 3.5, count: 1 },
+      ];
+    case 6:
+    default:
+      return [
+        { stars: 5, count: 3 },
+        { stars: 4.5, count: 3 },
+        { stars: 4, count: 4 },
+        { stars: 3.5, count: 1 },
+      ];
+  }
 }
