@@ -293,9 +293,16 @@ const Index = () => {
 useEffect(() => {
     let mounted = true;
 
-    // Load active regular tournament
+    // Load active regular tournament.
+    // IMPORTANT: When remote storage is enabled, do NOT blindly restore the
+    // local active evening — it may be stale (belongs to a different team,
+    // was already cancelled/completed remotely, or was never created remotely
+    // because of a "team already has an active evening" conflict).
+    // Server truth via listActiveEveningsForMyTeams() is the source of truth;
+    // we reconcile in the polling effect below. Restore locally only as an
+    // offline fallback.
     const active = StorageService.loadActiveEvening();
-    if (active && !active.completed) {
+    if (active && !active.completed && !RemoteStorageService.isEnabled()) {
       setCurrentEvening(active);
     }
     // Load active FP tournament
@@ -317,6 +324,7 @@ useEffect(() => {
           .catch(() => {});
       }
     }
+
 
     const loadHistory = async () => {
       try {
@@ -399,6 +407,22 @@ useEffect(() => {
         if (cancelled) return;
   
         setActiveTeamEvenings(list);
+
+        // Reconcile any local active evening against server truth.
+        // If the locally-persisted active evening is not present in the
+        // server's active list for any of my teams, it is stale (cancelled
+        // remotely, never actually created, or belongs to a team I am no
+        // longer in) and must be cleared so it doesn't ghost-load on
+        // navigation or a fresh tournament start.
+        const localActive = StorageService.loadActiveEvening();
+        if (localActive && !list.find((entry) => entry.evening_id === localActive.id)) {
+          StorageService.clearActiveEvening();
+          if (currentEveningRef.current?.id === localActive.id) {
+            setCurrentEvening(null);
+            setCurrentTeamId(null);
+            setCurrentTeamEditReason(null);
+          }
+        }
   
         if (currentEvening?.id) {
           const updatedRegular = list.find(
@@ -434,6 +458,7 @@ useEffect(() => {
         console.warn("Failed to refresh active team evenings:", error?.message || error);
       }
     };
+
   
     refreshActiveEvenings();
   
@@ -531,12 +556,20 @@ useEffect(() => {
       } else {
         clearActiveEvening();
         setCurrentEvening(null);
+        setCurrentTeamId(null);
       }
   
       setCurrentTeamEditReason(null);
       toast({ title: "הטורניר הופסק" });
       goTo("home");
+
+      // Refresh active team evenings list so the Home screen reflects
+      // the stopped tournament without waiting for the next poll tick.
+      RemoteStorageService.listActiveEveningsForMyTeams()
+        .then((list) => setActiveTeamEvenings(list))
+        .catch(() => {});
     };
+
   
     try {
       const hasGames = hasCompletedGamesAnyMode(localEvening);
@@ -562,10 +595,14 @@ useEffect(() => {
           cancelled_at: new Date().toISOString(),
         };
   
+        const serverEntryTeamId = activeTeamEvenings.find(
+          (entry) => entry.evening_id === eveningId,
+        )?.team_id ?? null;
         const teamId =
           kind === "fp"
-            ? fpTeamId ?? ((localEvening as any)._team_id ?? null)
-            : currentTeamId ?? contextTeamId ?? ((localEvening as any)._team_id ?? null);
+            ? serverEntryTeamId ?? fpTeamId ?? ((localEvening as any)._team_id ?? null)
+            : serverEntryTeamId ?? currentTeamId ?? contextTeamId ?? ((localEvening as any)._team_id ?? null);
+
   
         await RemoteStorageService.upsertEveningLiveWithTeam(cancelledFallback as any, teamId);
   
@@ -768,9 +805,13 @@ useEffect(() => {
     clearActiveEvening();
     goTo('tournament-type');
     setCurrentEvening(null);
+    setCurrentTeamId(null);
     setCurrentTeamEditReason(null);
     setSelectedTournamentType(null);
+    setPendingPairsPlayers(null);
+    setPendingTeamId(undefined);
   };
+
 
   const handleViewHistory = () => {
     navigate("/tournaments");
@@ -790,7 +831,52 @@ useEffect(() => {
     await startEvening(players, winsToComplete, teamId);
   };
 
+  /**
+   * Resolve the team id for a brand-new tournament. We must NOT fall back to
+   * `currentTeamId` (which may belong to a previous tournament for a different
+   * team — e.g. an old Alphot tournament leaking into a new ברזילאים one).
+   */
+  const resolveNewEveningTeamId = async (
+    players: Player[],
+    explicitTeamId?: string,
+  ): Promise<string | null> => {
+    let effectiveTeamId = explicitTeamId ?? pendingTeamId ?? null;
+    if (!effectiveTeamId && RemoteStorageService.isEnabled()) {
+      try {
+        effectiveTeamId = await RemoteStorageService.ensureTeamForPlayers(players);
+      } catch {}
+    }
+    return effectiveTeamId || null;
+  };
+
+  const handleRemoteCreateFailure = (err: any) => {
+    const raw = err?.message || String(err || "");
+    const isTeamConflict = raw.includes("team already has an active evening");
+    toast({
+      title: "שגיאה בפתיחת הטורניר",
+      description: isTeamConflict
+        ? "לקבוצה הזו כבר יש טורניר פעיל. סיים או עצור אותו לפני פתיחת טורניר חדש."
+        : raw || "לא ניתן ליצור את הטורניר כרגע.",
+      variant: "destructive",
+    });
+    clearActiveEvening();
+    setCurrentEvening(null);
+    setCurrentTeamId(null);
+    setCurrentTeamEditReason(null);
+    goTo("home");
+  };
+
   const startWorldCup26Evening = async (players: Player[], winsToComplete: number, teamId?: string) => {
+    const effectiveTeamId = await resolveNewEveningTeamId(players, teamId);
+    if (!effectiveTeamId) {
+      toast({
+        title: "שגיאה בפתיחת הטורניר",
+        description: "לא נבחרה קבוצה לטורניר. בחר קבוצה במסך ההגדרה.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const pairSchedule = TournamentEngine.generatePairs(players);
     const newEvening: Evening = {
       id: `evening-${Date.now()}`,
@@ -803,23 +889,18 @@ useEffect(() => {
       pairSchedule,
       teamSelectionMode: 'world-cup-26',
     };
-    persistActiveEveningNow(newEvening);
-    let effectiveTeamId = teamId ?? currentTeamId ?? contextTeamId ?? null;
-    if (!effectiveTeamId && RemoteStorageService.isEnabled()) {
-      try {
-        effectiveTeamId = await RemoteStorageService.ensureTeamForPlayers(players);
-      } catch {}
-    }
-    setCurrentEvening(newEvening);
-    setCurrentTeamId(effectiveTeamId);
-    setCurrentTeamEditReason("owner_admin");
+
     try {
       await RemoteStorageService.createTeamEvening(newEvening, effectiveTeamId);
     } catch (err: any) {
-      if (err?.message?.includes('team already has an active evening')) {
-        console.warn('Team already has an active evening – creation blocked');
-      }
+      handleRemoteCreateFailure(err);
+      return;
     }
+
+    setCurrentEvening(newEvening);
+    setCurrentTeamId(effectiveTeamId);
+    setCurrentTeamEditReason("owner_admin");
+    persistActiveEveningNow(newEvening);
     goTo('game');
   };
 
@@ -830,6 +911,16 @@ useEffect(() => {
   };
 
   const startEvening = async (players: Player[], winsToComplete: number, teamId?: string) => {
+    const effectiveTeamId = await resolveNewEveningTeamId(players, teamId);
+    if (!effectiveTeamId) {
+      toast({
+        title: "שגיאה בפתיחת הטורניר",
+        description: "לא נבחרה קבוצה לטורניר. בחר קבוצה במסך ההגדרה.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Generate a deterministic pairs schedule once and persist it to the evening to avoid changes on navigation
     const pairSchedule = TournamentEngine.generatePairs(players);
 
@@ -845,33 +936,26 @@ useEffect(() => {
       teamSelectionMode: 'random', // Random mode (tier-question mode handled separately)
     };
 
-    // Persist immediately so iOS backgrounding won't reset an in-progress tournament
-    persistActiveEveningNow(newEvening);
-
-    // Determine team automatically if not provided
-    let effectiveTeamId = teamId ?? currentTeamId ?? contextTeamId ?? null;
-    if (!effectiveTeamId && RemoteStorageService.isEnabled()) {
-      try {
-        effectiveTeamId = await RemoteStorageService.ensureTeamForPlayers(players);
-      } catch {}
+    // Create remotely first — server enforces one active evening per team.
+    // If creation fails (e.g. team already has an active evening), do NOT
+    // proceed locally; show a toast and return home so we don't ghost-load
+    // a tournament that doesn't exist on the server.
+    try {
+      await RemoteStorageService.createTeamEvening(newEvening, effectiveTeamId);
+    } catch (err: any) {
+      handleRemoteCreateFailure(err);
+      return;
     }
 
     setCurrentEvening(newEvening);
     setCurrentTeamId(effectiveTeamId);
     setCurrentTeamEditReason("owner_admin");
-    // Create via server-side RPC (enforces one active evening per team)
-    try {
-      await RemoteStorageService.createTeamEvening(newEvening, effectiveTeamId);
-    } catch (err: any) {
-      if (err?.message?.includes('team already has an active evening')) {
-        console.warn('Team already has an active evening – creation blocked');
-        // TODO: surface a toast to the user in a future iteration
-      }
-      // Still let them proceed locally for now
-    }
-    
+    // Persist locally only after the server accepted the new evening.
+    persistActiveEveningNow(newEvening);
+
     goTo('game');
   };
+
 
   const handleCompleteEvening = (evening: Evening) => {
     // Completed evenings should not auto-resume into game
@@ -988,10 +1072,17 @@ const handleGoHome = () => {
       return;
     }
   
+    // Prefer team id from the live active-evenings list (server truth) so we
+    // never save under a stale team id carried over from a previous tournament.
+    const serverEntryTeamId = activeTeamEvenings.find(
+      (entry) => entry.evening_id === evening.id,
+    )?.team_id;
     const teamId =
+      serverEntryTeamId ??
       currentTeamId ??
       contextTeamId ??
       ((evening as any)._team_id ?? null);
+
     
     if (!teamId) {
       console.error("Missing teamId for evening save", { eveningId: evening.id });
@@ -1170,7 +1261,7 @@ const handleGoHome = () => {
             }}
             savedPlayers={pendingPairsPlayers || currentEvening?.players}
             savedWinsToComplete={pendingWinsToComplete || currentEvening?.winsToComplete}
-            savedTeamId={pendingTeamId ?? currentTeamId ?? undefined}
+            savedTeamId={pendingTeamId ?? undefined}
           />
         );
       
