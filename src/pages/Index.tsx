@@ -293,9 +293,16 @@ const Index = () => {
 useEffect(() => {
     let mounted = true;
 
-    // Load active regular tournament
+    // Load active regular tournament.
+    // IMPORTANT: When remote storage is enabled, do NOT blindly restore the
+    // local active evening — it may be stale (belongs to a different team,
+    // was already cancelled/completed remotely, or was never created remotely
+    // because of a "team already has an active evening" conflict).
+    // Server truth via listActiveEveningsForMyTeams() is the source of truth;
+    // we reconcile in the polling effect below. Restore locally only as an
+    // offline fallback.
     const active = StorageService.loadActiveEvening();
-    if (active && !active.completed) {
+    if (active && !active.completed && !RemoteStorageService.isEnabled()) {
       setCurrentEvening(active);
     }
     // Load active FP tournament
@@ -317,6 +324,7 @@ useEffect(() => {
           .catch(() => {});
       }
     }
+
 
     const loadHistory = async () => {
       try {
