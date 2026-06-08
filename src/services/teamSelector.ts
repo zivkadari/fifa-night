@@ -644,7 +644,51 @@ export class TeamSelector {
 
         return { pools, recycledClubIds };
       }
+
+  /**
+   * World Cup 26 decider: pick two balanced national teams that are part of
+   * the World Cup 26 pool ONLY. Never returns regular clubs.
+   */
+  generateWorldCup26DeciderTeams(
+    excludeClubIds: string[] = [],
+    minStars = 4,
+    maxStarDiff = 1,
+  ): [Club, Club] {
+    const wc26 = this.clubs.filter(c => c.isNational && c.worldCup26);
+    const banned = new Set<string>(excludeClubIds);
+
+    // Prefer unused teams at minStars+
+    let available = wc26.filter(c => !banned.has(c.id) && c.stars >= minStars);
+    if (available.length < 2) {
+      // Fallback: relax the banned constraint within WC26 pool
+      available = wc26.filter(c => c.stars >= minStars);
     }
+    if (available.length < 2) {
+      // Last resort: drop the star floor but stay WC26-only
+      available = [...wc26];
+    }
+    if (available.length < 2) {
+      // Pool too small (shouldn't happen) — duplicate the only team to avoid crash
+      const only = available[0] ?? wc26[0];
+      return [only, only];
+    }
+
+    const first = available[Math.floor(Math.random() * available.length)];
+    const strict = available.filter(
+      c => c.id !== first.id && Math.abs(c.stars - first.stars) <= maxStarDiff,
+    );
+    let second: Club | undefined =
+      strict.length > 0 ? strict[Math.floor(Math.random() * strict.length)] : undefined;
+    if (!second) {
+      const sorted = available
+        .filter(c => c.id !== first.id)
+        .sort((a, b) => Math.abs(a.stars - first.stars) - Math.abs(b.stars - first.stars));
+      second = sorted[0];
+    }
+    return [first, second!];
+  }
+}
+
     
     /**
      * World Cup 26 distribution per pair, keyed by winsToComplete.
