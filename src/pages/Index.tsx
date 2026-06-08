@@ -1060,10 +1060,17 @@ const handleGoHome = () => {
       return;
     }
   
+    // Prefer team id from the live active-evenings list (server truth) so we
+    // never save under a stale team id carried over from a previous tournament.
+    const serverEntryTeamId = activeTeamEvenings.find(
+      (entry) => entry.evening_id === evening.id,
+    )?.team_id;
     const teamId =
+      serverEntryTeamId ??
       currentTeamId ??
       contextTeamId ??
       ((evening as any)._team_id ?? null);
+
     
     if (!teamId) {
       console.error("Missing teamId for evening save", { eveningId: evening.id });
