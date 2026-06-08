@@ -819,7 +819,52 @@ useEffect(() => {
     await startEvening(players, winsToComplete, teamId);
   };
 
+  /**
+   * Resolve the team id for a brand-new tournament. We must NOT fall back to
+   * `currentTeamId` (which may belong to a previous tournament for a different
+   * team — e.g. an old Alphot tournament leaking into a new ברזילאים one).
+   */
+  const resolveNewEveningTeamId = async (
+    players: Player[],
+    explicitTeamId?: string,
+  ): Promise<string | null> => {
+    let effectiveTeamId = explicitTeamId ?? pendingTeamId ?? null;
+    if (!effectiveTeamId && RemoteStorageService.isEnabled()) {
+      try {
+        effectiveTeamId = await RemoteStorageService.ensureTeamForPlayers(players);
+      } catch {}
+    }
+    return effectiveTeamId || null;
+  };
+
+  const handleRemoteCreateFailure = (err: any) => {
+    const raw = err?.message || String(err || "");
+    const isTeamConflict = raw.includes("team already has an active evening");
+    toast({
+      title: "שגיאה בפתיחת הטורניר",
+      description: isTeamConflict
+        ? "לקבוצה הזו כבר יש טורניר פעיל. סיים או עצור אותו לפני פתיחת טורניר חדש."
+        : raw || "לא ניתן ליצור את הטורניר כרגע.",
+      variant: "destructive",
+    });
+    clearActiveEvening();
+    setCurrentEvening(null);
+    setCurrentTeamId(null);
+    setCurrentTeamEditReason(null);
+    goTo("home");
+  };
+
   const startWorldCup26Evening = async (players: Player[], winsToComplete: number, teamId?: string) => {
+    const effectiveTeamId = await resolveNewEveningTeamId(players, teamId);
+    if (!effectiveTeamId) {
+      toast({
+        title: "שגיאה בפתיחת הטורניר",
+        description: "לא נבחרה קבוצה לטורניר. בחר קבוצה במסך ההגדרה.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const pairSchedule = TournamentEngine.generatePairs(players);
     const newEvening: Evening = {
       id: `evening-${Date.now()}`,
@@ -832,23 +877,18 @@ useEffect(() => {
       pairSchedule,
       teamSelectionMode: 'world-cup-26',
     };
-    persistActiveEveningNow(newEvening);
-    let effectiveTeamId = teamId ?? currentTeamId ?? contextTeamId ?? null;
-    if (!effectiveTeamId && RemoteStorageService.isEnabled()) {
-      try {
-        effectiveTeamId = await RemoteStorageService.ensureTeamForPlayers(players);
-      } catch {}
-    }
-    setCurrentEvening(newEvening);
-    setCurrentTeamId(effectiveTeamId);
-    setCurrentTeamEditReason("owner_admin");
+
     try {
       await RemoteStorageService.createTeamEvening(newEvening, effectiveTeamId);
     } catch (err: any) {
-      if (err?.message?.includes('team already has an active evening')) {
-        console.warn('Team already has an active evening – creation blocked');
-      }
+      handleRemoteCreateFailure(err);
+      return;
     }
+
+    setCurrentEvening(newEvening);
+    setCurrentTeamId(effectiveTeamId);
+    setCurrentTeamEditReason("owner_admin");
+    persistActiveEveningNow(newEvening);
     goTo('game');
   };
 
@@ -859,6 +899,16 @@ useEffect(() => {
   };
 
   const startEvening = async (players: Player[], winsToComplete: number, teamId?: string) => {
+    const effectiveTeamId = await resolveNewEveningTeamId(players, teamId);
+    if (!effectiveTeamId) {
+      toast({
+        title: "שגיאה בפתיחת הטורניר",
+        description: "לא נבחרה קבוצה לטורניר. בחר קבוצה במסך ההגדרה.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Generate a deterministic pairs schedule once and persist it to the evening to avoid changes on navigation
     const pairSchedule = TournamentEngine.generatePairs(players);
 
@@ -874,33 +924,26 @@ useEffect(() => {
       teamSelectionMode: 'random', // Random mode (tier-question mode handled separately)
     };
 
-    // Persist immediately so iOS backgrounding won't reset an in-progress tournament
-    persistActiveEveningNow(newEvening);
-
-    // Determine team automatically if not provided
-    let effectiveTeamId = teamId ?? currentTeamId ?? contextTeamId ?? null;
-    if (!effectiveTeamId && RemoteStorageService.isEnabled()) {
-      try {
-        effectiveTeamId = await RemoteStorageService.ensureTeamForPlayers(players);
-      } catch {}
+    // Create remotely first — server enforces one active evening per team.
+    // If creation fails (e.g. team already has an active evening), do NOT
+    // proceed locally; show a toast and return home so we don't ghost-load
+    // a tournament that doesn't exist on the server.
+    try {
+      await RemoteStorageService.createTeamEvening(newEvening, effectiveTeamId);
+    } catch (err: any) {
+      handleRemoteCreateFailure(err);
+      return;
     }
 
     setCurrentEvening(newEvening);
     setCurrentTeamId(effectiveTeamId);
     setCurrentTeamEditReason("owner_admin");
-    // Create via server-side RPC (enforces one active evening per team)
-    try {
-      await RemoteStorageService.createTeamEvening(newEvening, effectiveTeamId);
-    } catch (err: any) {
-      if (err?.message?.includes('team already has an active evening')) {
-        console.warn('Team already has an active evening – creation blocked');
-        // TODO: surface a toast to the user in a future iteration
-      }
-      // Still let them proceed locally for now
-    }
-    
+    // Persist locally only after the server accepted the new evening.
+    persistActiveEveningNow(newEvening);
+
     goTo('game');
   };
+
 
   const handleCompleteEvening = (evening: Evening) => {
     // Completed evenings should not auto-resume into game
