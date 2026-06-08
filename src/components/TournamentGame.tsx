@@ -708,7 +708,11 @@ export const TournamentGame = ({
     const teamSelector = new TeamSelector(clubsWithOverrides);
     const eveningMaxed = Object.keys(usedClubCounts).filter(id => (usedClubCounts[id] ?? 0) >= 1);
     const excludeIds = [...new Set([...eveningMaxed, ...consumedClubIdsThisRound])];
-    const [club1, club2] = teamSelector.generateBalancedDeciderTeams(excludeIds, 4, 1);
+    const isWorldCup26Decider = currentEvening.teamSelectionMode === 'world-cup-26';
+    const [club1, club2] = isWorldCup26Decider
+      ? teamSelector.generateWorldCup26DeciderTeams(excludeIds, 4, 1)
+      : teamSelector.generateBalancedDeciderTeams(excludeIds, 4, 1);
+
     setSelectedClubs([club1, club2]);
     setUsedClubCounts(prev => ({
       ...prev,
