@@ -407,6 +407,22 @@ useEffect(() => {
         if (cancelled) return;
   
         setActiveTeamEvenings(list);
+
+        // Reconcile any local active evening against server truth.
+        // If the locally-persisted active evening is not present in the
+        // server's active list for any of my teams, it is stale (cancelled
+        // remotely, never actually created, or belongs to a team I am no
+        // longer in) and must be cleared so it doesn't ghost-load on
+        // navigation or a fresh tournament start.
+        const localActive = StorageService.loadActiveEvening();
+        if (localActive && !list.find((entry) => entry.evening_id === localActive.id)) {
+          StorageService.clearActiveEvening();
+          if (currentEveningRef.current?.id === localActive.id) {
+            setCurrentEvening(null);
+            setCurrentTeamId(null);
+            setCurrentTeamEditReason(null);
+          }
+        }
   
         if (currentEvening?.id) {
           const updatedRegular = list.find(
@@ -442,6 +458,7 @@ useEffect(() => {
         console.warn("Failed to refresh active team evenings:", error?.message || error);
       }
     };
+
   
     refreshActiveEvenings();
   
