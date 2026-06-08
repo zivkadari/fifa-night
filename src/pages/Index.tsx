@@ -1242,7 +1242,7 @@ const handleGoHome = () => {
             }}
             savedPlayers={pendingPairsPlayers || currentEvening?.players}
             savedWinsToComplete={pendingWinsToComplete || currentEvening?.winsToComplete}
-            savedTeamId={pendingTeamId ?? currentTeamId ?? undefined}
+            savedTeamId={pendingTeamId ?? undefined}
           />
         );
       
