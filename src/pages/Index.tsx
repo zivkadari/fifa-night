@@ -587,10 +587,14 @@ useEffect(() => {
           cancelled_at: new Date().toISOString(),
         };
   
+        const serverEntryTeamId = activeTeamEvenings.find(
+          (entry) => entry.evening_id === eveningId,
+        )?.team_id ?? null;
         const teamId =
           kind === "fp"
-            ? fpTeamId ?? ((localEvening as any)._team_id ?? null)
-            : currentTeamId ?? contextTeamId ?? ((localEvening as any)._team_id ?? null);
+            ? serverEntryTeamId ?? fpTeamId ?? ((localEvening as any)._team_id ?? null)
+            : serverEntryTeamId ?? currentTeamId ?? contextTeamId ?? ((localEvening as any)._team_id ?? null);
+
   
         await RemoteStorageService.upsertEveningLiveWithTeam(cancelledFallback as any, teamId);
   
