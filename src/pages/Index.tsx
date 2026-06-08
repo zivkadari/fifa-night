@@ -793,9 +793,13 @@ useEffect(() => {
     clearActiveEvening();
     goTo('tournament-type');
     setCurrentEvening(null);
+    setCurrentTeamId(null);
     setCurrentTeamEditReason(null);
     setSelectedTournamentType(null);
+    setPendingPairsPlayers(null);
+    setPendingTeamId(undefined);
   };
+
 
   const handleViewHistory = () => {
     navigate("/tournaments");
