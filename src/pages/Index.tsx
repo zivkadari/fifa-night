@@ -556,12 +556,20 @@ useEffect(() => {
       } else {
         clearActiveEvening();
         setCurrentEvening(null);
+        setCurrentTeamId(null);
       }
   
       setCurrentTeamEditReason(null);
       toast({ title: "הטורניר הופסק" });
       goTo("home");
+
+      // Refresh active team evenings list so the Home screen reflects
+      // the stopped tournament without waiting for the next poll tick.
+      RemoteStorageService.listActiveEveningsForMyTeams()
+        .then((list) => setActiveTeamEvenings(list))
+        .catch(() => {});
     };
+
   
     try {
       const hasGames = hasCompletedGamesAnyMode(localEvening);
