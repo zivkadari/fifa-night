@@ -690,6 +690,15 @@ export type Database = {
         Args: { _notification_id: string }
         Returns: boolean
       }
+      notify_team_admins_result_edited: {
+        Args: {
+          _body: string
+          _data?: Json
+          _evening_id: string
+          _title: string
+        }
+        Returns: number
+      }
       notify_team_evening_started: {
         Args: {
           _evening_id: string

@@ -64,6 +64,15 @@ interface TournamentGameProps {
   canStopTournament?: boolean;
   onStopTournament?: () => void;
   canEditCompletedMatches?: boolean;
+  canDeleteCompletedMatches?: boolean;
+  onCompletedMatchEdited?: (payload: {
+    eveningId: string;
+    matchId: string;
+    oldScore: [number, number];
+    newScore: [number, number];
+    clubs: [Club, Club];
+    pairs: [Pair, Pair];
+  }) => void;
 }
 
 export const TournamentGame = ({
@@ -77,7 +86,10 @@ export const TournamentGame = ({
   canStopTournament,
   onStopTournament,
   canEditCompletedMatches = false,
+  canDeleteCompletedMatches = false,
+  onCompletedMatchEdited,
 }: TournamentGameProps) => {
+
   // If this is a singles tournament, use the singles component
   if (evening.type === 'singles') {
     return (
@@ -220,6 +232,58 @@ export const TournamentGame = ({
     };
     saveCurrentState();
   }, [currentEvening, onUpdateEvening]);
+
+  // Recalculate used clubs, consumed clubs, and visible team pools whenever
+  // currentEvening / currentRound / originalTeamPools change. This keeps the
+  // admin's pool view in sync when a remote (e.g. playing user) submission
+  // arrives via realtime/polling and updates currentEvening.
+  useEffect(() => {
+    if (!currentEvening || currentEvening.type === 'singles') return;
+    const round = currentEvening.rounds[currentRound];
+    if (!round) return;
+
+    // Used clubs across the whole evening (all completed matches)
+    const counts: Record<string, number> = {};
+    currentEvening.rounds.forEach((r) => {
+      r.matches.forEach((m) => {
+        if (m.completed && m.clubs?.[0]?.id && m.clubs?.[1]?.id) {
+          counts[m.clubs[0].id] = (counts[m.clubs[0].id] ?? 0) + 1;
+          counts[m.clubs[1].id] = (counts[m.clubs[1].id] ?? 0) + 1;
+        }
+      });
+    });
+    setUsedClubCounts(counts);
+
+    // Consumed allocations in the current round only
+    const consumedThisRound: string[] = [];
+    round.matches.forEach((m) => {
+      if (m.completed && m.clubs?.[0]?.id && m.clubs?.[1]?.id) {
+        consumedThisRound.push(m.clubs[0].id);
+        consumedThisRound.push(m.clubs[1].id);
+      }
+    });
+    setConsumedClubIdsThisRound(consumedThisRound);
+
+    // Re-filter the visible pools from the persisted base pools.
+    // Do NOT regenerate pools. Prefer the round's persisted teamPools; fall
+    // back to originalTeamPools held in local state.
+    const persistedPools = (round.teamPools as [Club[], Club[]] | undefined) ?? null;
+    const basePools: [Club[], Club[]] | null = persistedPools && persistedPools[0]?.length
+      ? [persistedPools[0], persistedPools[1]]
+      : (originalTeamPools[0]?.length || originalTeamPools[1]?.length
+          ? [originalTeamPools[0], originalTeamPools[1]]
+          : null);
+
+    if (basePools) {
+      setTeamPools([
+        filterPoolByAllocations(basePools[0], consumedThisRound),
+        filterPoolByAllocations(basePools[1], consumedThisRound),
+      ]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentEvening, currentRound, originalTeamPools]);
+
+
 
   // Fetch share code for sharing via WhatsApp
   useEffect(() => {
@@ -842,6 +906,12 @@ export const TournamentGame = ({
       const match = round.matches[matchIdx];
       if (!match.completed) return;
 
+    // Capture old score before mutation
+    const oldScore: [number, number] = [
+      match.score?.[0] ?? 0,
+      match.score?.[1] ?? 0,
+    ];
+
     // Recalculate pair scores from scratch
     const updatedMatch: Match = { ...match, score: [newScore1, newScore2] };
     // Determine new winner
@@ -876,18 +946,37 @@ export const TournamentGame = ({
     onSaveEveningRemote?.(updatedEvening);
     setEditingMatch(null);
     toast({ title: 'תוצאה עודכנה', description: `${newScore1}-${newScore2}` });
+
+    // Notify parent that a completed match was edited (so admins can be notified)
+    const scoreChanged = oldScore[0] !== newScore1 || oldScore[1] !== newScore2;
+    if (scoreChanged && onCompletedMatchEdited) {
+      try {
+        onCompletedMatchEdited({
+          eveningId: currentEvening.id,
+          matchId,
+          oldScore,
+          newScore: [newScore1, newScore2],
+          clubs: [match.clubs[0], match.clubs[1]],
+          pairs: [match.pairs[0], match.pairs[1]],
+        });
+      } catch (e) {
+        console.warn('onCompletedMatchEdited callback failed:', e);
+      }
+    }
   };
 
-  // Delete a completed match entirely
+
+  // Delete a completed match entirely (admin-only)
   const deleteMatch = (matchId: string) => {
-    if (!canEditCompletedMatches) {
+    if (!canDeleteCompletedMatches) {
       toast({
         title: "אין הרשאה למחיקת תוצאה",
-        description: "רק מנהל הקבוצה יכול למחוק או לבטל תוצאה שכבר הוזנה.",
+        description: "רק מנהל הקבוצה יכול למחוק תוצאה שכבר הוזנה.",
         variant: "destructive",
       });
       return;
     }
+
   
     const round = currentEvening.rounds[currentRound];
     const match = round.matches.find(m => m.id === matchId);
@@ -1796,20 +1885,25 @@ export const TournamentGame = ({
                         <span className="text-neon-green font-bold mx-2">{match.score?.[0]}-{match.score?.[1]}</span>
                         <span className="text-foreground">{match.clubs[1]?.name}</span>
                       </div>
-                      {canEditCompletedMatches && (
+                      {(canEditCompletedMatches || canDeleteCompletedMatches) && (
                         <div className="flex items-center gap-1 shrink-0">
-                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => {
-                            setEditingMatch(match);
-                            setEditScore1(match.score?.[0] ?? 0);
-                            setEditScore2(match.score?.[1] ?? 0);
-                          }}>
-                            <Pencil className="h-3 w-3" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => deleteMatch(match.id)}>
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
+                          {canEditCompletedMatches && (
+                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => {
+                              setEditingMatch(match);
+                              setEditScore1(match.score?.[0] ?? 0);
+                              setEditScore2(match.score?.[1] ?? 0);
+                            }}>
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                          )}
+                          {canDeleteCompletedMatches && (
+                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => deleteMatch(match.id)}>
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          )}
                         </div>
 )}
+
                     </div>
                   </Card>
                 ))}

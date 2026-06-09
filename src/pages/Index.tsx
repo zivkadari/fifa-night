@@ -1204,12 +1204,15 @@ const handleGoHome = () => {
                   : undefined
             }
             onCloseTournament={
-              activeFP
-                ? () => handleStopTournament(fpEvening!.id, "fp")
-                : activeRegular
-                  ? handleCloseTournament
-                  : undefined
+              currentTeamEditReason === "owner_admin"
+                ? (activeFP
+                    ? () => handleStopTournament(fpEvening!.id, "fp")
+                    : activeRegular
+                      ? handleCloseTournament
+                      : undefined)
+                : undefined
             }
+
             onManageTeams={() => goTo('teams')}
             onFindTeam={() => goTo('find-team')}
             isAuthed={isAuthed}
@@ -1435,13 +1438,37 @@ const handleGoHome = () => {
               onUpdateEvening={handleUpdateEvening}
               onSaveEveningRemote={handleSaveEveningRemote}
               canStopTournament={currentTeamEditReason === "owner_admin"}
-              canEditCompletedMatches={currentTeamEditReason === "owner_admin"}
+              canEditCompletedMatches={currentTeamEditReason === "owner_admin" || currentTeamEditReason === "playing"}
+              canDeleteCompletedMatches={currentTeamEditReason === "owner_admin"}
+              onCompletedMatchEdited={(payload) => {
+                if (currentTeamEditReason !== "playing") return;
+                const p0Names = payload.pairs[0]?.players?.map(p => p.name).join(" + ") ?? "";
+                const p1Names = payload.pairs[1]?.players?.map(p => p.name).join(" + ") ?? "";
+                const c0 = payload.clubs[0]?.name ?? "";
+                const c1 = payload.clubs[1]?.name ?? "";
+                const oldS = `${payload.oldScore[0]}-${payload.oldScore[1]}`;
+                const newS = `${payload.newScore[0]}-${payload.newScore[1]}`;
+                const teamsLabel = p0Names && p1Names ? `${p0Names} vs ${p1Names}` : `${c0} vs ${c1}`;
+                const body = `${teamsLabel}: ${oldS} → ${newS}`;
+                RemoteStorageService.notifyTeamAdminsResultEdited(
+                  payload.eveningId,
+                  "תוצאה נערכה בטורניר",
+                  body,
+                  {
+                    match_id: payload.matchId,
+                    old_score: payload.oldScore,
+                    new_score: payload.newScore,
+                    clubs: [c0, c1],
+                  },
+                ).catch((e) => console.warn("notifyTeamAdminsResultEdited failed:", e?.message || e));
+              }}
               onStopTournament={() => currentEvening && handleStopTournament(currentEvening.id, "regular")}
               onRoundModeSelection={(nextRoundIndex) => {
                 setPendingRoundIndex(nextRoundIndex);
                 goTo('pairs-mode-selection');
               }}
             />
+
           )
         ) : null;
       
