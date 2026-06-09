@@ -1833,20 +1833,25 @@ export const TournamentGame = ({
                         <span className="text-neon-green font-bold mx-2">{match.score?.[0]}-{match.score?.[1]}</span>
                         <span className="text-foreground">{match.clubs[1]?.name}</span>
                       </div>
-                      {canEditCompletedMatches && (
+                      {(canEditCompletedMatches || canDeleteCompletedMatches) && (
                         <div className="flex items-center gap-1 shrink-0">
-                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => {
-                            setEditingMatch(match);
-                            setEditScore1(match.score?.[0] ?? 0);
-                            setEditScore2(match.score?.[1] ?? 0);
-                          }}>
-                            <Pencil className="h-3 w-3" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => deleteMatch(match.id)}>
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
+                          {canEditCompletedMatches && (
+                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => {
+                              setEditingMatch(match);
+                              setEditScore1(match.score?.[0] ?? 0);
+                              setEditScore2(match.score?.[1] ?? 0);
+                            }}>
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                          )}
+                          {canDeleteCompletedMatches && (
+                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => deleteMatch(match.id)}>
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          )}
                         </div>
 )}
+
                     </div>
                   </Card>
                 ))}
