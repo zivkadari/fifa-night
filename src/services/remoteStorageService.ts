@@ -133,6 +133,40 @@ export class RemoteStorageService {
     await this.upsertEveningLiveWithTeam(evening, null);
   }
 
+  /**
+   * Notify team owners/admins that a completed match result was edited.
+   * Used when a non-admin (playing) team member edits a previously completed score.
+   * Best-effort: failures are logged and swallowed so they cannot break the UI flow.
+   */
+  static async notifyTeamAdminsResultEdited(
+    eveningId: string,
+    title: string,
+    body: string,
+    data: Record<string, unknown> = {},
+  ): Promise<number> {
+    if (!supabase) return 0;
+    try {
+      const { data: result, error } = await supabase.rpc(
+        "notify_team_admins_result_edited",
+        {
+          _evening_id: eveningId,
+          _title: title,
+          _body: body,
+          _data: data as any,
+        },
+      );
+      if (error) {
+        console.warn("notify_team_admins_result_edited failed:", error.message);
+        return 0;
+      }
+      return typeof result === "number" ? result : 0;
+    } catch (e: any) {
+      console.warn("notify_team_admins_result_edited exception:", e?.message);
+      return 0;
+    }
+  }
+
+
   static async upsertEveningLive(evening: Evening): Promise<Evening> {
     if (!supabase) return evening;
   
