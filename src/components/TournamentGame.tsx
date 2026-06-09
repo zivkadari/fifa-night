@@ -67,6 +67,8 @@ interface TournamentGameProps {
   canDeleteCompletedMatches?: boolean;
   onCompletedMatchEdited?: (payload: {
     eveningId: string;
+    roundIndex: number;
+    matchIndex: number;
     matchId: string;
     oldScore: [number, number];
     newScore: [number, number];
@@ -953,6 +955,8 @@ export const TournamentGame = ({
       try {
         onCompletedMatchEdited({
           eveningId: currentEvening.id,
+          roundIndex: currentRound,
+          matchIndex: matchIdx,
           matchId,
           oldScore,
           newScore: [newScore1, newScore2],
