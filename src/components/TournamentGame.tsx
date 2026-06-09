@@ -854,6 +854,12 @@ export const TournamentGame = ({
       const match = round.matches[matchIdx];
       if (!match.completed) return;
 
+    // Capture old score before mutation
+    const oldScore: [number, number] = [
+      match.score?.[0] ?? 0,
+      match.score?.[1] ?? 0,
+    ];
+
     // Recalculate pair scores from scratch
     const updatedMatch: Match = { ...match, score: [newScore1, newScore2] };
     // Determine new winner
@@ -888,7 +894,25 @@ export const TournamentGame = ({
     onSaveEveningRemote?.(updatedEvening);
     setEditingMatch(null);
     toast({ title: 'תוצאה עודכנה', description: `${newScore1}-${newScore2}` });
+
+    // Notify parent that a completed match was edited (so admins can be notified)
+    const scoreChanged = oldScore[0] !== newScore1 || oldScore[1] !== newScore2;
+    if (scoreChanged && onCompletedMatchEdited) {
+      try {
+        onCompletedMatchEdited({
+          eveningId: currentEvening.id,
+          matchId,
+          oldScore,
+          newScore: [newScore1, newScore2],
+          clubs: [match.clubs[0], match.clubs[1]],
+          pairs: [match.pairs[0], match.pairs[1]],
+        });
+      } catch (e) {
+        console.warn('onCompletedMatchEdited callback failed:', e);
+      }
+    }
   };
+
 
   // Delete a completed match entirely
   const deleteMatch = (matchId: string) => {
