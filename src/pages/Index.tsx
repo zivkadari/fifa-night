@@ -1159,6 +1159,11 @@ const handleGoHome = () => {
     }
   };
 
+  const getEditReasonForEvening = (eveningId?: string | null) => {
+    if (!eveningId) return currentTeamEditReason;
+    return activeTeamEvenings.find((entry) => entry.evening_id === eveningId)?.reason ?? currentTeamEditReason;
+  };
+
   const renderCurrentState = () => {
     switch (appState) {
       case 'home': {
@@ -1179,6 +1184,8 @@ const handleGoHome = () => {
         const currentActiveEveningId = activeFP ? fpEvening?.id : activeRegular ? currentEvening?.id : null;
         // Resolve the team name from the actual active evening's team_id,
         // not from the user's currently-selected team (which may differ).
+        const activeEditReason = getEditReasonForEvening(currentActiveEveningId);
+        const canCloseActiveTournament = activeEditReason === "owner_admin";
         const activeTournamentTeamName = currentActiveEveningId
           ? activeTeamEvenings.find((entry) => entry.evening_id === currentActiveEveningId)?.team_name ?? null
           : null;
@@ -1204,7 +1211,7 @@ const handleGoHome = () => {
                   : undefined
             }
             onCloseTournament={
-              currentTeamEditReason === "owner_admin"
+              canCloseActiveTournament
                 ? (activeFP
                     ? () => handleStopTournament(fpEvening!.id, "fp")
                     : activeRegular
@@ -1416,7 +1423,9 @@ const handleGoHome = () => {
           />
         ) : null;
       
-      case 'game':
+      case 'game': {
+        const regularReason = currentEvening ? getEditReasonForEvening(currentEvening.id) : currentTeamEditReason;
+      
         return currentEvening ? (
           currentEvening.type === 'singles' ? (
             <SinglesGameLive
@@ -1438,29 +1447,51 @@ const handleGoHome = () => {
               onUpdateEvening={handleUpdateEvening}
               onSaveEveningRemote={handleSaveEveningRemote}
               canStopTournament={currentTeamEditReason === "owner_admin"}
-              canEditCompletedMatches={currentTeamEditReason === "owner_admin" || currentTeamEditReason === "playing"}
-              canDeleteCompletedMatches={currentTeamEditReason === "owner_admin"}
+              canEditCompletedMatches={regularReason === "owner_admin" || regularReason === "playing"}
+              canDeleteCompletedMatches={regularReason === "owner_admin"}
               onCompletedMatchEdited={(payload) => {
                 if (currentTeamEditReason !== "playing") return;
-                const p0Names = payload.pairs[0]?.players?.map(p => p.name).join(" + ") ?? "";
-                const p1Names = payload.pairs[1]?.players?.map(p => p.name).join(" + ") ?? "";
-                const c0 = payload.clubs[0]?.name ?? "";
-                const c1 = payload.clubs[1]?.name ?? "";
-                const oldS = `${payload.oldScore[0]}-${payload.oldScore[1]}`;
-                const newS = `${payload.newScore[0]}-${payload.newScore[1]}`;
-                const teamsLabel = p0Names && p1Names ? `${p0Names} vs ${p1Names}` : `${c0} vs ${c1}`;
-                const body = `${teamsLabel}: ${oldS} → ${newS}`;
-                RemoteStorageService.notifyTeamAdminsResultEdited(
-                  payload.eveningId,
-                  "תוצאה נערכה בטורניר",
-                  body,
-                  {
-                    match_id: payload.matchId,
-                    old_score: payload.oldScore,
-                    new_score: payload.newScore,
-                    clubs: [c0, c1],
-                  },
-                ).catch((e) => console.warn("notifyTeamAdminsResultEdited failed:", e?.message || e));
+              
+                void (async () => {
+                  const p0Names = payload.pairs[0]?.players?.map(p => p.name).join(" + ") ?? "";
+                  const p1Names = payload.pairs[1]?.players?.map(p => p.name).join(" + ") ?? "";
+                  const c0 = payload.clubs[0]?.name ?? "";
+                  const c1 = payload.clubs[1]?.name ?? "";
+                  const oldS = `${payload.oldScore[0]}-${payload.oldScore[1]}`;
+                  const newS = `${payload.newScore[0]}-${payload.newScore[1]}`;
+                  const teamsLabel = p0Names && p1Names ? `${p0Names} vs ${p1Names}` : `${c0} vs ${c1}`;
+                  const body = `${teamsLabel}: ${oldS} → ${newS}`;
+              
+                  try {
+                    await RemoteStorageService.updateCompletedMatchScore(payload.eveningId, {
+                      roundIndex: payload.roundIndex,
+                      matchIndex: payload.matchIndex,
+                      scoreA: payload.newScore[0],
+                      scoreB: payload.newScore[1],
+                    });
+              
+                    await RemoteStorageService.notifyTeamAdminsResultEdited(
+                      payload.eveningId,
+                      "תוצאה נערכה בטורניר",
+                      body,
+                      {
+                        match_id: payload.matchId,
+                        round_index: payload.roundIndex,
+                        match_index: payload.matchIndex,
+                        old_score: payload.oldScore,
+                        new_score: payload.newScore,
+                        clubs: [c0, c1],
+                      },
+                    );
+                  } catch (e: any) {
+                    console.error("updateCompletedMatchScore failed:", e?.message || e);
+                    toast({
+                      title: "שגיאה בעריכת התוצאה",
+                      description: e?.message || "לא ניתן לשמור את שינוי התוצאה כרגע.",
+                      variant: "destructive",
+                    });
+                  }
+                })();
               }}
               onStopTournament={() => currentEvening && handleStopTournament(currentEvening.id, "regular")}
               onRoundModeSelection={(nextRoundIndex) => {
@@ -1471,6 +1502,7 @@ const handleGoHome = () => {
 
           )
         ) : null;
+      }
       
       case 'summary':
         return currentEvening ? (
