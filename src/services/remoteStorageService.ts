@@ -252,6 +252,32 @@ export class RemoteStorageService {
     return data as unknown as Evening;
   }
 
+  static async updateCompletedMatchScore(
+    eveningId: string,
+    payload: {
+      roundIndex: number;
+      matchIndex: number;
+      scoreA: number;
+      scoreB: number;
+    }
+  ): Promise<Evening> {
+    if (!supabase) throw new Error("Supabase is not configured");
+  
+    const { data, error } = await supabase.rpc("update_completed_match_score", {
+      _evening_id: eveningId,
+      _round_index: payload.roundIndex,
+      _match_index: payload.matchIndex,
+      _score_a: payload.scoreA,
+      _score_b: payload.scoreB,
+    });
+  
+    if (error) {
+      throw new Error(error.message);
+    }
+  
+    return data as unknown as Evening;
+  }
+
   static async cancelTeamEvening(eveningId: string): Promise<Evening> {
     if (!supabase) throw new Error("Supabase is not configured");
     const { data, error } = await supabase.rpc("cancel_team_evening", {
