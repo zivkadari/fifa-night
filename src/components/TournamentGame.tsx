@@ -233,6 +233,58 @@ export const TournamentGame = ({
     saveCurrentState();
   }, [currentEvening, onUpdateEvening]);
 
+  // Recalculate used clubs, consumed clubs, and visible team pools whenever
+  // currentEvening / currentRound / originalTeamPools change. This keeps the
+  // admin's pool view in sync when a remote (e.g. playing user) submission
+  // arrives via realtime/polling and updates currentEvening.
+  useEffect(() => {
+    if (!currentEvening || currentEvening.type === 'singles') return;
+    const round = currentEvening.rounds[currentRound];
+    if (!round) return;
+
+    // Used clubs across the whole evening (all completed matches)
+    const counts: Record<string, number> = {};
+    currentEvening.rounds.forEach((r) => {
+      r.matches.forEach((m) => {
+        if (m.completed && m.clubs?.[0]?.id && m.clubs?.[1]?.id) {
+          counts[m.clubs[0].id] = (counts[m.clubs[0].id] ?? 0) + 1;
+          counts[m.clubs[1].id] = (counts[m.clubs[1].id] ?? 0) + 1;
+        }
+      });
+    });
+    setUsedClubCounts(counts);
+
+    // Consumed allocations in the current round only
+    const consumedThisRound: string[] = [];
+    round.matches.forEach((m) => {
+      if (m.completed && m.clubs?.[0]?.id && m.clubs?.[1]?.id) {
+        consumedThisRound.push(m.clubs[0].id);
+        consumedThisRound.push(m.clubs[1].id);
+      }
+    });
+    setConsumedClubIdsThisRound(consumedThisRound);
+
+    // Re-filter the visible pools from the persisted base pools.
+    // Do NOT regenerate pools. Prefer the round's persisted teamPools; fall
+    // back to originalTeamPools held in local state.
+    const persistedPools = (round.teamPools as [Club[], Club[]] | undefined) ?? null;
+    const basePools: [Club[], Club[]] | null = persistedPools && persistedPools[0]?.length
+      ? [persistedPools[0], persistedPools[1]]
+      : (originalTeamPools[0]?.length || originalTeamPools[1]?.length
+          ? [originalTeamPools[0], originalTeamPools[1]]
+          : null);
+
+    if (basePools) {
+      setTeamPools([
+        filterPoolByAllocations(basePools[0], consumedThisRound),
+        filterPoolByAllocations(basePools[1], consumedThisRound),
+      ]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentEvening, currentRound, originalTeamPools]);
+
+
+
   // Fetch share code for sharing via WhatsApp
   useEffect(() => {
     const fetchShareCode = async () => {
