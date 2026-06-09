@@ -1204,12 +1204,15 @@ const handleGoHome = () => {
                   : undefined
             }
             onCloseTournament={
-              activeFP
-                ? () => handleStopTournament(fpEvening!.id, "fp")
-                : activeRegular
-                  ? handleCloseTournament
-                  : undefined
+              currentTeamEditReason === "owner_admin"
+                ? (activeFP
+                    ? () => handleStopTournament(fpEvening!.id, "fp")
+                    : activeRegular
+                      ? handleCloseTournament
+                      : undefined)
+                : undefined
             }
+
             onManageTeams={() => goTo('teams')}
             onFindTeam={() => goTo('find-team')}
             isAuthed={isAuthed}
