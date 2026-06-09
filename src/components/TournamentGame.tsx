@@ -64,6 +64,15 @@ interface TournamentGameProps {
   canStopTournament?: boolean;
   onStopTournament?: () => void;
   canEditCompletedMatches?: boolean;
+  canDeleteCompletedMatches?: boolean;
+  onCompletedMatchEdited?: (payload: {
+    eveningId: string;
+    matchId: string;
+    oldScore: [number, number];
+    newScore: [number, number];
+    clubs: [Club, Club];
+    pairs: [Pair, Pair];
+  }) => void;
 }
 
 export const TournamentGame = ({
@@ -77,7 +86,10 @@ export const TournamentGame = ({
   canStopTournament,
   onStopTournament,
   canEditCompletedMatches = false,
+  canDeleteCompletedMatches = false,
+  onCompletedMatchEdited,
 }: TournamentGameProps) => {
+
   // If this is a singles tournament, use the singles component
   if (evening.type === 'singles') {
     return (
