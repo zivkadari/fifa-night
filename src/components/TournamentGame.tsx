@@ -914,16 +914,17 @@ export const TournamentGame = ({
   };
 
 
-  // Delete a completed match entirely
+  // Delete a completed match entirely (admin-only)
   const deleteMatch = (matchId: string) => {
-    if (!canEditCompletedMatches) {
+    if (!canDeleteCompletedMatches) {
       toast({
         title: "אין הרשאה למחיקת תוצאה",
-        description: "רק מנהל הקבוצה יכול למחוק או לבטל תוצאה שכבר הוזנה.",
+        description: "רק מנהל הקבוצה יכול למחוק תוצאה שכבר הוזנה.",
         variant: "destructive",
       });
       return;
     }
+
   
     const round = currentEvening.rounds[currentRound];
     const match = round.matches.find(m => m.id === matchId);
