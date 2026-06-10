@@ -185,6 +185,12 @@ export const TournamentGame = ({
   const [clubsWithOverrides, setClubsWithOverrides] = useState<Club[]>(FIFA_CLUBS);
   const [overridesLoaded, setOverridesLoaded] = useState(false);
 
+  // Anti-flicker: track recent local mutations so stale incoming props don't roll us back.
+  const recentLocalMutationRef = useRef<{
+    type: "submit" | "edit" | "delete" | "local";
+    at: number;
+  } | null>(null);
+
   // Helper function to get current star rating from database overrides
   const getDisplayStars = (club: Club): number => {
     const override = clubsWithOverrides.find(c => c.id === club.id);
