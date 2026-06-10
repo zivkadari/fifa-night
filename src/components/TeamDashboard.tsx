@@ -52,6 +52,7 @@ interface TeamDashboardProps {
   onViewHistory: () => void;
   onResume?: () => void;
   onCloseTournament?: () => void;
+  onCloseTeamEvening?: (entry: ActiveTeamEveningEntry) => void;
   onManageTeams?: () => void;
   onFindTeam?: () => void;
   onJoinEvening?: () => void;
@@ -74,6 +75,7 @@ export const TeamDashboard = ({
   onViewHistory,
   onResume,
   onCloseTournament,
+  onCloseTeamEvening,
   onManageTeams,
   onFindTeam,
   onJoinEvening,
