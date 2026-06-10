@@ -717,9 +717,8 @@ useEffect(() => {
       const remoteTotalMatches = countTotalMatches(remoteEvening);
   
       const remoteHasDeletion =
-        remoteProgress < localProgress ||
-        remoteTotalMatches < localTotalMatches;
-      
+        remoteProgress < localProgress;
+
       const remoteIsNotStale =
         remoteHasDeletion ||
         remoteProgress > localProgress ||
