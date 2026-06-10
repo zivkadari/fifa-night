@@ -290,6 +290,12 @@ const Index = () => {
     currentEveningRef.current = currentEvening;
   }, [currentEvening]);
 
+  // Anti-flicker: track recent local mutations so we don't apply stale remote rollbacks.
+  const recentLocalMutationRef = useRef<{
+    type: "submit" | "edit" | "delete" | "local";
+    at: number;
+  } | null>(null);
+
 useEffect(() => {
     let mounted = true;
 
