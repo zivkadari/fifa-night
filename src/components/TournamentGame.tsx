@@ -220,11 +220,29 @@ export const TournamentGame = ({
       const previousTotal = countTotalMatches(previousEvening);
       const incomingTotal = countTotalMatches(evening);
   
-      const incomingHasDeletion =
-        incomingCompleted < previousCompleted;
+      const pending = recentLocalMutationRef.current;
+      const hasRecentLocalMutation =
+        !!pending && Date.now() - pending.at < 8000;
+
+      const incomingLooksLikeDeletion = incomingCompleted < previousCompleted;
+
+      if (
+        incomingLooksLikeDeletion &&
+        hasRecentLocalMutation &&
+        pending?.type !== "delete"
+      ) {
+        console.warn("[TournamentGame] Ignored incoming rollback during recent local mutation", {
+          previousCompleted,
+          incomingCompleted,
+          previousTotal,
+          incomingTotal,
+          pending,
+        });
+        return previousEvening;
+      }
 
       const incomingIsNotStale =
-        incomingHasDeletion ||
+        incomingLooksLikeDeletion ||
         incomingCompleted > previousCompleted ||
         (incomingCompleted === previousCompleted && incomingTotal >= previousTotal);
   
