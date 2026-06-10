@@ -214,7 +214,12 @@ export const TournamentGame = ({
       const previousTotal = countTotalMatches(previousEvening);
       const incomingTotal = countTotalMatches(evening);
   
+      const incomingHasDeletion =
+        incomingCompleted < previousCompleted ||
+        incomingTotal < previousTotal;
+      
       const incomingIsNotStale =
+        incomingHasDeletion ||
         incomingCompleted > previousCompleted ||
         (incomingCompleted === previousCompleted && incomingTotal >= previousTotal);
   
