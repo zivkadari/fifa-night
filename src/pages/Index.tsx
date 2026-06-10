@@ -1493,6 +1493,26 @@ const handleGoHome = () => {
                   }
                 })();
               }}
+              onCompletedMatchDeleted={async (payload) => {
+                if (getEditReasonForEvening(payload.eveningId) !== "owner_admin") {
+                  toast({
+                    title: "אין הרשאה למחיקת משחק",
+                    description: "רק מנהל הקבוצה יכול למחוק תוצאה קיימת.",
+                    variant: "destructive",
+                  });
+                  return null;
+                }
+              
+                const updated = await RemoteStorageService.deleteCompletedMatchScore(payload.eveningId, {
+                  roundIndex: payload.roundIndex,
+                  matchIndex: payload.matchIndex,
+                });
+              
+                setCurrentEvening(updated);
+                persistActiveEveningNow(updated);
+              
+                return updated;
+              }}
               onStopTournament={() => currentEvening && handleStopTournament(currentEvening.id, "regular")}
               onRoundModeSelection={(nextRoundIndex) => {
                 setPendingRoundIndex(nextRoundIndex);
