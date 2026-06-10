@@ -215,9 +215,8 @@ export const TournamentGame = ({
       const incomingTotal = countTotalMatches(evening);
   
       const incomingHasDeletion =
-        incomingCompleted < previousCompleted ||
-        incomingTotal < previousTotal;
-      
+        incomingCompleted < previousCompleted;
+
       const incomingIsNotStale =
         incomingHasDeletion ||
         incomingCompleted > previousCompleted ||
@@ -1128,8 +1127,29 @@ export const TournamentGame = ({
     toast({ title: 'משחק נמחק', description: 'הקבוצות הוחזרו למאגר' });
   };
   const submitResult = (score1: number, score2: number) => {
-    if (!currentMatch) return;
-    
+    if (!currentMatch) {
+      toast({
+        title: "לא נמצא משחק פעיל",
+        description: "חזור לבחירת קבוצות ונסה שוב.",
+        variant: "destructive",
+      });
+      setGamePhase("team-selection");
+      return;
+    }
+
+    const clubA = selectedClubs[0] ?? currentMatch.clubs?.[0] ?? null;
+    const clubB = selectedClubs[1] ?? currentMatch.clubs?.[1] ?? null;
+
+    if (!clubA?.id || !clubB?.id) {
+      toast({
+        title: "חסרות קבוצות למשחק",
+        description: "בחר מחדש את שתי הקבוצות ואז הזן תוצאה.",
+        variant: "destructive",
+      });
+      setGamePhase("team-selection");
+      return;
+    }
+
     let winner: string;
     if (score1 > score2) {
       winner = currentMatch.pairs[0].id;
@@ -1142,7 +1162,7 @@ export const TournamentGame = ({
 
     const completedMatch: Match = {
       ...currentMatch,
-      clubs: [selectedClubs[0]!, selectedClubs[1]!],
+      clubs: [clubA, clubB],
       score: [score1, score2],
       winner,
       completed: true
@@ -1184,8 +1204,8 @@ export const TournamentGame = ({
     onSaveEveningRemote?.(updatedEvening);
 
     // Mark selected clubs as used only after match completion
-    const c1 = selectedClubs[0]!;
-    const c2 = selectedClubs[1]!;
+    const c1 = clubA;
+    const c2 = clubB;
     
     // Update club usage counts
     setUsedClubCounts(prev => ({

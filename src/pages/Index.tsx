@@ -432,9 +432,13 @@ useEffect(() => {
           );
   
           if (updatedRegular) {
-            setCurrentEvening(updatedRegular.evening);
             setCurrentTeamId(updatedRegular.team_id);
             setCurrentTeamEditReason(updatedRegular.reason);
+
+            if (appState === "home") {
+              setCurrentEvening(updatedRegular.evening);
+              StorageService.saveActiveEvening(updatedRegular.evening);
+            }
           }
         }
   
@@ -713,9 +717,8 @@ useEffect(() => {
       const remoteTotalMatches = countTotalMatches(remoteEvening);
   
       const remoteHasDeletion =
-        remoteProgress < localProgress ||
-        remoteTotalMatches < localTotalMatches;
-      
+        remoteProgress < localProgress;
+
       const remoteIsNotStale =
         remoteHasDeletion ||
         remoteProgress > localProgress ||
