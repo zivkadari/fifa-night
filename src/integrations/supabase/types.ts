@@ -638,6 +638,14 @@ export type Database = {
         Args: { _data: Json; _evening_id: string; _team_id: string }
         Returns: string
       }
+      delete_completed_match_score: {
+        Args: {
+          _evening_id: string
+          _match_index: number
+          _round_index: number
+        }
+        Returns: Json
+      }
       dismiss_notification: {
         Args: { _notification_id: string }
         Returns: boolean
@@ -763,6 +771,16 @@ export type Database = {
       sync_join_request_notifications: { Args: never; Returns: number }
       sync_team_evening_notifications: { Args: never; Returns: number }
       trigger_stats_backfill: { Args: never; Returns: undefined }
+      update_completed_match_score: {
+        Args: {
+          _evening_id: string
+          _match_index: number
+          _round_index: number
+          _score_a: number
+          _score_b: number
+        }
+        Returns: Json
+      }
       update_evening_live_admin: {
         Args: { _data: Json; _evening_id: string }
         Returns: Json
