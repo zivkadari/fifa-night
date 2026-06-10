@@ -929,6 +929,7 @@ export const TournamentGame = ({
 
   // Edit an already-submitted match result
   const editMatchResult = (matchId: string, newScore1: number, newScore2: number) => {
+      recentLocalMutationRef.current = { type: "edit", at: Date.now() };
       if (!canEditCompletedMatches) {
         toast({
           title: "אין הרשאה לעריכת תוצאה",
