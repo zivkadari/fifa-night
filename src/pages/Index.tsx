@@ -1509,6 +1509,7 @@ const handleGoHome = () => {
               canDeleteCompletedMatches={regularReason === "owner_admin"}
               onCompletedMatchEdited={(payload) => {
                 if (currentTeamEditReason !== "playing") return;
+                recentLocalMutationRef.current = { type: "edit", at: Date.now() };
               
                 void (async () => {
                   const p0Names = payload.pairs[0]?.players?.map(p => p.name).join(" + ") ?? "";
