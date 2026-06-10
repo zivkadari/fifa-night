@@ -1153,6 +1153,7 @@ export const TournamentGame = ({
     toast({ title: 'משחק נמחק', description: 'הקבוצות הוחזרו למאגר' });
   };
   const submitResult = (score1: number, score2: number) => {
+    recentLocalMutationRef.current = { type: "submit", at: Date.now() };
     if (!currentMatch) {
       toast({
         title: "לא נמצא משחק פעיל",
