@@ -1010,6 +1010,7 @@ export const TournamentGame = ({
 
   // Delete a completed match entirely (admin-only)
   const deleteMatch = async (matchId: string) => {
+    recentLocalMutationRef.current = { type: "delete", at: Date.now() };
     if (!canDeleteCompletedMatches) {
       toast({
         title: "אין הרשאה למחיקת תוצאה",
