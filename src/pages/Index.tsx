@@ -708,12 +708,15 @@ useEffect(() => {
       const localTotalMatches = countTotalMatches(local);
       const remoteTotalMatches = countTotalMatches(remoteEvening);
   
+      const remoteHasDeletion =
+        remoteProgress < localProgress ||
+        remoteTotalMatches < localTotalMatches;
+      
       const remoteIsNotStale =
+        remoteHasDeletion ||
         remoteProgress > localProgress ||
         (remoteProgress === localProgress && remoteTotalMatches >= localTotalMatches);
-  
-      // Only accept remote state if it does not remove local match records.
-      // This prevents saved score updates from overwriting a newly-created next match.
+      
       if (remoteIsNotStale) {
         setCurrentEvening(remoteEvening);
         StorageService.saveActiveEvening(remoteEvening);
