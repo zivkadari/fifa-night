@@ -195,6 +195,7 @@ export const TeamDashboard = ({
             <CardContent className="p-3 space-y-2">
               <div className="flex items-start gap-3">
                 <Trophy className="h-5 w-5 text-neon-green shrink-0 mt-0.5" />
+              
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-foreground break-words">
                     {entry.team_name || "קבוצה"}
@@ -207,6 +208,44 @@ export const TeamDashboard = ({
                     {permissionText}
                   </p>
                 </div>
+              
+                {entry.reason === "owner_admin" && onCloseTeamEvening && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0"
+                        onClick={(e) => e.stopPropagation()}
+                        title="סגור טורניר"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+              
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>לסגור את הטורניר?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          הטורניר יסומן כמופסק ויוסר מרשימת הטורנירים הפעילים.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+              
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>ביטול</AlertDialogCancel>
+                        <AlertDialogAction
+                          className="bg-destructive hover:bg-destructive/90"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onCloseTeamEvening(entry);
+                          }}
+                        >
+                          סגור טורניר
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
               </div>
               <Button
                 variant={entry.can_edit ? "gaming" : "outline"}
