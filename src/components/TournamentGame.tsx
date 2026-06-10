@@ -65,6 +65,7 @@ interface TournamentGameProps {
   onStopTournament?: () => void;
   canEditCompletedMatches?: boolean;
   canDeleteCompletedMatches?: boolean;
+
   onCompletedMatchEdited?: (payload: {
     eveningId: string;
     roundIndex: number;
@@ -75,6 +76,13 @@ interface TournamentGameProps {
     clubs: [Club, Club];
     pairs: [Pair, Pair];
   }) => void;
+
+  onCompletedMatchDeleted?: (payload: {
+    eveningId: string;
+    roundIndex: number;
+    matchIndex: number;
+    matchId: string;
+  }) => Promise<Evening | null | void> | Evening | null | void;
 }
 
 export const TournamentGame = ({
@@ -90,6 +98,7 @@ export const TournamentGame = ({
   canEditCompletedMatches = false,
   canDeleteCompletedMatches = false,
   onCompletedMatchEdited,
+  onCompletedMatchDeleted,
 }: TournamentGameProps) => {
 
   // If this is a singles tournament, use the singles component
@@ -971,7 +980,7 @@ export const TournamentGame = ({
 
 
   // Delete a completed match entirely (admin-only)
-  const deleteMatch = (matchId: string) => {
+  const deleteMatch = async (matchId: string) => {
     if (!canDeleteCompletedMatches) {
       toast({
         title: "אין הרשאה למחיקת תוצאה",
@@ -983,8 +992,79 @@ export const TournamentGame = ({
 
   
     const round = currentEvening.rounds[currentRound];
-    const match = round.matches.find(m => m.id === matchId);
-    if (!match) return;
+    const matchIdx = round.matches.findIndex(m => m.id === matchId);
+    if (matchIdx < 0) return;
+    
+    const match = round.matches[matchIdx];
+    if (onCompletedMatchDeleted) {
+      try {
+        const serverEvening = await onCompletedMatchDeleted({
+          eveningId: currentEvening.id,
+          roundIndex: currentRound,
+          matchIndex: matchIdx,
+          matchId,
+        });
+    
+        if (serverEvening) {
+          setCurrentEvening(serverEvening);
+          onUpdateEvening(serverEvening);
+    
+          const serverRound = serverEvening.rounds[currentRound];
+          if (serverRound) {
+            const consumedThisRound: string[] = [];
+    
+            serverRound.matches.forEach((m) => {
+              if (m.completed && m.clubs?.[0]?.id && m.clubs?.[1]?.id) {
+                consumedThisRound.push(m.clubs[0].id);
+                consumedThisRound.push(m.clubs[1].id);
+              }
+            });
+    
+            setConsumedClubIdsThisRound(consumedThisRound);
+    
+            const basePools =
+              (serverRound.teamPools as [Club[], Club[]] | undefined) ??
+              originalTeamPools;
+    
+            setOriginalTeamPools([basePools[0], basePools[1]]);
+            setTeamPools([
+              filterPoolByAllocations(basePools[0], consumedThisRound),
+              filterPoolByAllocations(basePools[1], consumedThisRound),
+            ]);
+    
+            const inProgress = serverRound.matches.find(m => !m.completed);
+            if (inProgress) {
+              setCurrentMatch(inProgress);
+    
+              if (inProgress.clubs?.[0]?.id && inProgress.clubs?.[1]?.id) {
+                setSelectedClubs([inProgress.clubs[0], inProgress.clubs[1]]);
+                setGamePhase("countdown");
+              } else {
+                setSelectedClubs([null, null]);
+                setGamePhase("team-selection");
+              }
+            } else {
+              setSelectedClubs([null, null]);
+              setGamePhase("team-selection");
+              createNextMatch(serverEvening, currentRound);
+            }
+          }
+    
+          toast({ title: "משחק נמחק", description: "הקבוצות הוחזרו למאגר" });
+          return;
+        }
+
+        return;
+      } catch (error: any) {
+        console.error("deleteCompletedMatchScore failed:", error?.message || error);
+        toast({
+          title: "שגיאה במחיקת המשחק",
+          description: error?.message || "לא ניתן למחוק את המשחק כרגע.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
 
     // Return clubs to pool by removing from used sets
     const c1 = match.clubs[0];
