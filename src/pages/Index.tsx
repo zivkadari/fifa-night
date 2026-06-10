@@ -432,9 +432,13 @@ useEffect(() => {
           );
   
           if (updatedRegular) {
-            setCurrentEvening(updatedRegular.evening);
             setCurrentTeamId(updatedRegular.team_id);
             setCurrentTeamEditReason(updatedRegular.reason);
+
+            if (appState === "home") {
+              setCurrentEvening(updatedRegular.evening);
+              StorageService.saveActiveEvening(updatedRegular.evening);
+            }
           }
         }
   
