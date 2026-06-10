@@ -215,9 +215,8 @@ export const TournamentGame = ({
       const incomingTotal = countTotalMatches(evening);
   
       const incomingHasDeletion =
-        incomingCompleted < previousCompleted ||
-        incomingTotal < previousTotal;
-      
+        incomingCompleted < previousCompleted;
+
       const incomingIsNotStale =
         incomingHasDeletion ||
         incomingCompleted > previousCompleted ||
