@@ -1204,8 +1204,8 @@ export const TournamentGame = ({
     onSaveEveningRemote?.(updatedEvening);
 
     // Mark selected clubs as used only after match completion
-    const c1 = selectedClubs[0]!;
-    const c2 = selectedClubs[1]!;
+    const c1 = clubA;
+    const c2 = clubB;
     
     // Update club usage counts
     setUsedClubCounts(prev => ({
