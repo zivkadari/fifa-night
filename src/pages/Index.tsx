@@ -290,6 +290,12 @@ const Index = () => {
     currentEveningRef.current = currentEvening;
   }, [currentEvening]);
 
+  // Anti-flicker: track recent local mutations so we don't apply stale remote rollbacks.
+  const recentLocalMutationRef = useRef<{
+    type: "submit" | "edit" | "delete" | "local";
+    at: number;
+  } | null>(null);
+
 useEffect(() => {
     let mounted = true;
 
@@ -716,11 +722,29 @@ useEffect(() => {
       const localTotalMatches = countTotalMatches(local);
       const remoteTotalMatches = countTotalMatches(remoteEvening);
   
-      const remoteHasDeletion =
-        remoteProgress < localProgress;
+      const pending = recentLocalMutationRef.current;
+      const hasRecentLocalMutation =
+        !!pending && Date.now() - pending.at < 8000;
+
+      const remoteLooksLikeDeletion = remoteProgress < localProgress;
+
+      if (
+        remoteLooksLikeDeletion &&
+        hasRecentLocalMutation &&
+        pending?.type !== "delete"
+      ) {
+        console.warn("[Live Sync] Ignored remote rollback during recent local mutation", {
+          localProgress,
+          remoteProgress,
+          localTotalMatches,
+          remoteTotalMatches,
+          pending,
+        });
+        return;
+      }
 
       const remoteIsNotStale =
-        remoteHasDeletion ||
+        remoteLooksLikeDeletion ||
         remoteProgress > localProgress ||
         (remoteProgress === localProgress && remoteTotalMatches >= localTotalMatches);
       
@@ -734,7 +758,12 @@ useEffect(() => {
           localTotalMatches,
           remoteTotalMatches,
         });
-  
+
+        if (hasRecentLocalMutation) {
+          console.warn("[Live Sync] Skipping re-push during recent local mutation window");
+          return;
+        }
+
         if (currentTeamEditReason === "owner_admin" || currentTeamEditReason === null) {
           RemoteStorageService.upsertEveningLive(local).catch((error) => {
             console.error("Failed to re-push local evening after stale live update:", error?.message || error);
@@ -1048,6 +1077,7 @@ const handleGoHome = () => {
   };
 
   const handleUpdateEvening = (evening: Evening) => {
+    recentLocalMutationRef.current = { type: "local", at: Date.now() };
     setCurrentEvening(evening);
   
     if (!evening.completed) {
@@ -1479,6 +1509,7 @@ const handleGoHome = () => {
               canDeleteCompletedMatches={regularReason === "owner_admin"}
               onCompletedMatchEdited={(payload) => {
                 if (currentTeamEditReason !== "playing") return;
+                recentLocalMutationRef.current = { type: "edit", at: Date.now() };
               
                 void (async () => {
                   const p0Names = payload.pairs[0]?.players?.map(p => p.name).join(" + ") ?? "";
@@ -1531,6 +1562,7 @@ const handleGoHome = () => {
                   return null;
                 }
               
+                recentLocalMutationRef.current = { type: "delete", at: Date.now() };
                 const updated = await RemoteStorageService.deleteCompletedMatchScore(payload.eveningId, {
                   roundIndex: payload.roundIndex,
                   matchIndex: payload.matchIndex,

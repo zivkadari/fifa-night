@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -185,6 +185,12 @@ export const TournamentGame = ({
   const [clubsWithOverrides, setClubsWithOverrides] = useState<Club[]>(FIFA_CLUBS);
   const [overridesLoaded, setOverridesLoaded] = useState(false);
 
+  // Anti-flicker: track recent local mutations so stale incoming props don't roll us back.
+  const recentLocalMutationRef = useRef<{
+    type: "submit" | "edit" | "delete" | "local";
+    at: number;
+  } | null>(null);
+
   // Helper function to get current star rating from database overrides
   const getDisplayStars = (club: Club): number => {
     const override = clubsWithOverrides.find(c => c.id === club.id);
@@ -214,11 +220,29 @@ export const TournamentGame = ({
       const previousTotal = countTotalMatches(previousEvening);
       const incomingTotal = countTotalMatches(evening);
   
-      const incomingHasDeletion =
-        incomingCompleted < previousCompleted;
+      const pending = recentLocalMutationRef.current;
+      const hasRecentLocalMutation =
+        !!pending && Date.now() - pending.at < 8000;
+
+      const incomingLooksLikeDeletion = incomingCompleted < previousCompleted;
+
+      if (
+        incomingLooksLikeDeletion &&
+        hasRecentLocalMutation &&
+        pending?.type !== "delete"
+      ) {
+        console.warn("[TournamentGame] Ignored incoming rollback during recent local mutation", {
+          previousCompleted,
+          incomingCompleted,
+          previousTotal,
+          incomingTotal,
+          pending,
+        });
+        return previousEvening;
+      }
 
       const incomingIsNotStale =
-        incomingHasDeletion ||
+        incomingLooksLikeDeletion ||
         incomingCompleted > previousCompleted ||
         (incomingCompleted === previousCompleted && incomingTotal >= previousTotal);
   
@@ -905,6 +929,7 @@ export const TournamentGame = ({
 
   // Edit an already-submitted match result
   const editMatchResult = (matchId: string, newScore1: number, newScore2: number) => {
+      recentLocalMutationRef.current = { type: "edit", at: Date.now() };
       if (!canEditCompletedMatches) {
         toast({
           title: "אין הרשאה לעריכת תוצאה",
@@ -985,6 +1010,7 @@ export const TournamentGame = ({
 
   // Delete a completed match entirely (admin-only)
   const deleteMatch = async (matchId: string) => {
+    recentLocalMutationRef.current = { type: "delete", at: Date.now() };
     if (!canDeleteCompletedMatches) {
       toast({
         title: "אין הרשאה למחיקת תוצאה",
@@ -1127,6 +1153,7 @@ export const TournamentGame = ({
     toast({ title: 'משחק נמחק', description: 'הקבוצות הוחזרו למאגר' });
   };
   const submitResult = (score1: number, score2: number) => {
+    recentLocalMutationRef.current = { type: "submit", at: Date.now() };
     if (!currentMatch) {
       toast({
         title: "לא נמצא משחק פעיל",
