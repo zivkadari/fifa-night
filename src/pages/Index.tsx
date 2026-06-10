@@ -1077,6 +1077,7 @@ const handleGoHome = () => {
   };
 
   const handleUpdateEvening = (evening: Evening) => {
+    recentLocalMutationRef.current = { type: "local", at: Date.now() };
     setCurrentEvening(evening);
   
     if (!evening.completed) {
