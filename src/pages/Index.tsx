@@ -537,8 +537,12 @@ useEffect(() => {
     goTo('home');
   };
 
-  const handleStopTournament = async (eveningId: string, kind: "regular" | "fp" = "regular") => {
-    const localEvening = kind === "fp" ? fpEvening : currentEvening;
+  const handleStopTournament = async (
+    eveningId: string,
+    kind: "regular" | "fp" = "regular",
+    localEveningOverride?: Evening | FPEvening | any
+  ) => {
+    const localEvening = localEveningOverride ?? (kind === "fp" ? fpEvening : currentEvening);
   
     if (!localEvening) {
       toast({
@@ -1238,6 +1242,24 @@ const handleGoHome = () => {
             currentActiveEveningId={currentActiveEveningId ?? null}
             authLoading={authLoading}
             onOpenTeamEvening={handleOpenTeamEvening}
+            onCloseTeamEvening={(entry) => {
+              if (entry.reason !== "owner_admin") {
+                toast({
+                  title: "אין הרשאה לסגור טורניר",
+                  description: "רק מנהל הקבוצה יכול לסגור טורניר פעיל.",
+                  variant: "destructive",
+                });
+                return;
+              }
+            
+              const isFP = Array.isArray((entry.evening as any)?.schedule);
+            
+              handleStopTournament(
+                entry.evening_id,
+                isFP ? "fp" : "regular",
+                entry.evening
+              );
+            }}
           />
         );
       }
@@ -1449,7 +1471,7 @@ const handleGoHome = () => {
               onGoHome={handleGoHome}
               onUpdateEvening={handleUpdateEvening}
               onSaveEveningRemote={handleSaveEveningRemote}
-              canStopTournament={currentTeamEditReason === "owner_admin"}
+              canStopTournament={regularReason === "owner_admin"}
               canEditCompletedMatches={regularReason === "owner_admin" || regularReason === "playing"}
               canDeleteCompletedMatches={regularReason === "owner_admin"}
               onCompletedMatchEdited={(payload) => {
