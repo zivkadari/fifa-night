@@ -1562,6 +1562,7 @@ const handleGoHome = () => {
                   return null;
                 }
               
+                recentLocalMutationRef.current = { type: "delete", at: Date.now() };
                 const updated = await RemoteStorageService.deleteCompletedMatchScore(payload.eveningId, {
                   roundIndex: payload.roundIndex,
                   matchIndex: payload.matchIndex,
