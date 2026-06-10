@@ -722,11 +722,29 @@ useEffect(() => {
       const localTotalMatches = countTotalMatches(local);
       const remoteTotalMatches = countTotalMatches(remoteEvening);
   
-      const remoteHasDeletion =
-        remoteProgress < localProgress;
+      const pending = recentLocalMutationRef.current;
+      const hasRecentLocalMutation =
+        !!pending && Date.now() - pending.at < 8000;
+
+      const remoteLooksLikeDeletion = remoteProgress < localProgress;
+
+      if (
+        remoteLooksLikeDeletion &&
+        hasRecentLocalMutation &&
+        pending?.type !== "delete"
+      ) {
+        console.warn("[Live Sync] Ignored remote rollback during recent local mutation", {
+          localProgress,
+          remoteProgress,
+          localTotalMatches,
+          remoteTotalMatches,
+          pending,
+        });
+        return;
+      }
 
       const remoteIsNotStale =
-        remoteHasDeletion ||
+        remoteLooksLikeDeletion ||
         remoteProgress > localProgress ||
         (remoteProgress === localProgress && remoteTotalMatches >= localTotalMatches);
       
@@ -740,7 +758,12 @@ useEffect(() => {
           localTotalMatches,
           remoteTotalMatches,
         });
-  
+
+        if (hasRecentLocalMutation) {
+          console.warn("[Live Sync] Skipping re-push during recent local mutation window");
+          return;
+        }
+
         if (currentTeamEditReason === "owner_admin" || currentTeamEditReason === null) {
           RemoteStorageService.upsertEveningLive(local).catch((error) => {
             console.error("Failed to re-push local evening after stale live update:", error?.message || error);
