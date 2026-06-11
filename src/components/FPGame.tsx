@@ -1039,19 +1039,6 @@ export const FPGame = ({
 
           <TabsContent value="schedule">
             <Card className="bg-gradient-card border-neon-green/20 p-3 shadow-card">
-              {canReorderSchedule ? (
-                <FPScheduleReorder
-                  evening={currentEvening}
-                  onUpdateEvening={(updated) => {
-                    setCurrentEvening(updated);
-                    onUpdateEvening(updated);
-                  }}
-                />
-              ) : (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  סידור המשחקים זמין למנהל בלבד.
-                </p>
-              )}
               <FPScheduleReorder
                 evening={currentEvening}
                 canEditSchedule={canReorderSchedule}

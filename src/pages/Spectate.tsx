@@ -30,7 +30,6 @@ import { FPTimingCard } from "@/components/FPTimingCard";
 import InsightCards from "@/components/spectate/InsightCards";
 import TeamSetupButton from "@/components/spectate/TeamSetupButton";
 import CouplesSpectateView from "@/components/spectate/CouplesSpectateView";
-import { FPGame } from "@/components/FPGame";
 import { TIER_LABELS, TIER_EMOJIS, TIER_COLORS, TIER_TEXT, computeTierIndices } from "@/lib/tierRanking";
 
 const SUPABASE_PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID || "ikbywydyidnkohbdrqdk";
@@ -158,31 +157,6 @@ export default function Spectate() {
       </div>
     );
   }
-
-  // Five-player mode uses the unified game screen in view-only mode.
-  if (eveningMode === "five-player" && evening) {
-    return (
-      <FPGame
-        evening={evening}
-        onBack={() => navigate(-1)}
-        onComplete={() => {}}
-        onGoHome={() => navigate("/")}
-        onUpdateEvening={() => {}}
-        canSubmitNewScore={false}
-        canEditExistingResults={false}
-        canReorderSchedule={false}
-        isViewOnly={true}
-        canStopTournament={false}
-        spectatorContext={{
-          shareCode: code,
-          teamId,
-          selectedPlayerId,
-          onSwitchPlayer: clearPlayer,
-        }}
-      />
-    );
-  }
-
 
   // Determine players for picker
   const allPlayers = eveningMode === "five-player" ? evening!.players : couplesEvening!.players;
