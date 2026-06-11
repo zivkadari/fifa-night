@@ -1,6 +1,28 @@
 import { Player, Club } from '@/types/tournament';
-import { FPPair, FPMatch, FPEvening, FPTeamBank, FPPairStats, FPPlayerStats } from '@/types/fivePlayerTypes';
+import {
+  FPPair,
+  FPMatch,
+  FPEvening,
+  FPTeamBank,
+  FPPairStats,
+  FPPlayerStats,
+  FPTeamSelectionMode,
+  FPWorldCupComposition,
+} from '@/types/fivePlayerTypes';
 import { FIFA_CLUBS } from '@/data/clubs';
+
+const WORLD_CUP_RATINGS = [5, 4.5, 4, 3.5, 3] as const;
+type WorldCupRating = typeof WORLD_CUP_RATINGS[number];
+type WorldCupRatingKey = keyof FPWorldCupComposition;
+
+type CreateFPOptions = {
+  teamSelectionMode?: FPTeamSelectionMode;
+  worldCupComposition?: FPWorldCupComposition;
+};
+
+function ratingKey(rating: WorldCupRating): WorldCupRatingKey {
+  return String(rating) as WorldCupRatingKey;
+}
 
 /**
  * Generate all 10 unique pairs from 5 players.
@@ -242,6 +264,209 @@ export function generateTeamBanks(
   return banks;
 }
 
+class RatingClubBag {
+  private bag: Club[] = [];
+
+  constructor(private readonly pool: Club[], private readonly label: string) {
+    if (pool.length === 0) {
+      throw new Error(`אין קבוצות מונדיאל 26 בדירוג ${label} כוכבים`);
+    }
+  }
+
+  draw(avoidClubId?: string): Club {
+    if (this.bag.length === 0) {
+      this.bag = shuffleArray(this.pool);
+    }
+
+    let index = 0;
+    if (avoidClubId) {
+      index = this.bag.findIndex(club => club.id !== avoidClubId);
+      if (index < 0) {
+        if (this.pool.length <= 1) {
+          throw new Error(`אי אפשר להימנע מכפילות באותו משחק בדירוג ${this.label} כוכבים`);
+        }
+        this.bag = shuffleArray(this.pool);
+        index = this.bag.findIndex(club => club.id !== avoidClubId);
+      }
+    }
+
+    if (index < 0) {
+      throw new Error(`אי אפשר לבחור קבוצה מתאימה בדירוג ${this.label} כוכבים`);
+    }
+
+    return this.bag.splice(index, 1)[0];
+  }
+}
+
+function buildWorldCupRatingQueue(composition: FPWorldCupComposition): WorldCupRating[] {
+  const queue: WorldCupRating[] = [];
+  for (const rating of WORLD_CUP_RATINGS) {
+    const count = composition[ratingKey(rating)];
+    for (let i = 0; i < count; i += 1) {
+      queue.push(rating);
+    }
+  }
+  return shuffleArray(queue);
+}
+
+function buildWorldCupRatingQueuesForSchedule(
+  pairs: FPPair[],
+  schedule: FPMatch[],
+  composition: FPWorldCupComposition,
+  poolSizes: Map<WorldCupRating, number>
+): Map<string, WorldCupRating[]> | string {
+  for (let attempt = 0; attempt < 500; attempt += 1) {
+    const queues = new Map<string, WorldCupRating[]>();
+    for (const pair of pairs) {
+      queues.set(pair.id, buildWorldCupRatingQueue(composition));
+    }
+
+    const cursors = new Map<string, number>(pairs.map(pair => [pair.id, 0]));
+    let valid = true;
+
+    for (const match of schedule) {
+      const queueA = queues.get(match.pairA.id);
+      const queueB = queues.get(match.pairB.id);
+      const cursorA = cursors.get(match.pairA.id) ?? 0;
+      const cursorB = cursors.get(match.pairB.id) ?? 0;
+      const ratingA = queueA?.[cursorA];
+      const ratingB = queueB?.[cursorB];
+
+      if (!queueA || !queueB || ratingA === undefined || ratingB === undefined) {
+        return 'סידור המשחקים אינו תואם למספר הקבוצות שהוגדר לכל זוג.';
+      }
+
+      if (ratingA === ratingB && (poolSizes.get(ratingA) ?? 0) < 2) {
+        valid = false;
+        break;
+      }
+
+      cursors.set(match.pairA.id, cursorA + 1);
+      cursors.set(match.pairB.id, cursorB + 1);
+    }
+
+    if (valid) return queues;
+  }
+
+  return 'לא ניתן לשבץ את הרכב מונדיאל 26 שנבחר בלי כפילות קבוצה באותו משחק.';
+}
+
+function validateWorldCupBanks(
+  banks: FPTeamBank[],
+  composition: FPWorldCupComposition
+): string | null {
+  for (const bank of banks) {
+    const counts: FPWorldCupComposition = { '5': 0, '4.5': 0, '4': 0, '3.5': 0, '3': 0 };
+    for (const club of bank.clubs) {
+      const key = ratingKey(club.stars as WorldCupRating);
+      if (key in counts) counts[key] += 1;
+    }
+
+    for (const rating of WORLD_CUP_RATINGS) {
+      const key = ratingKey(rating);
+      if (counts[key] !== composition[key]) {
+        return 'הרכב הקבוצות שנוצר אינו תואם להגדרות המונדיאל לכל זוג.';
+      }
+    }
+  }
+  return null;
+}
+
+function generateWorldCup26Teams(
+  pairs: FPPair[],
+  schedule: FPMatch[],
+  clubs: Club[],
+  composition: FPWorldCupComposition,
+  matchCount: 15 | 30
+): { schedule: FPMatch[]; banks: FPTeamBank[] } | string {
+  const requiredPerPair = matchCount / 5;
+  const compositionSum = WORLD_CUP_RATINGS.reduce(
+    (sum, rating) => sum + composition[ratingKey(rating)],
+    0
+  );
+
+  if (matchCount % 5 !== 0) {
+    return 'במצב מונדיאל 26 מספר המשחקים חייב להתחלק ב־5.';
+  }
+
+  if (compositionSum !== requiredPerPair) {
+    return `הרכב הקבוצות חייב להסתכם ל־${requiredPerPair} קבוצות לכל זוג לפי מספר המשחקים שנבחר.`;
+  }
+
+  const worldCupClubs = clubs.filter(club => club.worldCup26 === true && !club.isPrime);
+  const bags = new Map<WorldCupRating, RatingClubBag>();
+  const poolSizes = new Map<WorldCupRating, number>();
+  for (const rating of WORLD_CUP_RATINGS) {
+    const pool = worldCupClubs.filter(club => club.stars === rating);
+    poolSizes.set(rating, pool.length);
+    if (composition[ratingKey(rating)] > 0 && pool.length === 0) {
+      return `אין קבוצות מונדיאל 26 בדירוג ${rating} כוכבים.`;
+    }
+    if (pool.length > 0) {
+      bags.set(rating, new RatingClubBag(pool, String(rating)));
+    }
+  }
+
+  const banks: FPTeamBank[] = pairs.map(pair => ({
+    pairId: pair.id,
+    clubs: [],
+    usedClubIds: [],
+  }));
+  const bankByPairId = new Map(banks.map(bank => [bank.pairId, bank]));
+  const ratingQueues = buildWorldCupRatingQueuesForSchedule(
+    pairs,
+    schedule,
+    composition,
+    poolSizes
+  );
+  if (typeof ratingQueues === 'string') return ratingQueues;
+
+  const updatedSchedule: FPMatch[] = [];
+
+  try {
+    for (const match of schedule) {
+      const queueA = ratingQueues.get(match.pairA.id);
+      const queueB = ratingQueues.get(match.pairB.id);
+      const ratingA = queueA?.shift();
+      const ratingB = queueB?.shift();
+
+      if (!queueA || !queueB || ratingA === undefined || ratingB === undefined) {
+        return 'סידור המשחקים אינו תואם למספר הקבוצות שהוגדר לכל זוג.';
+      }
+
+      const bagA = bags.get(ratingA);
+      const bagB = bags.get(ratingB);
+      if (!bagA || !bagB) {
+        return 'לא נמצאו מספיק קבוצות מונדיאל 26 להרכב שנבחר.';
+      }
+
+      const clubA = bagA.draw();
+      const clubB = ratingA === ratingB
+        ? bagA.draw(clubA.id)
+        : bagB.draw(clubA.id);
+
+      if (clubA.id === clubB.id) {
+        return 'אי אפשר לשבץ את אותה קבוצה לשני הזוגות באותו משחק.';
+      }
+
+      bankByPairId.get(match.pairA.id)?.clubs.push(clubA);
+      bankByPairId.get(match.pairB.id)?.clubs.push(clubB);
+      updatedSchedule.push({ ...match, clubA, clubB });
+    }
+  } catch (error: any) {
+    return error?.message || 'שגיאה ביצירת מאגר קבוצות מונדיאל 26.';
+  }
+
+  if ([...ratingQueues.values()].some(queue => queue.length > 0)) {
+    return 'לא כל הקבוצות שהוגדרו שובצו לזוגות.';
+  }
+
+  const validationError = validateWorldCupBanks(banks, composition);
+  if (validationError) return validationError;
+
+  return { schedule: updatedSchedule, banks };
+}
+
 /**
  * Calculate pair standings from completed matches.
  */
@@ -347,19 +572,44 @@ export function calculatePlayerStats(evening: FPEvening): FPPlayerStats[] {
  * Create a new 5-player doubles evening.
  * matchCount: 15 (short) or 30 (full, default).
  */
-export function createFPEvening(players: Player[], clubsOverride?: Club[], maxAppearances: number = 2, matchCount: 15 | 30 = 30): FPEvening | string {
+export function createFPEvening(
+  players: Player[],
+  clubsOverride?: Club[],
+  maxAppearances: number = 2,
+  matchCount: 15 | 30 = 30,
+  options: CreateFPOptions = {}
+): FPEvening | string {
   if (players.length !== 5) return 'נדרשים בדיוק 5 שחקנים';
 
   const cycles = matchCount === 15 ? 1 : 2;
   const teamsPerTier = matchCount === 15 ? 1 : 2;
+  const teamSelectionMode = options.teamSelectionMode ?? 'default';
 
   // Keep players[0] fixed as the first sitting-out player.
   // Shuffle only the remaining players so setup input order still does not create full schedule bias.
   const shuffledPlayers = [players[0], ...shuffleArray(players.slice(1))];
   
   const pairs = generateAllPairs(shuffledPlayers);
-  const schedule = generateSchedule(shuffledPlayers, pairs, cycles);
-  const banksResult = generateTeamBanks(pairs, shuffledPlayers, clubsOverride, maxAppearances, teamsPerTier);
+  let schedule = generateSchedule(shuffledPlayers, pairs, cycles);
+  let banksResult: FPTeamBank[] | string;
+
+  if (teamSelectionMode === 'world-cup-26') {
+    if (!options.worldCupComposition) {
+      return 'יש להגדיר הרכב קבוצות למצב מונדיאל 26.';
+    }
+    const worldCupResult = generateWorldCup26Teams(
+      pairs,
+      schedule,
+      clubsOverride || FIFA_CLUBS,
+      options.worldCupComposition,
+      matchCount
+    );
+    if (typeof worldCupResult === 'string') return worldCupResult;
+    schedule = worldCupResult.schedule;
+    banksResult = worldCupResult.banks;
+  } else {
+    banksResult = generateTeamBanks(pairs, shuffledPlayers, clubsOverride, maxAppearances, teamsPerTier);
+  }
 
   if (typeof banksResult === 'string') return banksResult;
 
@@ -375,6 +625,8 @@ export function createFPEvening(players: Player[], clubsOverride?: Club[], maxAp
     currentMatchIndex: 0,
     completed: false,
     matchCount,
+    teamSelectionMode,
+    ...(teamSelectionMode === 'world-cup-26' ? { worldCupComposition: options.worldCupComposition } : {}),
     startedAt: now,
   };
 }

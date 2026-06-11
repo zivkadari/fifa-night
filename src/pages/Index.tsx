@@ -1674,8 +1674,18 @@ const handleGoHome = () => {
               onBack={() => window.history.back()}
               onStart={async (players, matchCount, setupOptions) => {
                 // Try strict (max 2 appearances)
-                const result = createFPEvening(players, clubsWithOverrides, 2, matchCount);
+                const result = createFPEvening(players, clubsWithOverrides, 2, matchCount, {
+                  teamSelectionMode: setupOptions?.teamSelectionMode,
+                  worldCupComposition: setupOptions?.worldCupComposition,
+                });
                 if (typeof result === 'string') {
+                  if (setupOptions?.teamSelectionMode === 'world-cup-26') {
+                    toast({
+                      title: result,
+                      variant: "destructive",
+                    });
+                    return;
+                  }
                   // Strict failed – show deadlock dialog
                   setFpDeadlockPlayers(players);
                   setShowFpDeadlock(true);

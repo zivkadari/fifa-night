@@ -1,5 +1,15 @@
 import { Player, Club } from './tournament';
 
+export type FPTeamSelectionMode = 'default' | 'world-cup-26';
+
+export type FPWorldCupComposition = {
+  '5': number;
+  '4.5': number;
+  '4': number;
+  '3.5': number;
+  '3': number;
+};
+
 /** A pair of 2 players in the 5-player doubles mode */
 export interface FPPair {
   id: string;
@@ -73,6 +83,8 @@ export interface FPEvening {
   currentMatchIndex: number; // index into schedule
   completed: boolean;
   matchCount?: 15 | 30; // tournament length, defaults to 30 for legacy
+  teamSelectionMode?: FPTeamSelectionMode;
+  worldCupComposition?: FPWorldCupComposition;
   startedAt?: string;      // ISO timestamp when tournament actually started
   completedAt?: string;    // ISO timestamp when tournament finished
   durationMinutes?: number; // calculated from completedAt - startedAt

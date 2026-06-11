@@ -4,7 +4,21 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Player } from "@/types/tournament";
+import { FPTeamSelectionMode, FPWorldCupComposition } from "@/types/fivePlayerTypes";
 import { useToast } from "@/hooks/use-toast";
+
+const WORLD_CUP_BUCKETS = [
+  { key: '5', label: '5 כוכבים לכל זוג' },
+  { key: '4.5', label: '4.5 כוכבים לכל זוג' },
+  { key: '4', label: '4 כוכבים לכל זוג' },
+  { key: '3.5', label: '3.5 כוכבים לכל זוג' },
+  { key: '3', label: '3 כוכבים לכל זוג' },
+] as const;
+
+const defaultWorldCupComposition = (matchCount: 15 | 30): FPWorldCupComposition =>
+  matchCount === 30
+    ? { '5': 2, '4.5': 2, '4': 2, '3.5': 0, '3': 0 }
+    : { '5': 1, '4.5': 1, '4': 1, '3.5': 0, '3': 0 };
 
 interface FPSetupProps {
   onBack: () => void;
@@ -15,6 +29,8 @@ interface FPSetupProps {
       firstSittingOutPlayerId?: string;
       teamName?: string;
       createNewTeam?: boolean;
+      teamSelectionMode?: FPTeamSelectionMode;
+      worldCupComposition?: FPWorldCupComposition;
     }
   ) => void;
   savedPlayers?: Player[];
@@ -38,6 +54,11 @@ export const FPSetup = ({ onBack, onStart, savedPlayers, teamPlayers, teamId, te
   const [matchCount, setMatchCount] = useState<15 | 30>(30);
   const [firstSittingOutPlayerId, setFirstSittingOutPlayerId] = useState<string>('');
   const [groupName, setGroupName] = useState('');
+  const [teamSelectionMode, setTeamSelectionMode] = useState<FPTeamSelectionMode>('default');
+  const [showWorldCupConfig, setShowWorldCupConfig] = useState(false);
+  const [worldCupComposition, setWorldCupComposition] = useState<FPWorldCupComposition>(
+    defaultWorldCupComposition(30)
+  );
   const [showPlayerEditor, setShowPlayerEditor] = useState<boolean>(
     !(hasTeamPlayers || savedPlayers?.length === 5)
   );
@@ -50,6 +71,21 @@ export const FPSetup = ({ onBack, onStart, savedPlayers, teamPlayers, teamId, te
 
   const allFilled = players.every(p => p.name.trim().length > 0);
   const hasDuplicates = new Set(players.map(p => p.name.trim().toLowerCase())).size < 5;
+  const requiredWorldCupTeamsPerPair = matchCount / 5;
+  const worldCupCompositionSum = WORLD_CUP_BUCKETS.reduce(
+    (sum, bucket) => sum + worldCupComposition[bucket.key],
+    0
+  );
+
+  const setWorldCupBucket = (key: keyof FPWorldCupComposition, value: string) => {
+    const next = Math.max(0, Number.parseInt(value, 10) || 0);
+    setWorldCupComposition(prev => ({ ...prev, [key]: next }));
+  };
+
+  const updateMatchCount = (next: 15 | 30) => {
+    setMatchCount(next);
+    setWorldCupComposition(defaultWorldCupComposition(next));
+  };
 
   const handleStart = () => {
     if (!allFilled) {
@@ -79,6 +115,8 @@ export const FPSetup = ({ onBack, onStart, savedPlayers, teamPlayers, teamId, te
       firstSittingOutPlayerId?: string;
       teamName?: string;
       createNewTeam?: boolean;
+      teamSelectionMode?: FPTeamSelectionMode;
+      worldCupComposition?: FPWorldCupComposition;
     } = {};
 
     if (firstSittingOutPlayerId) {
@@ -96,6 +134,27 @@ export const FPSetup = ({ onBack, onStart, savedPlayers, teamPlayers, teamId, te
     
       setupOptions.teamName = groupName.trim();
       setupOptions.createNewTeam = true;
+    }
+
+    if (teamSelectionMode === 'world-cup-26') {
+      if (matchCount % 5 !== 0) {
+        toast({
+          title: "מספר המשחקים במונדיאל 26 חייב להתחלק ב־5",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (worldCupCompositionSum !== requiredWorldCupTeamsPerPair) {
+        toast({
+          title: `הרכב הקבוצות חייב להסתכם ל־${requiredWorldCupTeamsPerPair} קבוצות לכל זוג לפי מספר המשחקים שנבחר.`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setupOptions.teamSelectionMode = 'world-cup-26';
+      setupOptions.worldCupComposition = worldCupComposition;
     }
     
     onStart(
@@ -202,7 +261,7 @@ export const FPSetup = ({ onBack, onStart, savedPlayers, teamPlayers, teamId, te
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
-                  onClick={() => setMatchCount(15)}
+                  onClick={() => updateMatchCount(15)}
                   className={`rounded-lg border p-3 text-center transition-all ${
                     matchCount === 15
                       ? 'border-neon-green bg-neon-green/10 text-neon-green'
@@ -215,7 +274,7 @@ export const FPSetup = ({ onBack, onStart, savedPlayers, teamPlayers, teamId, te
           
                 <button
                   type="button"
-                  onClick={() => setMatchCount(30)}
+                  onClick={() => updateMatchCount(30)}
                   className={`rounded-lg border p-3 text-center transition-all ${
                     matchCount === 30
                       ? 'border-neon-green bg-neon-green/10 text-neon-green'
@@ -226,6 +285,90 @@ export const FPSetup = ({ onBack, onStart, savedPlayers, teamPlayers, teamId, te
                   <p className="text-xs mt-1">6 סיבובים</p>
                 </button>
               </div>
+            </div>
+          </Card>
+
+          <Card className="bg-gaming-surface/50 border-border/50 p-3">
+            <div className="space-y-3">
+              <div className="text-center">
+                <p className="text-sm font-semibold text-foreground">
+                  בחירת מאגר קבוצות
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  ברירת המחדל נשארת כמו היום
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setTeamSelectionMode('default')}
+                  className={`rounded-lg border p-2 text-center text-sm transition-all ${
+                    teamSelectionMode === 'default'
+                      ? 'border-neon-green bg-neon-green/10 text-neon-green'
+                      : 'border-border bg-gaming-surface text-muted-foreground hover:border-muted-foreground/40'
+                  }`}
+                >
+                  רגיל
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTeamSelectionMode('world-cup-26');
+                    setShowWorldCupConfig(true);
+                  }}
+                  className={`rounded-lg border p-2 text-center text-sm transition-all ${
+                    teamSelectionMode === 'world-cup-26'
+                      ? 'border-neon-green bg-neon-green/10 text-neon-green'
+                      : 'border-border bg-gaming-surface text-muted-foreground hover:border-muted-foreground/40'
+                  }`}
+                >
+                  מונדיאל 26
+                </button>
+              </div>
+
+              {teamSelectionMode === 'world-cup-26' && (
+                <div className="space-y-3 rounded-lg border border-neon-green/20 bg-gaming-bg/40 p-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => setShowWorldCupConfig(prev => !prev)}
+                  >
+                    הרכב קבוצות מונדיאל
+                  </Button>
+
+                  {showWorldCupConfig && (
+                    <div className="space-y-2">
+                      {WORLD_CUP_BUCKETS.map(bucket => (
+                        <div key={bucket.key} className="flex items-center justify-between gap-3">
+                          <label className="text-xs text-foreground flex-1 text-right">
+                            {bucket.label}
+                          </label>
+                          <Input
+                            type="number"
+                            min="0"
+                            value={worldCupComposition[bucket.key]}
+                            onChange={e => setWorldCupBucket(bucket.key, e.target.value)}
+                            className="h-9 w-20 bg-gaming-surface border-border text-center"
+                            inputMode="numeric"
+                          />
+                        </div>
+                      ))}
+
+                      <p className={`text-xs text-center ${
+                        worldCupCompositionSum === requiredWorldCupTeamsPerPair
+                          ? 'text-neon-green'
+                          : 'text-destructive'
+                      }`}>
+                        סה״כ: {worldCupCompositionSum}/{requiredWorldCupTeamsPerPair} קבוצות לכל זוג
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </Card>
 
@@ -300,9 +443,11 @@ export const FPSetup = ({ onBack, onStart, savedPlayers, teamPlayers, teamId, te
                 <strong className="text-neon-green">10 זוגות</strong> • כל שחקן ב-4 משחקים לסיבוב
               </p>
               <p className="text-xs text-muted-foreground">
-                {matchCount === 15
-                  ? 'כל זוג מקבל בנק של 3 קבוצות/נבחרות: 1×5★ / 1×4.5★ / 1×4★'
-                  : 'כל זוג מקבל בנק של 6 קבוצות/נבחרות: 2×5★ / 2×4.5★ / 2×4★'}
+                {teamSelectionMode === 'world-cup-26'
+                  ? `מונדיאל 26: ${requiredWorldCupTeamsPerPair} קבוצות לכל זוג לפי ההרכב שבחרת`
+                  : matchCount === 15
+                    ? 'כל זוג מקבל בנק של 3 קבוצות/נבחרות: 1×5★ / 1×4.5★ / 1×4★'
+                    : 'כל זוג מקבל בנק של 6 קבוצות/נבחרות: 2×5★ / 2×4.5★ / 2×4★'}
               </p>
             </div>
           </Card>
