@@ -20,8 +20,17 @@ type CreateFPOptions = {
   worldCupComposition?: FPWorldCupComposition;
 };
 
+type DrawClubOptions = {
+  avoidClubId?: string;
+  preferUnusedClubIds?: Set<string>;
+};
+
 function ratingKey(rating: WorldCupRating): WorldCupRatingKey {
   return String(rating) as WorldCupRatingKey;
+}
+
+function pairKey(pair: FPPair): string {
+  return pair.players.map(player => player.id).sort().join('-');
 }
 
 /**
@@ -273,24 +282,51 @@ class RatingClubBag {
     }
   }
 
-  draw(avoidClubId?: string): Club {
+  private findIndex(avoidClubId?: string, preferUnusedClubIds?: Set<string>): number {
+    return this.bag.findIndex(club => {
+      if (avoidClubId && club.id === avoidClubId) return false;
+      if (preferUnusedClubIds?.has(club.id)) return false;
+      return true;
+    });
+  }
+
+  draw(options: DrawClubOptions = {}): Club {
+    const { avoidClubId, preferUnusedClubIds } = options;
+
     if (this.bag.length === 0) {
       this.bag = shuffleArray(this.pool);
     }
 
-    let index = 0;
-    if (avoidClubId) {
-      index = this.bag.findIndex(club => club.id !== avoidClubId);
-      if (index < 0) {
-        if (this.pool.length <= 1) {
-          throw new Error(`אי אפשר להימנע מכפילות באותו משחק בדירוג ${this.label} כוכבים`);
-        }
+    let index = this.findIndex(avoidClubId, preferUnusedClubIds);
+
+    if (index < 0 && preferUnusedClubIds) {
+      const hasPreferredClub = this.pool.some(club => {
+        if (avoidClubId && club.id === avoidClubId) return false;
+        return !preferUnusedClubIds.has(club.id);
+      });
+
+      if (hasPreferredClub) {
         this.bag = shuffleArray(this.pool);
-        index = this.bag.findIndex(club => club.id !== avoidClubId);
+        index = this.findIndex(avoidClubId, preferUnusedClubIds);
       }
     }
 
     if (index < 0) {
+      index = avoidClubId
+        ? this.bag.findIndex(club => club.id !== avoidClubId)
+        : 0;
+    }
+
+    if (index < 0) {
+      if (avoidClubId && this.pool.length > 1) {
+        this.bag = shuffleArray(this.pool);
+        index = this.bag.findIndex(club => club.id !== avoidClubId);
+      } else {
+        index = 0;
+      }
+    }
+
+    if (index < 0 || !this.bag[index]) {
       throw new Error(`אי אפשר לבחור קבוצה מתאימה בדירוג ${this.label} כוכבים`);
     }
 
@@ -413,6 +449,9 @@ function generateWorldCup26Teams(
     usedClubIds: [],
   }));
   const bankByPairId = new Map(banks.map(bank => [bank.pairId, bank]));
+  const usedTeamIdsByPair = new Map<string, Set<string>>(
+    pairs.map(pair => [pairKey(pair), new Set<string>()])
+  );
   const ratingQueues = buildWorldCupRatingQueuesForSchedule(
     pairs,
     schedule,
@@ -440,10 +479,13 @@ function generateWorldCup26Teams(
         return 'לא נמצאו מספיק קבוצות מונדיאל 26 להרכב שנבחר.';
       }
 
-      const clubA = bagA.draw();
+      const usedByPairA = usedTeamIdsByPair.get(pairKey(match.pairA)) ?? new Set<string>();
+      const usedByPairB = usedTeamIdsByPair.get(pairKey(match.pairB)) ?? new Set<string>();
+
+      const clubA = bagA.draw({ preferUnusedClubIds: usedByPairA });
       const clubB = ratingA === ratingB
-        ? bagA.draw(clubA.id)
-        : bagB.draw(clubA.id);
+        ? bagA.draw({ avoidClubId: clubA.id, preferUnusedClubIds: usedByPairB })
+        : bagB.draw({ avoidClubId: clubA.id, preferUnusedClubIds: usedByPairB });
 
       if (clubA.id === clubB.id) {
         return 'אי אפשר לשבץ את אותה קבוצה לשני הזוגות באותו משחק.';
@@ -451,6 +493,10 @@ function generateWorldCup26Teams(
 
       bankByPairId.get(match.pairA.id)?.clubs.push(clubA);
       bankByPairId.get(match.pairB.id)?.clubs.push(clubB);
+      usedByPairA.add(clubA.id);
+      usedByPairB.add(clubB.id);
+      usedTeamIdsByPair.set(pairKey(match.pairA), usedByPairA);
+      usedTeamIdsByPair.set(pairKey(match.pairB), usedByPairB);
       updatedSchedule.push({ ...match, clubA, clubB });
     }
   } catch (error: any) {
