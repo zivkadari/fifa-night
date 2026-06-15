@@ -557,93 +557,87 @@ export class TeamSelector {
    * in that exact star tier have already been used in previous completed matches
    * or allocated in the current round.
    */
-  generateWorldCup26TeamPools(
-    pairs: Pair[],
-    excludeClubIds: string[] = [],
-    distribution?: Array<{ stars: number; count: number }>
-  ): TeamPoolResult {
-    const dist = distribution ?? [
-      { stars: 5, count: 3 },
-      { stars: 4.5, count: 3 },
-      { stars: 4, count: 4 },
-      { stars: 3.5, count: 1 },
-    ];
-
-    const pools: Club[][] = pairs.map(() => []);
-    const usedBeforeThisRound = new Set<string>(excludeClubIds);
-    const allocatedThisRound = new Set<string>();
-    const recycledClubIds = new Set<string>();
-
-    const pickWorldCupTeam = (
-      pool: Club[],
-      sourceClubs: Club[],
-      stars: number
-    ): Club | null => {
-      const isInCurrentPool = (club: Club) => pool.some(c => c.id === club.id);
-
-      // 1. Best case:
-      // Team was not used in previous completed matches,
-      // not already allocated to another pool in this round,
-      // and not already inside this pair's pool.
-      const freshAvailable = sourceClubs.filter(
-        club =>
-          !usedBeforeThisRound.has(club.id) &&
-          !allocatedThisRound.has(club.id) &&
-          !isInCurrentPool(club)
-      );
-
-      if (freshAvailable.length > 0) {
-        const club = freshAvailable[Math.floor(Math.random() * freshAvailable.length)];
+    generateWorldCup26TeamPools(
+      pairs: Pair[],
+      excludeClubIds: string[] = [],
+      distribution?: Array<{ stars: number; count: number }>
+    ): TeamPoolResult {
+      const dist = distribution ?? [
+        { stars: 5, count: 3 },
+        { stars: 4.5, count: 3 },
+        { stars: 4, count: 4 },
+        { stars: 3.5, count: 1 },
+      ];
+  
+      const pools: Club[][] = pairs.map(() => []);
+      const recycledClubIds = new Set<string>();
+  
+      // Count previous allocations, not only actually-played teams.
+      // If a team appeared in a previous bank, it counts as one usage.
+      const usageCounts = new Map<string, number>();
+  
+      excludeClubIds.forEach((id) => {
+        usageCounts.set(id, (usageCounts.get(id) || 0) + 1);
+      });
+  
+      // Prevent the same team from appearing twice in the same generated round.
+      const allocatedThisRound = new Set<string>();
+  
+      const pickWorldCupTeam = (
+        pool: Club[],
+        sourceClubs: Club[],
+        stars: number
+      ): Club | null => {
+        const isInCurrentPool = (club: Club) => pool.some((c) => c.id === club.id);
+  
+        const candidates = sourceClubs.filter(
+          (club) => !allocatedThisRound.has(club.id) && !isInCurrentPool(club)
+        );
+  
+        if (candidates.length === 0) {
+          return null;
+        }
+  
+        // Core rule:
+        // First use all teams with 0 usages.
+        // Only then use teams with 1 usage.
+        // Only then teams with 2 usages, etc.
+        const minUsage = Math.min(
+          ...candidates.map((club) => usageCounts.get(club.id) || 0)
+        );
+  
+        const leastUsedCandidates = candidates.filter(
+          (club) => (usageCounts.get(club.id) || 0) === minUsage
+        );
+  
+        const club =
+          leastUsedCandidates[Math.floor(Math.random() * leastUsedCandidates.length)];
+  
         allocatedThisRound.add(club.id);
+  
+        const previousUsage = usageCounts.get(club.id) || 0;
+        usageCounts.set(club.id, previousUsage + 1);
+  
+        if (previousUsage > 0) {
+          recycledClubIds.add(club.id);
+        }
+  
         return club;
-      }
-
-      // 2. If there are no fresh teams left, first allow teams that were used before
-      // but are not already allocated in this current round.
-      // This only happens after the entire star tier is exhausted.
-      const recycledAvailable = sourceClubs.filter(
-        club =>
-          !allocatedThisRound.has(club.id) &&
-          !isInCurrentPool(club)
-      );
-
-      if (recycledAvailable.length > 0) {
-        const club = recycledAvailable[Math.floor(Math.random() * recycledAvailable.length)];
-        allocatedThisRound.add(club.id);
-        recycledClubIds.add(club.id);
-        return club;
-      }
-
-      // 3. Last resort:
-      // If the tier is so small that even round-level uniqueness is impossible,
-      // allow a recycled team not already in the same pair pool.
-      // This should be rare, and mainly protects against crashes.
-      const lastResort = sourceClubs.filter(
-        club => !isInCurrentPool(club)
-      );
-
-      if (lastResort.length > 0) {
-        const club = lastResort[Math.floor(Math.random() * lastResort.length)];
-        recycledClubIds.add(club.id);
-        return club;
-      }
-
-      return null;
-    };
-
-    for (const entry of dist) {
-      const source = getWorldCup26TeamsByStars(entry.stars, this.clubs);
-
-      for (let i = 0; i < entry.count; i++) {
-        for (let p = 0; p < pairs.length; p++) {
-          const team = pickWorldCupTeam(pools[p], source, entry.stars);
-          if (team) pools[p].push(team);
+      };
+  
+      for (const entry of dist) {
+        const source = getWorldCup26TeamsByStars(entry.stars, this.clubs);
+  
+        for (let i = 0; i < entry.count; i++) {
+          for (let p = 0; p < pairs.length; p++) {
+            const team = pickWorldCupTeam(pools[p], source, entry.stars);
+            if (team) pools[p].push(team);
+          }
         }
       }
+  
+      return { pools, recycledClubIds };
     }
-
-        return { pools, recycledClubIds };
-      }
 
   /**
    * World Cup 26 decider: pick two balanced national teams that are part of
