@@ -699,8 +699,7 @@ export class TeamSelector {
       return [
         { stars: 5, count: 2 },
         { stars: 4.5, count: 2 },
-        { stars: 4, count: 2 },
-        { stars: 3.5, count: 1 },
+        { stars: 4, count: 3 },
       ];
     case 5:
       return [
