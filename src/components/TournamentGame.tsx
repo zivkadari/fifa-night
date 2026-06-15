@@ -161,6 +161,23 @@ export const TournamentGame = ({
       return false;
     });
   };
+    const getAllocatedClubIdsFromPreviousTeamPools = (evening: Evening): string[] => {
+      const ids: string[] = [];
+  
+      evening.rounds.forEach((round) => {
+        if (!round.teamPools) return;
+  
+        round.teamPools.forEach((pool) => {
+          pool.forEach((club) => {
+            if (club?.id) {
+              ids.push(club.id);
+            }
+          });
+        });
+      });
+  
+      return ids;
+    };
   const [gamePhase, setGamePhase] = useState<'team-selection' | 'countdown' | 'result-entry'>('team-selection');
   const [countdown, setCountdown] = useState(60);
   const [isCountdownActive, setIsCountdownActive] = useState(false);
@@ -461,13 +478,24 @@ export const TournamentGame = ({
     const actuallyPlayedClubIds = Object.keys(usedClubCounts).filter(
       (id) => (usedClubCounts[id] ?? 0) >= 1
     );
-  
-    const isWorldCup26 = currentEvening.teamSelectionMode === 'world-cup-26';
+    
+    const isWorldCup26 = currentEvening.teamSelectionMode === "world-cup-26";
+    
+    const allocatedClubIdsForWorldCup = isWorldCup26
+      ? getAllocatedClubIdsFromPreviousTeamPools(currentEvening)
+      : [];
+    
     const poolConfigs = isWorldCup26 ? [] : await fetchPoolConfigs();
-    const poolConfig = isWorldCup26 ? undefined : getPoolConfigForWins(poolConfigs, currentEvening.winsToComplete);
-  
+    const poolConfig = isWorldCup26
+      ? undefined
+      : getPoolConfigForWins(poolConfigs, currentEvening.winsToComplete);
+    
     const poolResult = isWorldCup26
-      ? teamSelector.generateWorldCup26TeamPools(roundPairs, actuallyPlayedClubIds, getWorldCup26DistributionForWins(currentEvening.winsToComplete))
+      ? teamSelector.generateWorldCup26TeamPools(
+          roundPairs,
+          allocatedClubIdsForWorldCup,
+          getWorldCup26DistributionForWins(currentEvening.winsToComplete)
+        )
       : poolConfig
       ? teamSelector.generateTeamPoolsFromConfig(roundPairs, poolConfig, actuallyPlayedClubIds)
       : teamSelector.generateTeamPools(roundPairs, actuallyPlayedClubIds, maxMatches);
