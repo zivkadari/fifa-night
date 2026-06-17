@@ -54,6 +54,21 @@ const hasMatchScore = (match: any, key = "score") =>
 
 const sameScore = (a: any, b: any) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
 
+const countFPCompletedMatches = (e: FPEvening | any) =>
+  Array.isArray(e?.schedule)
+    ? e.schedule.filter((m: any) => m?.completed === true).length
+    : 0;
+
+const countFPUsedClubIds = (e: FPEvening | any) =>
+  Array.isArray(e?.teamBanks)
+    ? e.teamBanks.reduce((sum: number, bank: any) => {
+        return sum + (Array.isArray(bank?.usedClubIds) ? bank.usedClubIds.length : 0);
+      }, 0)
+    : 0;
+
+const getFPCurrentIndex = (e: FPEvening | any) =>
+  typeof e?.currentMatchIndex === "number" ? e.currentMatchIndex : 0;
+
 const getFirstTimeRegularScoreSubmission = (previous: Evening | null, next: Evening): MatchScoreSubmission | null => {
   if (!previous || previous.id !== next.id || (previous as any).completed !== (next as any).completed) {
     return null;
@@ -241,7 +256,7 @@ const Index = () => {
           }
           
           if (isFP) {
-            setFpEvening(evening as any);
+            setFPEveningState(evening as any);
             setFpTeamId(teamId);
             StorageService.saveFPActive(evening as any);
             setCurrentTeamEditReason(editReason);
@@ -290,11 +305,104 @@ const Index = () => {
     currentEveningRef.current = currentEvening;
   }, [currentEvening]);
 
+  const fpEveningRef = useRef<FPEvening | null>(fpEvening);
+  useEffect(() => {
+    fpEveningRef.current = fpEvening;
+  }, [fpEvening]);
+
+  const setFPEveningState = (next: FPEvening | null) => {
+    fpEveningRef.current = next;
+    setFpEvening(next);
+  };
+
   // Anti-flicker: track recent local mutations so we don't apply stale remote rollbacks.
   const recentLocalMutationRef = useRef<{
     type: "submit" | "edit" | "delete" | "local";
     at: number;
   } | null>(null);
+
+  const recentFPLocalMutationRef = useRef<{
+    type: "submit" | "edit" | "delete" | "reorder" | "local";
+    at: number;
+    eveningId?: string;
+  } | null>(null);
+
+  const markFPLocalMutation = (
+    eveningId?: string,
+    type: "submit" | "edit" | "delete" | "reorder" | "local" = "local"
+  ) => {
+    recentFPLocalMutationRef.current = {
+      type,
+      at: Date.now(),
+      eveningId,
+    };
+  };
+
+  const applyRemoteFPEvening = (remoteEvening: FPEvening | any, source = "unknown") => {
+    const local = fpEveningRef.current;
+    if (!remoteEvening) return;
+
+    if (remoteEvening.cancelled === true) {
+      handleCancelledEvening(remoteEvening);
+      return;
+    }
+
+    if (!local || local.id !== remoteEvening.id) {
+      setFPEveningState(remoteEvening);
+      StorageService.saveFPActive(remoteEvening);
+      return;
+    }
+
+    const localCompleted = countFPCompletedMatches(local);
+    const remoteCompleted = countFPCompletedMatches(remoteEvening);
+    const localUsed = countFPUsedClubIds(local);
+    const remoteUsed = countFPUsedClubIds(remoteEvening);
+    const localIndex = getFPCurrentIndex(local);
+    const remoteIndex = getFPCurrentIndex(remoteEvening);
+    const pending = recentFPLocalMutationRef.current;
+    const hasRecentLocalMutation =
+      !!pending &&
+      pending.eveningId === local.id &&
+      Date.now() - pending.at < 8000;
+    const remoteClearlyAdvances =
+      remoteCompleted > localCompleted ||
+      remoteUsed > localUsed ||
+      remoteIndex > localIndex;
+    const remoteLooksBehind =
+      remoteCompleted < localCompleted ||
+      remoteUsed < localUsed ||
+      remoteIndex < localIndex;
+
+    if (hasRecentLocalMutation && !remoteClearlyAdvances) {
+      console.warn("[FP Live Sync] Ignored remote snapshot during recent local mutation", {
+        source,
+        localCompleted,
+        remoteCompleted,
+        localUsed,
+        remoteUsed,
+        localIndex,
+        remoteIndex,
+        pending,
+      });
+      return;
+    }
+
+    if (remoteLooksBehind) {
+      console.warn("[FP Live Sync] Ignored stale remote FP state", {
+        source,
+        localCompleted,
+        remoteCompleted,
+        localUsed,
+        remoteUsed,
+        localIndex,
+        remoteIndex,
+      });
+      return;
+    }
+
+    setFPEveningState(remoteEvening);
+    StorageService.saveFPActive(remoteEvening);
+  };
 
 useEffect(() => {
     let mounted = true;
@@ -314,7 +422,7 @@ useEffect(() => {
     // Load active FP tournament
     const fpActive = StorageService.loadFPActive();
     if (fpActive && !fpActive.completed) {
-      setFpEvening(fpActive);
+      setFPEveningState(fpActive);
       // Auto-detect team for FP players
       if (RemoteStorageService.isEnabled()) {
         RemoteStorageService.ensureTeamForPlayers(fpActive.players, 5)
@@ -458,10 +566,9 @@ useEffect(() => {
           if (updatedFP) {
             const latestFpEvening = updatedFP.evening as any;
   
-            setFpEvening(latestFpEvening);
+            applyRemoteFPEvening(latestFpEvening, "active-evenings-poll");
             setFpTeamId(updatedFP.team_id);
             setCurrentTeamEditReason(updatedFP.reason);
-            StorageService.saveFPActive(latestFpEvening);
           }
         }
       } catch (error: any) {
@@ -485,7 +592,7 @@ useEffect(() => {
       const isFP = Array.isArray((entry.evening as any)?.schedule);
       if (isFP) {
         const evening = entry.evening as unknown as FPEvening;
-        setFpEvening(evening);
+        setFPEveningState(evening);
         setFpTeamId(entry.team_id);
         setCurrentTeamEditReason(entry.reason);
         StorageService.saveFPActive(evening);
@@ -525,27 +632,28 @@ useEffect(() => {
     if (fpEvening?.id) {
       const entry = activeTeamEvenings.find((item) => item.evening_id === fpEvening.id);
       if (entry && Array.isArray((entry.evening as any)?.schedule)) {
-        setFpEvening(entry.evening as any);
+        applyRemoteFPEvening(entry.evening as any, "active-team-evenings-effect");
         setFpTeamId(entry.team_id);
         setCurrentTeamEditReason(entry.reason);
       }
     }
   }, [activeTeamEvenings, currentEvening?.id, fpEvening?.id]);
 
-  const getCancelledByName = (evening: Evening | FPEvening | any) =>
-    evening?.cancelled_by_name || "משתמש מורשה";
+  function getCancelledByName(evening: Evening | FPEvening | any) {
+    return evening?.cancelled_by_name || "משתמש מורשה";
+  }
 
-  const handleCancelledEvening = (evening: Evening | FPEvening | any) => {
+  function handleCancelledEvening(evening: Evening | FPEvening | any) {
     toast({
       title: `הטורניר הופסק על ידי ${getCancelledByName(evening)}`,
     });
     clearActiveEvening();
     StorageService.clearFPActive();
     setCurrentEvening(null);
-    setFpEvening(null);
+    setFPEveningState(null);
     setCurrentTeamEditReason(null);
     goTo('home');
-  };
+  }
 
   const handleStopTournament = async (
     eveningId: string,
@@ -566,7 +674,7 @@ useEffect(() => {
     const cleanupAfterStop = () => {
       if (kind === "fp") {
         StorageService.clearFPActive();
-        setFpEvening(null);
+        setFPEveningState(null);
       } else {
         clearActiveEvening();
         setCurrentEvening(null);
@@ -663,13 +771,12 @@ useEffect(() => {
         clearActiveEvening();
         StorageService.clearFPActive();
         setCurrentEvening(null);
-        setFpEvening(null);
+        setFPEveningState(null);
         goTo('home');
         return;
       }
       if (kind === "fp") {
-        setFpEvening(latest as any);
-        StorageService.saveFPActive(latest as any);
+        applyRemoteFPEvening(latest as any, "resume-load-by-id");
         goTo('fp-game');
       } else {
         setCurrentEvening(latest);
@@ -804,6 +911,48 @@ useEffect(() => {
       unsubscribe?.();
     };
   }, [appState, currentEvening?.id, currentTeamEditReason]);
+
+  // FP realtime + polling sync: same stale-rollback protection as regular mode,
+  // but using FP progress signals including usedClubIds.
+  useEffect(() => {
+    if (appState !== "fp-game" || !fpEvening?.id || !RemoteStorageService.isEnabled()) return;
+
+    let disposed = false;
+    const eveningId = fpEvening.id;
+
+    const unsubscribe = RemoteStorageService.subscribeToEvening(
+      eveningId,
+      (remoteEvening: any) => {
+        if (disposed) return;
+        applyRemoteFPEvening(remoteEvening, "fp-realtime");
+      },
+      () => {
+        if (disposed) return;
+        toast({ title: "הטורניר הופסק" });
+        StorageService.clearFPActive();
+        setFPEveningState(null);
+        setCurrentTeamEditReason(null);
+        goTo("home");
+      }
+    );
+
+    const intervalId = window.setInterval(() => {
+      RemoteStorageService.loadEveningById(eveningId)
+        .then((latest) => {
+          if (!latest || disposed) return;
+          applyRemoteFPEvening(latest as any, "fp-polling");
+        })
+        .catch((error) => {
+          console.warn("[FP Live Sync] Polling failed:", error?.message || error);
+        });
+    }, 2000);
+
+    return () => {
+      disposed = true;
+      window.clearInterval(intervalId);
+      unsubscribe?.();
+    };
+  }, [appState, fpEvening?.id]);
 
   // Handle joined evening from deep link navigation
   useEffect(() => {
@@ -1691,7 +1840,7 @@ const handleGoHome = () => {
                   setShowFpDeadlock(true);
                   return;
                 }
-                setFpEvening(result);
+                setFPEveningState(result);
                 setCurrentTeamEditReason("owner_admin");
                 StorageService.saveFPActive(result);
                 // Five-player selected team must always win — do NOT fall back to contextTeamId,
@@ -1749,7 +1898,8 @@ const handleGoHome = () => {
               onBack={() => window.history.back()}
               onContinue={() => goTo('fp-game')}
               onUpdateEvening={(ev) => {
-                setFpEvening(ev);
+                markFPLocalMutation(ev.id, "local");
+                setFPEveningState(ev);
                 StorageService.saveFPActive(ev);
                 RemoteStorageService.upsertEveningLiveWithTeam(ev as any, fpTeamId ?? null).catch((error) => {
                   console.error("Failed to save FP bank update:", error?.message || error);
@@ -1765,7 +1915,7 @@ const handleGoHome = () => {
               onBack={() => window.history.back()}
               onComplete={(ev) => {
                 StorageService.clearFPActive();
-                setFpEvening(ev);
+                setFPEveningState(ev);
                 goTo('fp-summary');
               }}
               onGoHome={() => goTo('home')}
@@ -1778,7 +1928,8 @@ const handleGoHome = () => {
               spectatorContext={{ teamId: fpTeamId }}
 
               onUpdateEvening={(ev) => {
-                setFpEvening(ev);
+                markFPLocalMutation(ev.id, "local");
+                setFPEveningState(ev);
               
                 if (!ev.completed) {
                   StorageService.saveFPActive(ev);
@@ -1787,8 +1938,7 @@ const handleGoHome = () => {
                 if (currentTeamEditReason === "playing") {
                   RemoteStorageService.submitFPMatchScore(ev as any)
                     .then((serverEvening) => {
-                      setFpEvening(serverEvening as any);
-                      StorageService.saveFPActive(serverEvening as any);
+                      applyRemoteFPEvening(serverEvening as any, "submit-fp-match-score");
                     })
                     .catch((error) => {
                       console.error("Failed to submit FP score:", error?.message || error);
@@ -1832,7 +1982,7 @@ const handleGoHome = () => {
                 });
               }}
               onBackToHome={() => {
-                setFpEvening(null);
+                setFPEveningState(null);
                 goTo('home');
               }}
             />
@@ -1885,7 +2035,7 @@ const handleGoHome = () => {
                 }
                 setShowFpDeadlock(false);
                 setFpDeadlockPlayers(null);
-                setFpEvening(result);
+                setFPEveningState(result);
                 setCurrentTeamEditReason("owner_admin");
                 StorageService.saveFPActive(result);
                 goTo('fp-bank-overview');

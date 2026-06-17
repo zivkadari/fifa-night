@@ -241,10 +241,10 @@ export const FPGame = ({
       ...(completedAt ? { completedAt, durationMinutes } : {}),
     };
 
+    setCurrentEvening(updated);
+    onUpdateEvening(updated);
     setShowSaved(true);
     setTimeout(() => {
-      setCurrentEvening(updated);
-      onUpdateEvening(updated);
       setSelectedClubA(null);
       setSelectedClubB(null);
       setScoreA('');
