@@ -8,51 +8,51 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* Gaming Dark Theme */
-    --background: 222 22% 6%;
-    --foreground: 210 40% 98%;
+    /* Soccer Night control-center theme */
+    --background: 216 33% 3%;
+    --foreground: 120 16% 96%;
 
-    --card: 220 15% 12%;
-    --card-foreground: 120 15% 95%;
+    --card: 215 29% 8%;
+    --card-foreground: 120 16% 96%;
 
-    --popover: 220 15% 10%;
-    --popover-foreground: 120 15% 95%;
+    --popover: 215 29% 8%;
+    --popover-foreground: 120 16% 96%;
 
-    --primary: 125 95% 55%;
-    --primary-foreground: 220 15% 8%;
+    --primary: 142 100% 61%;
+    --primary-foreground: 216 33% 3%;
 
-    --secondary: 220 15% 18%;
-    --secondary-foreground: 120 15% 95%;
+    --secondary: 215 29% 12%;
+    --secondary-foreground: 120 16% 96%;
 
-    --muted: 220 15% 15%;
-    --muted-foreground: 120 10% 65%;
+    --muted: 215 29% 12%;
+    --muted-foreground: 213 14% 68%;
 
-    --accent: 200 90% 55%;
-    --accent-foreground: 220 15% 8%;
+    --accent: 142 100% 61%;
+    --accent-foreground: 216 33% 3%;
 
-    --destructive: 0 75% 55%;
-    --destructive-foreground: 220 15% 95%;
+    --destructive: 0 100% 65%;
+    --destructive-foreground: 120 16% 96%;
 
-    --border: 220 15% 20%;
-    --input: 220 15% 15%;
-    --ring: 120 65% 45%;
+    --border: 211 23% 19%;
+    --input: 215 29% 12%;
+    --ring: 142 100% 61%;
     
     /* Gaming specific colors */
-    --neon-green: 125 95% 55%;
-    --neon-glow: 125 95% 45%;
-    --gaming-bg: 222 22% 6%;
-    --gaming-surface: 220 15% 12%;
-    --gaming-accent: 200 90% 55%;
+    --neon-green: 142 100% 61%;
+    --neon-glow: 142 100% 50%;
+    --gaming-bg: 216 33% 3%;
+    --gaming-surface: 215 29% 8%;
+    --gaming-accent: 142 100% 61%;
     
     /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(var(--accent)), hsl(var(--neon-green)));
-    --gradient-card: linear-gradient(145deg, hsl(var(--card)), hsl(220 15% 14%));
-    --gradient-glow: linear-gradient(135deg, hsl(var(--neon-green) / 0.3), hsl(var(--neon-glow) / 0.1));
+    --gradient-primary: linear-gradient(135deg, hsl(142 100% 61%), hsl(104 100% 64%));
+    --gradient-card: linear-gradient(145deg, hsl(215 29% 8%), hsl(215 29% 12%));
+    --gradient-glow: linear-gradient(135deg, hsl(var(--neon-green) / 0.22), hsl(var(--neon-glow) / 0.08));
     
     /* Shadows */
-    --shadow-glow: 0 0 20px hsl(var(--neon-green) / 0.3);
-    --shadow-card: 0 4px 20px hsl(220 15% 4% / 0.5);
-    --shadow-intense: 0 0 40px hsl(var(--neon-green) / 0.5);
+    --shadow-glow: 0 0 20px hsl(var(--neon-green) / 0.28);
+    --shadow-card: 0 10px 30px hsl(216 33% 2% / 0.55);
+    --shadow-intense: 0 0 36px hsl(var(--neon-green) / 0.42);
 
     --radius: 0.5rem;
 

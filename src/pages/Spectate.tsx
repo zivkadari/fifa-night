@@ -30,6 +30,8 @@ import { FPTimingCard } from "@/components/FPTimingCard";
 import InsightCards from "@/components/spectate/InsightCards";
 import TeamSetupButton from "@/components/spectate/TeamSetupButton";
 import CouplesSpectateView from "@/components/spectate/CouplesSpectateView";
+import { PlayerPair } from "@/components/PlayerPair";
+import { TeamVisual } from "@/components/TeamVisual";
 import { TIER_LABELS, TIER_EMOJIS, TIER_COLORS, TIER_TEXT, computeTierIndices } from "@/lib/tierRanking";
 import { sortClubsByStarsDesc } from "@/lib/sortClubs";
 
@@ -591,27 +593,17 @@ function PersonalizedSpectateView({
         <p className="text-[10px] text-muted-foreground text-center mb-1">
           משחק נוכחי • סיבוב {currentMatch.roundIndex + 1} • משחק {currentMatch.matchIndex + 1}
         </p>
-        <div className="text-center space-y-1">
-          <p className={`text-lg font-bold ${playerInFPPair(selectedPlayerId, currentMatch.pairA) ? 'text-neon-green' : 'text-foreground'}`}>
-            {pairName(currentMatch.pairA)}
-          </p>
-          <p className="text-xs text-muted-foreground">vs</p>
-          <p className={`text-lg font-bold ${playerInFPPair(selectedPlayerId, currentMatch.pairB) ? 'text-neon-green' : 'text-foreground'}`}>
-            {pairName(currentMatch.pairB)}
-          </p>
-        </div>
-
-        {(currentMatch.clubA || currentMatch.clubB) && (
-          <div className="flex items-center justify-center gap-3 mt-2 text-xs">
-            {currentMatch.clubA && (
-              <Badge variant="outline" className="border-border/50 text-foreground">{currentMatch.clubA.name}</Badge>
-            )}
-            {currentMatch.clubA && currentMatch.clubB && <span className="text-muted-foreground">vs</span>}
-            {currentMatch.clubB && (
-              <Badge variant="outline" className="border-border/50 text-foreground">{currentMatch.clubB.name}</Badge>
-            )}
+        <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-2 text-center">
+          <div className={playerInFPPair(selectedPlayerId, currentMatch.pairA) ? 'text-neon-green' : 'text-foreground'}>
+            <PlayerPair players={currentMatch.pairA.players} size="md" />
+            <TeamVisual club={currentMatch.clubA} size="md" className="mt-2" />
           </div>
-        )}
+          <div className="pt-12 font-display text-3xl font-black text-neon-green">VS</div>
+          <div className={playerInFPPair(selectedPlayerId, currentMatch.pairB) ? 'text-neon-green' : 'text-foreground'}>
+            <PlayerPair players={currentMatch.pairB.players} size="md" />
+            <TeamVisual club={currentMatch.clubB} size="md" className="mt-2" />
+          </div>
+        </div>
 
         {currentMatch.scoreA !== undefined && currentMatch.scoreB !== undefined && currentMatch.completed && (
           <div className="text-center mt-2">

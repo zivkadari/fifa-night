@@ -22,6 +22,8 @@ import { ArrowLeft, Copy, Check, Play, Edit2, ArrowLeftRight, X, AlertCircle, Gr
 import { FPEvening, FPTeamBank, FPPair } from "@/types/fivePlayerTypes";
 import { Club } from "@/types/tournament";
 import { StarRating, starText } from "@/components/StarRating";
+import { PlayerPair } from "@/components/PlayerPair";
+import { TeamVisual } from "@/components/TeamVisual";
 import { useToast } from "@/hooks/use-toast";
 import { sortClubsByStarsDesc } from "@/lib/sortClubs";
 import {
@@ -572,10 +574,15 @@ export const FPBankOverview = ({ evening, allClubs, onContinue, onBack, onUpdate
 
           return (
             <Card key={pair.id} className="bg-gradient-card border-border/40 p-3 shadow-card">
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-muted-foreground font-mono w-5">{idx + 1}.</span>
-                  <span className="text-sm font-semibold text-foreground">{pairName(pair)}</span>
+                  <div>
+                    <span className="text-sm font-semibold text-foreground">{pairName(pair)}</span>
+                    <div className="mt-1">
+                      <PlayerPair players={pair.players} size="sm" showNames={false} />
+                    </div>
+                  </div>
                 </div>
                 <button
                   onClick={() => handleCopyPair(pair, bank)}
@@ -588,20 +595,17 @@ export const FPBankOverview = ({ evening, allClubs, onContinue, onBack, onUpdate
                   )}
                 </button>
               </div>
-              <div className="grid grid-cols-2 gap-1.5">
+              <div className="grid grid-cols-3 gap-2">
                 {sortedClubs.map(({ club, originalIdx }) => (
                   <div
                     key={`${club.id}-${originalIdx}`}
-                    className="flex items-center justify-between bg-gaming-surface/60 rounded-md px-2 py-1.5 border border-border/30 group"
+                    className="group relative rounded-lg border border-border/30 bg-gaming-surface/60 p-2"
                   >
-                    <span className="text-xs text-foreground truncate flex-1">{club.name}</span>
-                    <div className="flex items-center gap-1">
-                      <span className="text-yellow-400 text-[10px] whitespace-nowrap">
-                        {renderStars(club.stars)}
-                      </span>
+                    <TeamVisual club={club} size="sm" />
+                    <div className="absolute left-1 top-1 flex items-center gap-1">
                       <button
                         onClick={() => openEdit(pair.id, originalIdx)}
-                        className="p-0.5 rounded hover:bg-accent/50 transition-colors opacity-50 group-hover:opacity-100"
+                        className="rounded bg-gaming-bg/80 p-1 opacity-70 transition-colors hover:bg-accent/50 group-hover:opacity-100"
                         title="שנה קבוצה"
                       >
                         <Edit2 className="h-3 w-3 text-muted-foreground" />
