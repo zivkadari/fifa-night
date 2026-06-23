@@ -47,6 +47,7 @@ import {
   CollapsibleSection,
   CompactSummaryCard,
   RecentResultCard,
+  SoccerNightBottomNav,
   TournamentStatusPill,
 } from "@/components/soccer-night-ui";
 import {
@@ -968,7 +969,7 @@ export const FPGame = ({
     (sum, bank) => sum + Math.max(0, bank.clubs.length - bank.usedClubIds.length),
     0
   );
-  const visibleTeamSelectors = !bothTeamsSelected || activeStep !== "score";
+  const visibleTeamSelectors = !isViewOnly && (!bothTeamsSelected || activeStep !== "score");
 
   const scrollToSection = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -979,8 +980,8 @@ export const FPGame = ({
     : "אין דירוג";
 
   return (
-    <div id="top" className="min-h-[100svh] bg-[#05070A] text-[#F4F7F5]" dir="rtl">
-      <div className="mx-auto flex min-h-[100svh] max-w-md flex-col px-3 pb-24 pt-3">
+    <div id="top" className="min-h-[100dvh] bg-[#05070A] text-[#F4F7F5]" dir="rtl">
+      <div className="mx-auto flex min-h-[100dvh] w-full flex-col px-4 pb-[calc(6.25rem+env(safe-area-inset-bottom))] pt-3 sm:max-w-md sm:px-3">
         {showSaved && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
             <div className="flex flex-col items-center gap-2 rounded-xl border border-[#39FF88]/50 bg-[#0F141B] px-8 py-5 shadow-[0_0_28px_rgba(57,255,136,0.25)] animate-in zoom-in-95 fade-in duration-300">
@@ -990,7 +991,7 @@ export const FPGame = ({
           </div>
         )}
 
-        <header className="mb-3 flex items-center justify-between gap-3">
+        <header className="mb-3 grid grid-cols-[auto_1fr_auto] items-center gap-2">
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="icon" onClick={onBack} className="h-9 w-9 text-[#A4ADB8] hover:bg-[#151C26]">
               <ArrowLeft className="h-5 w-5 rotate-180" />
@@ -1003,11 +1004,13 @@ export const FPGame = ({
             </div>
           </div>
 
-          <TournamentStatusPill active={!currentEvening.completed}>
-            משחק {currentEvening.currentMatchIndex + 1} מתוך {totalMatches}
-          </TournamentStatusPill>
+          <div className="flex justify-center min-w-0">
+            <TournamentStatusPill active={!currentEvening.completed}>
+              משחק {currentEvening.currentMatchIndex + 1} מתוך {totalMatches}
+            </TournamentStatusPill>
+          </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-end gap-2">
             <span className="inline-flex h-9 items-center gap-1 rounded-full border border-[#26313D] bg-[#0F141B] px-3 text-xs font-bold text-[#F4F7F5]">
               {isViewOnly ? "צופה" : canStopTournament ? "אדמין" : "שחקן"}
               <Shield className="h-3.5 w-3.5 text-[#39FF88]" />
@@ -1078,13 +1081,13 @@ export const FPGame = ({
                 </Button>
               </div>
 
-              <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-2">
+              <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-3">
                 <div className="space-y-2">
                   <PlayerPair players={currentMatch.pairA.players} size="lg" />
                   <TeamVisual club={selectedClubA} size="lg" selected={activeStep === "teamA"} />
                 </div>
 
-                <div className="flex h-full min-w-[4.5rem] flex-col items-center justify-center gap-3 pt-12">
+                <div className="flex h-full min-w-[4.5rem] flex-col items-center justify-center gap-3 pt-11">
                   <span className="font-display text-4xl font-black text-[#39FF88] drop-shadow-[0_0_12px_rgba(57,255,136,0.45)]">VS</span>
                   <div className="rounded-xl border border-[#39FF88]/40 bg-[#05070A]/85 px-4 py-3 text-center shadow-[0_0_24px_rgba(57,255,136,0.18)]">
                     <div className="font-mono text-3xl font-black tabular-nums text-[#F4F7F5]" dir="ltr">
@@ -1099,49 +1102,60 @@ export const FPGame = ({
                 </div>
               </div>
 
-              <div ref={scoreRef} className="mt-4 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-                <ScoreStepper
-                  label={pairName(currentMatch.pairA)}
-                  value={scoreA}
-                  onChange={setScoreA}
-                  disabled={!canSubmitNewScore}
-                  className="justify-start"
-                />
+              <div
+                ref={scoreRef}
+                className={`mt-4 grid items-center gap-2 ${
+                  isViewOnly ? "grid-cols-1 justify-items-center" : "grid-cols-[auto_1fr_auto]"
+                }`}
+              >
+                {!isViewOnly && (
+                  <ScoreStepper
+                    label={pairName(currentMatch.pairA)}
+                    value={scoreA}
+                    onChange={setScoreA}
+                    disabled={!canSubmitNewScore}
+                    className="justify-start"
+                  />
+                )}
                 <div className="flex flex-col items-center rounded-lg border border-[#26313D] bg-[#05070A]/70 px-3 py-2">
                   <span className="text-xs font-bold text-[#F4F7F5]">יושב בחוץ</span>
                   <PlayerAvatar player={currentMatch.sittingOut} size="sm" />
                   <span className="mt-1 max-w-20 truncate text-[11px] text-[#A4ADB8]">{currentMatch.sittingOut.name}</span>
                 </div>
-                <ScoreStepper
-                  label={pairName(currentMatch.pairB)}
-                  value={scoreB}
-                  onChange={setScoreB}
-                  disabled={!canSubmitNewScore}
-                  className="justify-end"
-                />
+                {!isViewOnly && (
+                  <ScoreStepper
+                    label={pairName(currentMatch.pairB)}
+                    value={scoreB}
+                    onChange={setScoreB}
+                    disabled={!canSubmitNewScore}
+                    className="justify-end"
+                  />
+                )}
               </div>
 
-              <div className="mt-4 grid grid-cols-[1fr_auto] gap-2">
-                <Button
-                  variant="gaming"
-                  className="h-12 rounded-lg bg-[#39FF88] text-base font-black text-[#05070A] shadow-[0_0_22px_rgba(57,255,136,0.35)] hover:bg-[#39FF88]/90"
-                  disabled={!canSubmit || !canSubmitNewScore}
-                  onClick={handleSubmitResult}
-                >
-                  <Check className="h-5 w-5" />
-                  {currentEvening.currentMatchIndex + 1 >= totalMatches ? "סיים ליגה" : "שמור תוצאה"}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="h-12 rounded-lg border-[#26313D] bg-[#151C26] px-4 text-[#F4F7F5]"
-                  onClick={() => setActiveStep(activeStep === "teamA" ? "teamB" : "teamA")}
-                  disabled={!canSubmitNewScore}
-                >
-                  <Shirt className="h-5 w-5" />
-                  קבוצות
-                </Button>
-              </div>
+              {!isViewOnly && (
+                <div className="mt-4 grid grid-cols-[1fr_auto] gap-2">
+                  <Button
+                    variant="gaming"
+                    className="h-12 rounded-lg bg-[#39FF88] text-base font-black text-[#05070A] shadow-[0_0_22px_rgba(57,255,136,0.35)] hover:bg-[#39FF88]/90"
+                    disabled={!canSubmit || !canSubmitNewScore}
+                    onClick={handleSubmitResult}
+                  >
+                    <Check className="h-5 w-5" />
+                    {currentEvening.currentMatchIndex + 1 >= totalMatches ? "סיים ליגה" : "שמור תוצאה"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-12 rounded-lg border-[#26313D] bg-[#151C26] px-4 text-[#F4F7F5]"
+                    onClick={() => setActiveStep(activeStep === "teamA" ? "teamB" : "teamA")}
+                    disabled={!canSubmitNewScore}
+                  >
+                    <Shirt className="h-5 w-5" />
+                    קבוצות
+                  </Button>
+                </div>
+              )}
             </div>
           </section>
 
@@ -1406,32 +1420,15 @@ export const FPGame = ({
         </main>
       </div>
 
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-[#26313D] bg-[#05070A]/95 px-4 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur">
-        <div className="mx-auto grid max-w-md grid-cols-5 text-[11px] text-[#A4ADB8]">
-          <button type="button" className="flex flex-col items-center gap-1" onClick={onGoHome}>
-            <Users className="h-5 w-5" />
-            קבוצה
-          </button>
-          <button type="button" className="flex flex-col items-center gap-1" onClick={handleShare} disabled={shareLoading}>
-            <Link className="h-5 w-5" />
-            שיתוף
-          </button>
-          <button type="button" className="relative -mt-6 flex flex-col items-center gap-1 text-[#39FF88]" onClick={() => scrollToSection("top")}>
-            <span className="flex h-14 w-16 items-center justify-center rounded-t-2xl border border-[#39FF88]/35 bg-[#0E2A1A] shadow-[0_0_22px_rgba(57,255,136,0.22)]">
-              <CircleDot className="h-7 w-7" />
-            </span>
-            טורניר
-          </button>
-          <button type="button" className="flex flex-col items-center gap-1" onClick={() => scrollToSection("fp-results")}>
-            <BarChart3 className="h-5 w-5" />
-            דירוגים
-          </button>
-          <button type="button" className="flex flex-col items-center gap-1" onClick={() => scrollToSection("fp-schedule")}>
-            <Settings className="h-5 w-5" />
-            הגדרות
-          </button>
-        </div>
-      </nav>
+      <SoccerNightBottomNav
+        items={[
+          { label: "קבוצה", icon: <Users className="h-5 w-5" />, onClick: onGoHome },
+          { label: "שיתוף", icon: <Link className="h-5 w-5" />, onClick: handleShare, disabled: shareLoading || isViewOnly },
+          { label: "טורניר", icon: <CircleDot className="h-7 w-7" />, onClick: () => scrollToSection("top"), active: true },
+          { label: "דירוגים", icon: <BarChart3 className="h-5 w-5" />, onClick: () => scrollToSection("fp-results") },
+          { label: "הגדרות", icon: <Settings className="h-5 w-5" />, onClick: () => scrollToSection("fp-schedule") },
+        ]}
+      />
 
       <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
         <DrawerContent className="bg-[#05070A] border-[#26313D]" dir="rtl">

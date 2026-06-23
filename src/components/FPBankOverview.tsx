@@ -18,12 +18,13 @@ import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Copy, Check, Play, Edit2, ArrowLeftRight, X, AlertCircle, GripVertical } from "lucide-react";
+import { ArrowLeft, Copy, Check, Play, Edit2, ArrowLeftRight, X, AlertCircle, GripVertical, Layers } from "lucide-react";
 import { FPEvening, FPTeamBank, FPPair } from "@/types/fivePlayerTypes";
 import { Club } from "@/types/tournament";
 import { StarRating, starText } from "@/components/StarRating";
 import { PlayerPair } from "@/components/PlayerPair";
 import { TeamVisual } from "@/components/TeamVisual";
+import { SoccerNightBottomNav } from "@/components/soccer-night-ui";
 import { useToast } from "@/hooks/use-toast";
 import { sortClubsByStarsDesc } from "@/lib/sortClubs";
 import {
@@ -500,8 +501,8 @@ export const FPBankOverview = ({ evening, allClubs, onContinue, onBack, onUpdate
   const editingPair = editingPairId ? evening.pairs.find(p => p.id === editingPairId) : null;
 
   return (
-    <div className="min-h-[100svh] bg-gaming-bg p-3 pb-[max(1rem,env(safe-area-inset-bottom))]" dir="rtl">
-      <div className="max-w-md mx-auto space-y-3">
+    <div id="bank-top" className="min-h-[100dvh] bg-gaming-bg px-4 pb-[calc(6.25rem+env(safe-area-inset-bottom))] pt-3 sm:px-3" dir="rtl">
+      <div className="mx-auto w-full space-y-3 sm:max-w-md">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -629,6 +630,15 @@ export const FPBankOverview = ({ evening, allClubs, onContinue, onBack, onUpdate
           התחל משחקים
         </Button>
       </div>
+
+      <SoccerNightBottomNav
+        items={[
+          { label: "חזרה", icon: <ArrowLeft className="h-5 w-5 rotate-180" />, onClick: onBack },
+          { label: "העתק", icon: copiedAll ? <Check className="h-5 w-5" /> : <Copy className="h-5 w-5" />, onClick: handleCopyAll },
+          { label: "בנקים", icon: <Layers className="h-7 w-7" />, onClick: () => document.getElementById("bank-top")?.scrollIntoView({ behavior: "smooth" }), active: true },
+          { label: "התחל", icon: <Play className="h-5 w-5" />, onClick: onContinue },
+        ]}
+      />
 
       {/* Edit Dialog */}
       <Dialog open={!!editingPairId} onOpenChange={(open) => { if (!open) closeEdit(); }}>

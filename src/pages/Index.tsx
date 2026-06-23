@@ -199,6 +199,7 @@ const Index = () => {
   const [fpSelectedTeamName, setFpSelectedTeamName] = useState<string | null>(null);
   const [activeTeamEvenings, setActiveTeamEvenings] = useState<Awaited<ReturnType<typeof RemoteStorageService.listActiveEveningsForMyTeams>>>([]);
   const [routeTeamId, setRouteTeamId] = useState<string | null>(null);
+  const usesFullMobileShell = appState === "fp-game" || appState === "fp-bank-overview";
 
    // Navigation helper that also pushes into browser history so Back goes to previous screen
   function goTo(next: AppState) {
@@ -1998,7 +1999,7 @@ const handleGoHome = () => {
       {appState === 'home' ? (
         // Home page handles its own full-screen layout
         renderCurrentState()
-      ) : isMobile ? (
+      ) : isMobile && !usesFullMobileShell ? (
         <FitToScreen minScale={0.62} maxScale={1}>
           {renderCurrentState()}
         </FitToScreen>
