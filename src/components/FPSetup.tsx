@@ -77,9 +77,11 @@ export const FPSetup = ({ onBack, onStart, savedPlayers, teamPlayers, teamId, te
     0
   );
 
-  const setWorldCupBucket = (key: keyof FPWorldCupComposition, value: string) => {
-    const next = Math.max(0, Number.parseInt(value, 10) || 0);
-    setWorldCupComposition(prev => ({ ...prev, [key]: next }));
+  const adjustWorldCupBucket = (key: keyof FPWorldCupComposition, delta: number) => {
+    setWorldCupComposition(prev => ({
+      ...prev,
+      [key]: Math.max(0, prev[key] + delta),
+    }));
   };
 
   const updateMatchCount = (next: 15 | 30) => {
@@ -347,14 +349,32 @@ export const FPSetup = ({ onBack, onStart, savedPlayers, teamPlayers, teamId, te
                           <label className="text-xs text-foreground flex-1 text-right">
                             {bucket.label}
                           </label>
-                          <Input
-                            type="number"
-                            min="0"
-                            value={worldCupComposition[bucket.key]}
-                            onChange={e => setWorldCupBucket(bucket.key, e.target.value)}
-                            className="h-9 w-20 bg-gaming-surface border-border text-center"
-                            inputMode="numeric"
-                          />
+                          <div className="flex items-center gap-2" aria-label={bucket.label}>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => adjustWorldCupBucket(bucket.key, -1)}
+                              disabled={worldCupComposition[bucket.key] <= 0}
+                              aria-label={`הפחת ${bucket.label}`}
+                            >
+                              -
+                            </Button>
+                            <span className="min-w-8 text-center text-sm font-semibold text-foreground">
+                              {worldCupComposition[bucket.key]}
+                            </span>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => adjustWorldCupBucket(bucket.key, 1)}
+                              aria-label={`הוסף ${bucket.label}`}
+                            >
+                              +
+                            </Button>
+                          </div>
                         </div>
                       ))}
 

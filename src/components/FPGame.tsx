@@ -15,6 +15,7 @@ import { calculatePairStats, calculatePlayerStats } from "@/services/fivePlayerE
 import { useToast } from "@/hooks/use-toast";
 import { FPScheduleReorder } from "@/components/FPScheduleReorder";
 import { RemoteStorageService } from "@/services/remoteStorageService";
+import { sortClubsByStarsDesc } from "@/lib/sortClubs";
 import {
   Drawer,
   DrawerContent,
@@ -441,7 +442,7 @@ export const FPGame = ({
 
         {isActive && (
           <div className="space-y-1 mt-2">
-            {bank.clubs.map(club => {
+            {sortClubsByStarsDesc(bank.clubs).map(club => {
               const isSelected = selected?.id === club.id;
             
               // אם הקבוצה כבר ב-usedClubIds אבל היא הבחירה הנוכחית,

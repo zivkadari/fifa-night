@@ -23,6 +23,7 @@ import { FPEvening, FPTeamBank, FPPair } from "@/types/fivePlayerTypes";
 import { Club } from "@/types/tournament";
 import { StarRating, starText } from "@/components/StarRating";
 import { useToast } from "@/hooks/use-toast";
+import { sortClubsByStarsDesc } from "@/lib/sortClubs";
 import {
   Dialog,
   DialogContent,
@@ -213,7 +214,7 @@ export const FPBankOverview = ({ evening, allClubs, onContinue, onBack, onUpdate
   // --- Format helpers ---
   const formatPairBank = (pair: FPPair, bank: FPTeamBank) => {
     const lines = [`*${pair.players[0].name} & ${pair.players[1].name}*`];
-    bank.clubs.forEach(club => {
+    sortClubsByStarsDesc(bank.clubs).forEach(club => {
       lines.push(club.name);
     });
     return lines.join('\n');
@@ -562,6 +563,12 @@ export const FPBankOverview = ({ evening, allClubs, onContinue, onBack, onUpdate
           const bank = evening.teamBanks.find(b => b.pairId === pair.id);
           if (!bank) return null;
           const isCopied = copiedPairId === pair.id;
+          const sortedClubs = bank.clubs
+            .map((club, originalIdx) => ({ club, originalIdx }))
+            .sort((a, b) => {
+              if (b.club.stars !== a.club.stars) return b.club.stars - a.club.stars;
+              return a.club.name.localeCompare(b.club.name);
+            });
 
           return (
             <Card key={pair.id} className="bg-gradient-card border-border/40 p-3 shadow-card">
@@ -582,9 +589,9 @@ export const FPBankOverview = ({ evening, allClubs, onContinue, onBack, onUpdate
                 </button>
               </div>
               <div className="grid grid-cols-2 gap-1.5">
-                {bank.clubs.map((club, clubIdx) => (
+                {sortedClubs.map(({ club, originalIdx }) => (
                   <div
-                    key={`${club.id}-${clubIdx}`}
+                    key={`${club.id}-${originalIdx}`}
                     className="flex items-center justify-between bg-gaming-surface/60 rounded-md px-2 py-1.5 border border-border/30 group"
                   >
                     <span className="text-xs text-foreground truncate flex-1">{club.name}</span>
@@ -593,7 +600,7 @@ export const FPBankOverview = ({ evening, allClubs, onContinue, onBack, onUpdate
                         {renderStars(club.stars)}
                       </span>
                       <button
-                        onClick={() => openEdit(pair.id, clubIdx)}
+                        onClick={() => openEdit(pair.id, originalIdx)}
                         className="p-0.5 rounded hover:bg-accent/50 transition-colors opacity-50 group-hover:opacity-100"
                         title="שנה קבוצה"
                       >

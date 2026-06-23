@@ -31,6 +31,7 @@ import InsightCards from "@/components/spectate/InsightCards";
 import TeamSetupButton from "@/components/spectate/TeamSetupButton";
 import CouplesSpectateView from "@/components/spectate/CouplesSpectateView";
 import { TIER_LABELS, TIER_EMOJIS, TIER_COLORS, TIER_TEXT, computeTierIndices } from "@/lib/tierRanking";
+import { sortClubsByStarsDesc } from "@/lib/sortClubs";
 
 const SUPABASE_PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID || "ikbywydyidnkohbdrqdk";
 const POLL_INTERVAL = 4000;
@@ -293,7 +294,8 @@ function PersonalizedSpectateView({
       const entry = clubCounts.get(id);
       if (entry) entry.usedCount++;
     });
-    return Array.from(clubCounts.values());
+    const sortedClubs = sortClubsByStarsDesc(Array.from(clubCounts.values()).map(({ club }) => club));
+    return sortedClubs.map(club => clubCounts.get(club.id)!);
   };
 
   // Helper: get teams for a player (all pairs containing this player)
