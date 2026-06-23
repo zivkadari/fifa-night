@@ -116,6 +116,9 @@ export const FPGame = ({
   }, [evening]);
 
   const currentMatch = currentEvening.schedule[currentEvening.currentMatchIndex] ?? null;
+  const currentMatchKey = currentMatch
+    ? `${currentMatch.id}-${currentMatch.globalIndex ?? currentEvening.currentMatchIndex}`
+    : "no-match";
 
   // Reset state on match change
   useEffect(() => {
@@ -129,7 +132,6 @@ export const FPGame = ({
     setScoreMode('quick');
     setWinnerChoice(null);
     setManualScoreSide(null);
-    setShowSaved(false);
     if (hasClubA && hasClubB) {
       setActiveStep('score');
     } else if (hasClubA) {
@@ -137,7 +139,7 @@ export const FPGame = ({
     } else {
       setActiveStep('teamA');
     }
-  }, [currentEvening.currentMatchIndex]);
+  }, [currentMatchKey]);
 
   const handleSelectClubA = useCallback((club: Club) => {
     if (!canSubmitNewScore) return;
@@ -244,12 +246,18 @@ export const FPGame = ({
 
     setCurrentEvening(updated);
     onUpdateEvening(updated);
-    setShowSaved(true);
-    setTimeout(() => {
+    if (!isComplete) {
       setSelectedClubA(null);
       setSelectedClubB(null);
       setScoreA('');
       setScoreB('');
+      setWinnerChoice(null);
+      setManualScoreSide(null);
+      setScoreMode('quick');
+      setActiveStep('teamA');
+    }
+    setShowSaved(true);
+    setTimeout(() => {
       setShowSaved(false);
 
       if (isComplete) {
