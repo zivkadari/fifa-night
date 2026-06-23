@@ -1,9 +1,8 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Trophy, Users, Eye, Loader2, AlertCircle, ChevronDown, ChevronUp, ArrowLeft, Home } from "lucide-react";
 import {
@@ -31,7 +30,9 @@ import InsightCards from "@/components/spectate/InsightCards";
 import TeamSetupButton from "@/components/spectate/TeamSetupButton";
 import CouplesSpectateView from "@/components/spectate/CouplesSpectateView";
 import { PlayerPair } from "@/components/PlayerPair";
-import { TeamVisual } from "@/components/TeamVisual";
+import { PlayerAvatar } from "@/components/PlayerAvatar";
+import { TeamBadgeOrFlag, TeamVisual } from "@/components/TeamVisual";
+import { SoccerNightBottomNav } from "@/components/soccer-night-ui";
 import { TIER_LABELS, TIER_EMOJIS, TIER_COLORS, TIER_TEXT, computeTierIndices } from "@/lib/tierRanking";
 import { sortClubsByStarsDesc } from "@/lib/sortClubs";
 
@@ -406,8 +407,12 @@ function PersonalizedSpectateView({
             <span className="text-[9px] text-neon-green font-medium">המשחק שלך</span>
           )}
         </div>
-        <div className="flex items-center justify-between gap-1 text-xs" dir="ltr">
-          <div className="flex-1 text-left">
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 text-xs">
+          <div className="min-w-0 text-right">
+            <div className="mb-1 flex items-center justify-end gap-1">
+              <PlayerPair players={m.pairA.players} size="sm" showNames={false} />
+              <TeamBadgeOrFlag club={m.clubA} size="sm" />
+            </div>
             <p className={`font-medium leading-tight ${playerInFPPair(selectedPlayerId, m.pairA) ? 'text-neon-green' : 'text-foreground'}`}>
               {pairName(m.pairA)}
             </p>
@@ -416,13 +421,17 @@ function PersonalizedSpectateView({
             )}
           </div>
           {m.completed ? (
-            <span className="font-bold text-neon-green font-mono px-1.5 text-sm shrink-0">
-              {m.scoreA}–{m.scoreB}
+            <span className="font-bold text-neon-green font-mono px-1.5 text-xl shrink-0 tabular-nums" dir="ltr">
+              {m.scoreA} : {m.scoreB}
             </span>
           ) : (
             <span className="text-muted-foreground font-mono px-1.5 text-sm shrink-0">vs</span>
           )}
-          <div className="flex-1 text-right">
+          <div className="min-w-0 text-left">
+            <div className="mb-1 flex items-center justify-start gap-1">
+              <TeamBadgeOrFlag club={m.clubB} size="sm" />
+              <PlayerPair players={m.pairB.players} size="sm" showNames={false} />
+            </div>
             <p className={`font-medium leading-tight ${playerInFPPair(selectedPlayerId, m.pairB) ? 'text-neon-green' : 'text-foreground'}`}>
               {pairName(m.pairB)}
             </p>
@@ -458,7 +467,7 @@ function PersonalizedSpectateView({
     </div>
   );
 
-  // ── Standings tables (reusable) ──
+  // ── Mobile standings cards (reusable) ──
   const renderStandings = () => (
     <Tabs defaultValue="players">
       <TabsList className="w-full grid grid-cols-2">
@@ -473,103 +482,90 @@ function PersonalizedSpectateView({
       </TabsList>
 
       <TabsContent value="pairs">
-        <Card className="bg-gradient-card border-neon-green/20 p-3 shadow-card overflow-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="text-right text-xs">זוג</TableHead>
-                <TableHead className="text-center text-xs">מש׳</TableHead>
-                <TableHead className="text-center text-xs">נ</TableHead>
-                <TableHead className="text-center text-xs">ת</TableHead>
-                <TableHead className="text-center text-xs">ה</TableHead>
-                <TableHead className="text-center text-xs">הפ</TableHead>
-                <TableHead className="text-center text-xs font-bold">נק׳</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {pairStats.map((s) => {
-                const isMyPair = playerInFPPair(selectedPlayerId, s.pair);
-                const isExpanded = expandedPairId === s.pair.id;
-                return (
-                  <React.Fragment key={s.pair.id}>
-                    <TableRow
-                      className={`cursor-pointer ${isMyPair ? 'bg-neon-green/10' : ''} ${isExpanded ? 'border-b-0' : ''}`}
-                      onClick={() => setExpandedPairId(isExpanded ? null : s.pair.id)}
-                    >
-                      <TableCell className="text-xs font-medium whitespace-nowrap">
-                        {pairName(s.pair)}
-                        {isMyPair && <span className="text-neon-green text-[9px] mr-1">●</span>}
-                        <ChevronDown className={`inline h-3 w-3 mr-1 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                      </TableCell>
-                      <TableCell className="text-center text-xs">{s.played}</TableCell>
-                      <TableCell className="text-center text-xs">{s.wins}</TableCell>
-                      <TableCell className="text-center text-xs">{s.draws}</TableCell>
-                      <TableCell className="text-center text-xs">{s.losses}</TableCell>
-                      <TableCell className="text-center text-xs">{s.goalDiff > 0 ? "+" : ""}{s.goalDiff}</TableCell>
-                      <TableCell className="text-center text-xs font-bold text-neon-green">{s.points}</TableCell>
-                    </TableRow>
-                    {isExpanded && (
-                      <TableRow className={isMyPair ? 'bg-neon-green/5' : 'bg-gaming-surface/30'}>
-                        <TableCell colSpan={7} className="p-2">
-                          {renderTeamChips(s.pair.id)}
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </React.Fragment>
-                );
-              })}
-            </TableBody>
-          </Table>
+        <Card className="space-y-2 bg-gradient-card border-neon-green/20 p-3 shadow-card">
+          {pairStats.map((s, idx) => {
+            const isMyPair = playerInFPPair(selectedPlayerId, s.pair);
+            const isExpanded = expandedPairId === s.pair.id;
+            return (
+              <div
+                key={s.pair.id}
+                className={`rounded-lg border p-2.5 ${isMyPair ? 'border-neon-green/35 bg-neon-green/10' : 'border-border/30 bg-gaming-surface/40'}`}
+              >
+                <button
+                  type="button"
+                  className="grid w-full grid-cols-[auto_1fr_auto] items-center gap-2 text-right"
+                  onClick={() => setExpandedPairId(isExpanded ? null : s.pair.id)}
+                >
+                  <span className="font-mono text-xs text-muted-foreground">{idx + 1}</span>
+                  <span className="min-w-0">
+                    <span className="flex items-center gap-2">
+                      <PlayerPair players={s.pair.players} size="sm" showNames={false} />
+                      <span className="truncate text-xs font-bold text-foreground">{pairName(s.pair)}</span>
+                      {isMyPair && <span className="text-[9px] text-neon-green">●</span>}
+                    </span>
+                    <span className="mt-1 grid grid-cols-4 gap-1 text-[10px] text-muted-foreground">
+                      <span>{s.played} מש׳</span>
+                      <span>{s.wins}נ</span>
+                      <span>{s.draws}ת</span>
+                      <span>{s.losses}ה</span>
+                    </span>
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <span className="text-left">
+                      <span className="block font-mono text-lg font-black tabular-nums text-neon-green">{s.points}</span>
+                      <span className="block text-[10px] text-muted-foreground">{s.goalDiff > 0 ? "+" : ""}{s.goalDiff} הפ׳</span>
+                    </span>
+                    <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                  </span>
+                </button>
+                {isExpanded && <div className="mt-2 border-t border-border/30 pt-2">{renderTeamChips(s.pair.id)}</div>}
+              </div>
+            );
+          })}
         </Card>
       </TabsContent>
 
       <TabsContent value="players">
-        <Card className="bg-gradient-card border-neon-green/20 p-3 shadow-card overflow-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="text-right text-xs">שחקן</TableHead>
-                <TableHead className="text-center text-xs">מש׳</TableHead>
-                <TableHead className="text-center text-xs">נ</TableHead>
-                <TableHead className="text-center text-xs">ת</TableHead>
-                <TableHead className="text-center text-xs">ה</TableHead>
-                <TableHead className="text-center text-xs">הפ</TableHead>
-                <TableHead className="text-center text-xs font-bold">נק׳</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {playerStats.map((s) => {
-                const isMe = s.player.id === selectedPlayerId;
-                const isExpanded = expandedPlayerId === s.player.id;
-                return (
-                  <React.Fragment key={s.player.id}>
-                    <TableRow
-                      className={`cursor-pointer ${isMe ? 'bg-neon-green/10' : ''} ${isExpanded ? 'border-b-0' : ''}`}
-                      onClick={() => setExpandedPlayerId(isExpanded ? null : s.player.id)}
-                    >
-                      <TableCell className="text-xs font-medium">
-                        {s.player.name}
-                        <ChevronDown className={`inline h-3 w-3 mr-1 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                      </TableCell>
-                      <TableCell className="text-center text-xs">{s.played}</TableCell>
-                      <TableCell className="text-center text-xs">{s.wins}</TableCell>
-                      <TableCell className="text-center text-xs">{s.draws}</TableCell>
-                      <TableCell className="text-center text-xs">{s.losses}</TableCell>
-                      <TableCell className="text-center text-xs">{s.goalDiff > 0 ? "+" : ""}{s.goalDiff}</TableCell>
-                      <TableCell className={`text-center text-xs font-bold ${isMe ? 'text-neon-green' : 'text-neon-green'}`}>{s.points}</TableCell>
-                    </TableRow>
-                    {isExpanded && (
-                      <TableRow className={isMe ? 'bg-neon-green/5' : 'bg-gaming-surface/30'}>
-                        <TableCell colSpan={7} className="p-2">
-                          {renderPlayerTeamChips(s.player.id)}
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </React.Fragment>
-                );
-              })}
-            </TableBody>
-          </Table>
+        <Card className="space-y-2 bg-gradient-card border-neon-green/20 p-3 shadow-card">
+          {playerStats.map((s, idx) => {
+            const isMe = s.player.id === selectedPlayerId;
+            const isExpanded = expandedPlayerId === s.player.id;
+            return (
+              <div
+                key={s.player.id}
+                className={`rounded-lg border p-2.5 ${isMe ? 'border-neon-green/35 bg-neon-green/10' : 'border-border/30 bg-gaming-surface/40'}`}
+              >
+                <button
+                  type="button"
+                  className="grid w-full grid-cols-[auto_1fr_auto] items-center gap-2 text-right"
+                  onClick={() => setExpandedPlayerId(isExpanded ? null : s.player.id)}
+                >
+                  <span className="font-mono text-xs text-muted-foreground">{idx + 1}</span>
+                  <span className="min-w-0">
+                    <span className="flex items-center gap-2">
+                      <PlayerAvatar player={s.player} size="sm" />
+                      <span className="truncate text-sm font-bold text-foreground">{s.player.name}</span>
+                      {isMe && <span className="text-[9px] text-neon-green">●</span>}
+                    </span>
+                    <span className="mt-1 grid grid-cols-4 gap-1 text-[10px] text-muted-foreground">
+                      <span>{s.played} מש׳</span>
+                      <span>{s.wins}נ</span>
+                      <span>{s.draws}ת</span>
+                      <span>{s.losses}ה</span>
+                    </span>
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <span className="text-left">
+                      <span className="block font-mono text-lg font-black tabular-nums text-neon-green">{s.points}</span>
+                      <span className="block text-[10px] text-muted-foreground">{s.goalDiff > 0 ? "+" : ""}{s.goalDiff} הפ׳</span>
+                    </span>
+                    <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                  </span>
+                </button>
+                {isExpanded && <div className="mt-2 border-t border-border/30 pt-2">{renderPlayerTeamChips(s.player.id)}</div>}
+              </div>
+            );
+          })}
         </Card>
       </TabsContent>
     </Tabs>
@@ -675,10 +671,11 @@ function PersonalizedSpectateView({
 
   return (
     <div
-      className="min-h-[100svh] bg-gaming-bg p-3 pb-[max(1rem,env(safe-area-inset-bottom))]"
+      id="spectate-top"
+      className="min-h-[100dvh] bg-gaming-bg px-4 pb-[calc(6.25rem+env(safe-area-inset-bottom))] pt-3 sm:px-3"
       dir="rtl"
     >
-      <div className="max-w-md mx-auto space-y-3">
+      <div className="mx-auto w-full space-y-3 sm:max-w-md">
         {/* Navigation */}
         <div className="flex items-center justify-between">
           <Button variant="ghost" size="sm" onClick={goBack} className="text-muted-foreground">
@@ -739,7 +736,7 @@ function PersonalizedSpectateView({
             )}
 
             {/* 4. Tournament Tables (Players / Pairs) */}
-            {renderStandings()}
+            <div id="spectate-standings">{renderStandings()}</div>
 
             {/* 5. Match Results */}
             {completedCount > 0 && (
@@ -799,7 +796,7 @@ function PersonalizedSpectateView({
             {personal && <PersonalInsights personal={personal} />}
 
             {/* 5. Tournament Tables (Players / Pairs) */}
-            {renderStandings()}
+            <div id="spectate-standings">{renderStandings()}</div>
 
             {/* 6. Unified Matches Section (completed + upcoming) */}
             {(() => {
@@ -808,7 +805,7 @@ function PersonalizedSpectateView({
               const totalInSection = completedMatches.length + upcoming.length;
               if (totalInSection === 0) return null;
               return (
-                <div>
+                <div id="spectate-matches">
                   <Button
                     variant="outline"
                     className="w-full border-border/50 text-muted-foreground"
@@ -853,6 +850,20 @@ function PersonalizedSpectateView({
           </>
         )}
       </div>
+
+      <SoccerNightBottomNav
+        items={[
+          { label: "בית", icon: <Home className="h-5 w-5" />, onClick: goHome },
+          { label: "שחקן", icon: <Users className="h-5 w-5" />, onClick: onSwitchPlayer },
+          { label: "לייב", icon: <Eye className="h-7 w-7" />, onClick: () => document.getElementById("spectate-top")?.scrollIntoView({ behavior: "smooth" }), active: true },
+          { label: "משחקים", icon: <ChevronDown className="h-5 w-5" />, onClick: () => {
+            setShowMatches(true);
+            setShowRecent(true);
+            requestAnimationFrame(() => document.getElementById("spectate-matches")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+          } },
+          { label: "דירוגים", icon: <Trophy className="h-5 w-5" />, onClick: () => document.getElementById("spectate-standings")?.scrollIntoView({ behavior: "smooth", block: "start" }) },
+        ]}
+      />
     </div>
   );
 }

@@ -76,3 +76,47 @@ export const CollapsibleSection = ({
   );
 };
 
+type BottomNavItem = {
+  label: string;
+  icon: ReactNode;
+  onClick?: () => void;
+  active?: boolean;
+  disabled?: boolean;
+  ariaLabel?: string;
+};
+
+export const SoccerNightBottomNav = ({ items }: { items: BottomNavItem[] }) => (
+  <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-[#26313D] bg-[#05070A]/95 px-3 pb-[max(0.6rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur supports-[backdrop-filter]:bg-[#05070A]/88">
+    <div
+      className="mx-auto grid w-full sm:max-w-md"
+      style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
+      dir="rtl"
+    >
+      {items.map((item) => (
+        <button
+          key={item.label}
+          type="button"
+          className={cn(
+            "flex min-h-12 flex-col items-center justify-center gap-1 rounded-lg px-1 text-[11px] font-semibold text-[#A4ADB8] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#39FF88]",
+            item.active && "relative -mt-5 text-[#39FF88]",
+            item.disabled && "cursor-not-allowed opacity-45"
+          )}
+          onClick={item.onClick}
+          disabled={item.disabled}
+          aria-label={item.ariaLabel ?? item.label}
+        >
+          <span
+            className={cn(
+              "flex h-7 w-7 items-center justify-center",
+              item.active &&
+                "h-14 w-16 rounded-t-2xl border border-[#39FF88]/35 bg-[#0E2A1A] shadow-[0_0_22px_rgba(57,255,136,0.22)]"
+            )}
+          >
+            {item.icon}
+          </span>
+          <span className="truncate">{item.label}</span>
+        </button>
+      ))}
+    </div>
+  </nav>
+);

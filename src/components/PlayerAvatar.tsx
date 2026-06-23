@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Player } from "@/types/tournament";
 
@@ -33,6 +34,11 @@ const initials = (name?: string) =>
 export const PlayerAvatar = ({ player, size = "md", className }: PlayerAvatarProps) => {
   const src = player?.avatarUrl ?? player?.avatar_url ?? player?.imageUrl ?? null;
   const label = player?.name ? `תמונת פרופיל של ${player.name}` : "שחקן";
+  const [imageFailed, setImageFailed] = useState(false);
+
+  useEffect(() => {
+    setImageFailed(false);
+  }, [src]);
 
   return (
     <span
@@ -43,12 +49,13 @@ export const PlayerAvatar = ({ player, size = "md", className }: PlayerAvatarPro
       )}
       aria-label={label}
     >
-      {src ? (
+      {src && !imageFailed ? (
         <img
           src={src}
           alt={label}
           className="h-full w-full object-cover"
           loading="lazy"
+          onError={() => setImageFailed(true)}
         />
       ) : (
         <span aria-hidden="true">{initials(player?.name)}</span>
@@ -56,4 +63,3 @@ export const PlayerAvatar = ({ player, size = "md", className }: PlayerAvatarPro
     </span>
   );
 };
-
