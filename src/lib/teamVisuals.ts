@@ -1,6 +1,9 @@
 import { Club } from "@/types/tournament";
 
 type TeamVisualClub = Pick<Club, "id" | "name" | "isNational" | "isPrime"> & {
+  countryCode?: string | null;
+  country_code?: string | null;
+  code?: string | null;
   crestUrl?: string | null;
   crest_url?: string | null;
   badgeUrl?: string | null;
@@ -33,6 +36,11 @@ const NATIONAL_FLAG_BY_ID: Record<string, string> = {
     <rect y="16" width="64" height="16" fill="#FFFFFF"/>
     <rect y="32" width="64" height="16" fill="#75AADB"/>
     <circle cx="32" cy="24" r="4" fill="#F6B40E"/>
+  `),
+  belgium: flagSvg(`
+    <rect x="0" width="21.34" height="48" fill="#000000"/>
+    <rect x="21.34" width="21.32" height="48" fill="#FAE042"/>
+    <rect x="42.66" width="21.34" height="48" fill="#ED2939"/>
   `),
   brazil: flagSvg(`
     <rect width="64" height="48" fill="#009B3A"/>
@@ -93,6 +101,15 @@ const NATIONAL_FLAG_BY_ID: Record<string, string> = {
     <rect y="36" width="64" height="12" fill="#AA151B"/>
     <rect x="17" y="18" width="6" height="10" fill="#AA151B"/>
   `),
+  uruguay: flagSvg(`
+    <rect width="64" height="48" fill="#FFFFFF"/>
+    <path d="M0 5.33h64v5.33H0zm0 10.67h64v5.33H0zm0 10.67h64V32H0zm0 10.67h64v5.33H0z" fill="#0038A8"/>
+    <rect width="27" height="27" fill="#FFFFFF"/>
+    <circle cx="13.5" cy="13.5" r="5.2" fill="#FCD116"/>
+    <g stroke="#FCD116" stroke-width="1.4" stroke-linecap="round">
+      <path d="M13.5 2.5v5M13.5 19.5v5M2.5 13.5h5M19.5 13.5h5M5.7 5.7l3.5 3.5M17.8 17.8l3.5 3.5M21.3 5.7l-3.5 3.5M9.2 17.8l-3.5 3.5"/>
+    </g>
+  `),
   "united-states": flagSvg(`
     <rect width="64" height="48" fill="#B22234"/>
     <path d="M0 4h64v4H0zm0 8h64v4H0zm0 8h64v4H0zm0 8h64v4H0zm0 8h64v4H0zm0 8h64v4H0z" fill="#fff"/>
@@ -102,15 +119,78 @@ const NATIONAL_FLAG_BY_ID: Record<string, string> = {
 };
 
 const NATIONAL_ID_ALIASES: Record<string, string> = {
+  ar: "argentina",
+  arg: "argentina",
+  argentina: "argentina",
+  be: "belgium",
+  bel: "belgium",
+  belgium: "belgium",
+  br: "brazil",
+  bra: "brazil",
+  brasil: "brazil",
+  brazil: "brazil",
+  cro: "croatia",
+  croatia: "croatia",
+  de: "germany",
+  deu: "germany",
+  deutschland: "germany",
+  england: "england",
+  eng: "england",
+  es: "spain",
+  esp: "spain",
+  france: "france",
+  fr: "france",
+  fra: "france",
+  ger: "germany",
+  germany: "germany",
+  hr: "croatia",
+  hrvatska: "croatia",
+  it: "italy",
+  ita: "italy",
+  italy: "italy",
+  jp: "japan",
+  jpn: "japan",
+  japan: "japan",
   korea: "korea-republic",
+  "korea-republic": "korea-republic",
+  korearepublic: "korea-republic",
+  republicofkorea: "korea-republic",
+  "republic-of-korea": "korea-republic",
   south_korea: "korea-republic",
   southkorea: "korea-republic",
+  kr: "korea-republic",
+  kor: "korea-republic",
+  netherlands: "netherlands",
+  holland: "netherlands",
+  nl: "netherlands",
+  nld: "netherlands",
+  portugal: "portugal",
+  pt: "portugal",
+  por: "portugal",
+  spain: "spain",
+  uk: "england",
+  gbeng: "england",
+  unitedkingdom: "england",
+  uruguay: "uruguay",
+  uy: "uruguay",
+  uru: "uruguay",
   usa: "united-states",
   us: "united-states",
+  america: "united-states",
+  united_states: "united-states",
   unitedstates: "united-states",
+  "united-states": "united-states",
+  "united-states-of-america": "united-states",
 };
 
-const normalizeId = (id: string) => id.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+const normalizeId = (id: string) =>
+  id
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
 
 export const getTeamInitials = (club?: Pick<Club, "name"> | null) => {
   if (!club?.name) return "SN";
@@ -122,11 +202,36 @@ export const getTeamInitials = (club?: Pick<Club, "name"> | null) => {
     .join("");
 };
 
-export const getNationalFlag = (club?: Pick<Club, "id" | "isNational"> | null) => {
-  if (!club?.isNational || !club.id) return null;
-  const normalized = normalizeId(club.id);
-  const aliased = NATIONAL_ID_ALIASES[normalized] ?? normalized;
-  return NATIONAL_FLAG_BY_ID[aliased] ?? null;
+const compactKey = (value: string) => normalizeId(value).replace(/-/g, "");
+
+const resolveNationalKey = (club?: TeamVisualClub | null) => {
+  if (!club?.isNational) return null;
+
+  const candidates = [
+    club.countryCode,
+    club.country_code,
+    club.code,
+    club.id,
+    club.name,
+  ].filter((value): value is string => Boolean(value));
+
+  for (const candidate of candidates) {
+    const normalized = normalizeId(candidate);
+    const compact = compactKey(candidate);
+    const aliased =
+      NATIONAL_ID_ALIASES[normalized] ??
+      NATIONAL_ID_ALIASES[compact] ??
+      normalized;
+
+    if (NATIONAL_FLAG_BY_ID[aliased]) return aliased;
+  }
+
+  return null;
+};
+
+export const getNationalFlag = (club?: TeamVisualClub | null) => {
+  const nationalKey = resolveNationalKey(club);
+  return nationalKey ? NATIONAL_FLAG_BY_ID[nationalKey] : null;
 };
 
 export const getTeamVisualSource = (club?: TeamVisualClub | null): TeamVisualSource => {

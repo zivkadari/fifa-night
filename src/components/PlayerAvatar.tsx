@@ -10,11 +10,12 @@ type AvatarPlayer = Player & {
 
 interface PlayerAvatarProps {
   player?: AvatarPlayer | null;
-  size?: "sm" | "md" | "lg" | "xl";
+  size?: "xs" | "sm" | "md" | "lg" | "xl";
   className?: string;
 }
 
 const sizeClasses = {
+  xs: "h-6 w-6 text-[9px]",
   sm: "h-7 w-7 text-[10px]",
   md: "h-9 w-9 text-xs",
   lg: "h-12 w-12 text-sm",
@@ -45,6 +46,9 @@ export const PlayerAvatar = ({ player, size = "md", className }: PlayerAvatarPro
       className={cn(
         "relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#39FF88]/70 bg-[#151C26] font-bold text-[#F4F7F5] shadow-[0_0_16px_rgba(57,255,136,0.22)]",
         sizeClasses[size],
+        src && !imageFailed
+          ? "bg-[#05070A] shadow-[0_0_14px_rgba(57,255,136,0.18)]"
+          : "bg-[#101720] text-[#A4ADB8] shadow-none",
         className
       )}
       aria-label={label}

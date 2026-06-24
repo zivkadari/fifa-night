@@ -36,6 +36,7 @@ import {
 import { ProfileOverviewTab } from "@/components/profile/ProfileOverviewTab";
 import { ProfileMyHistoryTab } from "@/components/profile/ProfileMyHistoryTab";
 import { ProfileTeamViewTab } from "@/components/profile/ProfileTeamViewTab";
+import { ProfileAvatarUploader } from "@/components/ProfileAvatarUploader";
 
 const Profile = () => {
   const {
@@ -51,6 +52,7 @@ const Profile = () => {
   // ===== Identity =====
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [editingName, setEditingName] = useState(false);
   const [newDisplayName, setNewDisplayName] = useState("");
   const [profileLoading, setProfileLoading] = useState(true);
@@ -83,7 +85,10 @@ const Profile = () => {
         }
         if (mounted) setUserEmail(user.email ?? null);
         const profile = await RemoteStorageService.getProfile(user.id);
-        if (mounted && profile) setDisplayName(profile.display_name);
+        if (mounted && profile) {
+          setDisplayName(profile.display_name);
+          setAvatarUrl(profile.avatar_url);
+        }
       } finally {
         if (mounted) setProfileLoading(false);
       }
@@ -289,6 +294,12 @@ const Profile = () => {
               </div>
 
               <div className="space-y-3">
+                <ProfileAvatarUploader
+                  displayName={displayName}
+                  avatarUrl={avatarUrl}
+                  onAvatarUpdated={setAvatarUrl}
+                />
+
                 {/* Display name */}
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-sm text-muted-foreground">שם תצוגה:</span>

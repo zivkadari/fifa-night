@@ -143,3 +143,13 @@ All colors MUST be HSL.
   }
 }
 }
+
+@layer base {
+  [data-sonner-toaster][data-y-position="top"] {
+    top: max(1rem, env(safe-area-inset-top)) !important;
+  }
+
+  [data-sonner-toaster][data-y-position="bottom"] {
+    bottom: max(1rem, env(safe-area-inset-bottom)) !important;
+  }
+}

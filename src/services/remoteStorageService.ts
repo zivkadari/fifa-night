@@ -859,7 +859,39 @@ export class RemoteStorageService {
 
 
   // ========== Team Players ==========
-  static async listTeamPlayers(teamId: string): Promise<Array<{ id: string; name: string }>> {
+  static async getTeamPlayerAvatarMap(teamId: string): Promise<Record<string, string | null>> {
+    if (!supabase) return {};
+
+    const { data: accounts, error: accountError } = await supabase
+      .from(PLAYER_ACCOUNTS_TABLE)
+      .select("player_id, user_id")
+      .eq("team_id", teamId);
+
+    if (accountError || !accounts?.length) {
+      if (accountError) console.warn("getTeamPlayerAvatarMap/player_accounts error:", accountError.message);
+      return {};
+    }
+
+    const userIds = [...new Set(accounts.map((account: any) => account.user_id).filter(Boolean))];
+    if (userIds.length === 0) return {};
+
+    const { data: profiles, error: profileError } = await supabase
+      .from(PROFILES_TABLE)
+      .select("id, avatar_url")
+      .in("id", userIds);
+
+    if (profileError) {
+      console.warn("getTeamPlayerAvatarMap/profiles error:", profileError.message);
+      return {};
+    }
+
+    const avatarByUserId = new Map((profiles || []).map((profile: any) => [profile.id, profile.avatar_url ?? null]));
+    return Object.fromEntries(
+      accounts.map((account: any) => [account.player_id, avatarByUserId.get(account.user_id) ?? null])
+    );
+  }
+
+  static async listTeamPlayers(teamId: string): Promise<Array<{ id: string; name: string; avatarUrl?: string | null }>> {
     if (!supabase) return [];
     const { data, error } = await supabase
       .from(TEAM_PLAYERS_TABLE)
@@ -872,7 +904,12 @@ export class RemoteStorageService {
       .select("id, display_name")
       .in("id", ids);
     if (pErr) return [];
-    return (players || []).map((p: any) => ({ id: p.id as string, name: p.display_name as string }));
+    const avatarMap = await this.getTeamPlayerAvatarMap(teamId);
+    return (players || []).map((p: any) => ({
+      id: p.id as string,
+      name: p.display_name as string,
+      avatarUrl: avatarMap[p.id] ?? null,
+    }));
   }
 
   static async addPlayerToTeamByName(teamId: string, name: string): Promise<boolean> {
@@ -1151,7 +1188,7 @@ export class RemoteStorageService {
     return data;
   }
 
-  static async updateProfile(updates: { display_name?: string; avatar_url?: string }): Promise<boolean> {
+  static async updateProfile(updates: { display_name?: string; avatar_url?: string | null }): Promise<boolean> {
     if (!supabase) return false;
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return false;
@@ -1165,6 +1202,39 @@ export class RemoteStorageService {
       return false;
     }
     return true;
+  }
+
+  static async uploadCurrentUserAvatar(file: Blob): Promise<string | null> {
+    if (!supabase) return null;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    const encodedUserId = new TextEncoder().encode(user.id);
+    const digest = await crypto.subtle.digest("SHA-256", encodedUserId);
+    const avatarKey = Array.from(new Uint8Array(digest))
+      .map((byte) => byte.toString(16).padStart(2, "0"))
+      .join("")
+      .slice(0, 32);
+    const path = `profiles/${avatarKey}/avatar.webp`;
+    const { error: uploadError } = await supabase.storage
+      .from("avatars")
+      .upload(path, file, {
+        cacheControl: "3600",
+        contentType: file.type || "image/webp",
+        upsert: true,
+      });
+
+    if (uploadError) {
+      console.error("uploadCurrentUserAvatar upload error:", uploadError.message);
+      return null;
+    }
+
+    const { data } = supabase.storage.from("avatars").getPublicUrl(path);
+    const publicUrl = data.publicUrl ? `${data.publicUrl}?v=${Date.now()}` : null;
+    if (!publicUrl) return null;
+
+    const ok = await this.updateProfile({ avatar_url: publicUrl });
+    return ok ? publicUrl : null;
   }
 
   // ========== Player Accounts (team-scoped claim) ==========
