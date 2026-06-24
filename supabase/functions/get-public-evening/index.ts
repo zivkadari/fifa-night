@@ -6,6 +6,57 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+function collectPlayerIds(evening: any): string[] {
+  const ids = new Set<string>();
+  const addPlayer = (player: any) => {
+    if (player?.id) ids.add(player.id);
+  };
+
+  (evening?.players || []).forEach(addPlayer);
+  (evening?.pairs || []).forEach((pair: any) => (pair?.players || []).forEach(addPlayer));
+  (evening?.schedule || []).forEach((match: any) => {
+    (match?.pairA?.players || []).forEach(addPlayer);
+    (match?.pairB?.players || []).forEach(addPlayer);
+    addPlayer(match?.sittingOut);
+  });
+
+  return Array.from(ids);
+}
+
+function applyAvatarMap(evening: any, avatarByPlayerId: Record<string, string | null>) {
+  const withAvatar = (player: any) => {
+    if (!player?.id) return player;
+    const avatarUrl = avatarByPlayerId[player.id] ?? null;
+    return avatarUrl ? { ...player, avatarUrl } : player;
+  };
+
+  if (Array.isArray(evening?.players)) {
+    evening.players = evening.players.map(withAvatar);
+  }
+
+  if (Array.isArray(evening?.pairs)) {
+    evening.pairs = evening.pairs.map((pair: any) => ({
+      ...pair,
+      players: (pair.players || []).map(withAvatar),
+    }));
+  }
+
+  if (Array.isArray(evening?.schedule)) {
+    evening.schedule = evening.schedule.map((match: any) => ({
+      ...match,
+      pairA: match.pairA
+        ? { ...match.pairA, players: (match.pairA.players || []).map(withAvatar) }
+        : match.pairA,
+      pairB: match.pairB
+        ? { ...match.pairB, players: (match.pairB.players || []).map(withAvatar) }
+        : match.pairB,
+      sittingOut: withAvatar(match.sittingOut),
+    }));
+  }
+
+  return evening;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -49,10 +100,44 @@ Deno.serve(async (req) => {
       });
     }
 
+    let eveningData = data.data;
+
+    if (data.team_id && eveningData) {
+      const playerIds = collectPlayerIds(eveningData);
+      if (playerIds.length > 0) {
+        const { data: accounts } = await supabase
+          .from("player_accounts")
+          .select("player_id, user_id")
+          .eq("team_id", data.team_id)
+          .in("player_id", playerIds);
+
+        const userIds = [...new Set((accounts || []).map((account: any) => account.user_id).filter(Boolean))];
+
+        if (userIds.length > 0) {
+          const { data: profiles } = await supabase
+            .from("profiles")
+            .select("id, avatar_url")
+            .in("id", userIds);
+
+          const avatarByUserId = Object.fromEntries(
+            (profiles || []).map((profile: any) => [profile.id, profile.avatar_url ?? null])
+          );
+          const avatarByPlayerId = Object.fromEntries(
+            (accounts || []).map((account: any) => [
+              account.player_id,
+              avatarByUserId[account.user_id] ?? null,
+            ])
+          );
+
+          eveningData = applyAvatarMap(structuredClone(eveningData), avatarByPlayerId);
+        }
+      }
+    }
+
     return new Response(
       JSON.stringify({
         id: data.id,
-        data: data.data,
+        data: eveningData,
         updated_at: data.updated_at,
         team_id: data.team_id,
       }),

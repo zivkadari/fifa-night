@@ -1,6 +1,9 @@
 export interface Player {
   id: string;
   name: string;
+  avatarUrl?: string | null;
+  avatar_url?: string | null;
+  imageUrl?: string | null;
 }
 
 export interface Club {
@@ -9,6 +12,8 @@ export interface Club {
   stars: number;
   isNational?: boolean;
   isPrime?: boolean;
+  countryCode?: string;
+  country_code?: string;
   league: string;
   defaultAdded?: boolean;
   worldCup26?: boolean;

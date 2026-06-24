@@ -10,6 +10,9 @@ import { validateTeamName, validatePlayerName } from "@/lib/validation";
 import { SelectExistingPlayerDialog } from "./SelectExistingPlayerDialog";
 import { TeamMemberIdentityCard } from "./TeamMemberIdentityCard";
 import { useTeam } from "@/contexts/TeamContext";
+import { PlayerAvatar } from "@/components/PlayerAvatar";
+
+type TeamPlayer = { id: string; name: string; avatarUrl?: string | null };
 
 interface TeamLeaderboardEntry {
   player_id: string;
@@ -49,7 +52,7 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam, initialTeamId }: T
   const autoSyncedTeamIdsRef = useRef<Set<string>>(new Set());
   const [teams, setTeams] = useState<Array<{ id: string; name: string; role?: string }>>([]);
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
-  const [teamPlayers, setTeamPlayers] = useState<Array<{ id: string; name: string }>>([]);
+  const [teamPlayers, setTeamPlayers] = useState<TeamPlayer[]>([]);
   const [newTeamName, setNewTeamName] = useState("");
   const [newPlayerName, setNewPlayerName] = useState("");
   const [leaderboard, setLeaderboard] = useState<TeamLeaderboardEntry[]>([]);
@@ -60,7 +63,7 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam, initialTeamId }: T
   const [editingTeamName, setEditingTeamName] = useState("");
   const [inviteCode, setInviteCode] = useState<string | null>(null);
   const [teamVisibility, setTeamVisibility] = useState<"private" | "searchable" | "public">("private");
-  const [teamPlayersPreview, setTeamPlayersPreview] = useState<Record<string, Array<{ id: string; name: string }>>>({});
+  const [teamPlayersPreview, setTeamPlayersPreview] = useState<Record<string, TeamPlayer[]>>({});
   const [teamDescription, setTeamDescription] = useState("");
   const [savingDiscovery, setSavingDiscovery] = useState(false);
   const [joinRequests, setJoinRequests] = useState<TeamJoinRequest[]>([]);
@@ -552,7 +555,7 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam, initialTeamId }: T
       : `${playerNames.slice(0, 3).join(", ")} ועוד ${playerNames.length - 3}`;
   
   const topLeaderboard = leaderboard.slice(0, 3);
-  const formatPlayersPreview = (players: Array<{ id: string; name: string }>) => {
+  const formatPlayersPreview = (players: TeamPlayer[]) => {
     if (!players.length) return "אין שחקנים";
     if (players.length <= 3) return players.map((p) => p.name).join(", ");
     return `${players.slice(0, 3).map((p) => p.name).join(", ")} ועוד ${players.length - 3}`;
@@ -804,7 +807,10 @@ export const TeamsManager = ({ onBack, onStartEveningForTeam, initialTeamId }: T
                           key={p.id}
                           className="flex items-center justify-between border-b border-border/50 py-2 last:border-b-0"
                         >
-                          <span className="text-foreground">{p.name}</span>
+                          <div className="flex min-w-0 items-center gap-2">
+                            <PlayerAvatar player={p} size="sm" />
+                            <span className="min-w-0 truncate text-foreground">{p.name}</span>
+                          </div>
             
                           {canManageSelectedTeam && (
                             <Button

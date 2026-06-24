@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Lock, RotateCcw, ListOrdered, GripVertical } from "lucide-react";
+import { Lock, RotateCcw, ListOrdered, GripVertical, UserRound } from "lucide-react";
 import { FPEvening, FPMatch } from "@/types/fivePlayerTypes";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -106,20 +106,26 @@ function SortableMatchItem({
         <div className="w-1.5 h-1.5 rounded-full bg-neon-green shrink-0 animate-pulse" />
       )}
 
-      {/* Match info */}
       <div className="flex-1 min-w-0">
-        <p className="text-xs text-foreground truncate">
+        <p className="text-xs text-foreground leading-tight">
           {pairName(match.pairA)} <span className="text-muted-foreground">vs</span>{" "}
           {pairName(match.pairB)}
         </p>
-        <p className="text-[10px] text-muted-foreground">
-          בחוץ: {match.sittingOut.name}
-          {isCompleted && match.scoreA !== undefined && (
-            <span className="mr-2">
-              • {match.scoreA}-{match.scoreB}
+        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-muted-foreground">
+          <span className="inline-flex items-center gap-1">
+            <UserRound className="h-3 w-3" aria-hidden="true" />
+            בחוץ: {match.sittingOut.name}
+          </span>
+          {isCompleted && match.scoreA !== undefined ? (
+            <span className="font-mono tabular-nums text-foreground" dir="ltr">
+              {match.scoreA} : {match.scoreB}
+            </span>
+          ) : (
+            <span className="rounded-full border border-border/40 px-1.5 py-0.5 text-[9px] font-semibold text-muted-foreground">
+              טרם שוחק
             </span>
           )}
-        </p>
+        </div>
       </div>
     </div>
   );
