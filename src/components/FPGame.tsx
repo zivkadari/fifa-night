@@ -1,12 +1,10 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   ArrowLeft,
-  Home,
   Trophy,
   Users,
   Check,
@@ -23,7 +21,6 @@ import {
   CalendarDays,
   BarChart3,
   Link,
-  Settings,
   Shield,
   CircleDot,
   Shirt,
@@ -31,7 +28,7 @@ import {
 } from "lucide-react";
 import FPInsightsTab from "@/components/FPInsightsTab";
 
-import { FPEvening, FPTeamBank, FPMatch, FPPair } from "@/types/fivePlayerTypes";
+import { FPEvening, FPTeamBank, FPMatch } from "@/types/fivePlayerTypes";
 import { Club } from "@/types/tournament";
 import { StarRating } from "@/components/StarRating";
 import { calculatePairStats, calculatePlayerStats } from "@/services/fivePlayerEngine";
@@ -403,6 +400,7 @@ export const FPGame = ({
   const roundNum = currentMatch.roundIndex + 1;
   const matchInRound = currentMatch.matchIndex + 1;
   const totalMatches = currentEvening.schedule.length;
+  const matchProgressLabel = `${currentEvening.currentMatchIndex + 1} / ${totalMatches}`;
 
   const bankA = currentEvening.teamBanks.find(b => b.pairId === currentMatch.pairA.id)!;
   const bankB = currentEvening.teamBanks.find(b => b.pairId === currentMatch.pairB.id)!;
@@ -875,18 +873,6 @@ export const FPGame = ({
                 <Edit2 className="h-3 w-3 text-muted-foreground" />
               </button>
             )}
-            {canEditExistingResults && (
-              <button
-                onClick={() => {
-                  setEditingMatchIdx(match.globalIndex);
-                  setEditScoreA(String(match.scoreA ?? ''));
-                  setEditScoreB(String(match.scoreB ?? ''));
-                }}
-                className="p-1 rounded hover:bg-gaming-surface/80 transition-colors"
-              >
-                <Edit2 className="h-3 w-3 text-muted-foreground" />
-              </button>
-            )}
           </div>
         </div>
         <div className="flex items-center justify-between mt-1.5">
@@ -959,7 +945,7 @@ export const FPGame = ({
   };
 
   const completedMatches = currentEvening.schedule.filter((match) => match.completed);
-  const recentMatches = completedMatches.slice(-2).reverse();
+  const recentMatches = completedMatches.slice(-1).reverse();
   const nextMatch = currentEvening.schedule
     .slice(currentEvening.currentMatchIndex + 1)
     .find((match) => !match.completed);
@@ -976,7 +962,9 @@ export const FPGame = ({
   };
 
   const standingsPreview = leader
-    ? `${pairName(leader.pair)} · ${leader.points} נק׳`
+    ? completedMatches.length > 0
+      ? `${pairName(leader.pair)} · ${leader.points} נק׳`
+      : "יתעדכן אחרי המשחק הראשון"
     : "אין דירוג";
 
   return (
@@ -991,27 +979,24 @@ export const FPGame = ({
           </div>
         )}
 
-        <header className="mb-3 grid grid-cols-[auto_1fr_auto] items-center gap-2">
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={onBack} className="h-9 w-9 text-[#A4ADB8] hover:bg-[#151C26]">
+        <header className="mb-3 flex items-center gap-2">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <Button variant="ghost" size="icon" onClick={onBack} className="h-9 w-9 shrink-0 text-[#A4ADB8] hover:bg-[#151C26]" aria-label="חזרה">
               <ArrowLeft className="h-5 w-5 rotate-180" />
             </Button>
-            <div className="leading-none">
+            <div className="shrink-0 leading-none">
               <div className="font-display text-[1.45rem] font-black uppercase tracking-normal">
                 <span className="block leading-[0.85] text-[#F4F7F5]">SOCCER</span>
                 <span className="block leading-[0.85] text-[#39FF88]">NIGHT</span>
               </div>
             </div>
-          </div>
-
-          <div className="flex justify-center min-w-0">
             <TournamentStatusPill active={!currentEvening.completed}>
-              משחק {currentEvening.currentMatchIndex + 1} מתוך {totalMatches}
+              <span dir="ltr">{matchProgressLabel}</span>
             </TournamentStatusPill>
           </div>
 
-          <div className="flex items-center justify-end gap-2">
-            <span className="inline-flex h-9 items-center gap-1 rounded-full border border-[#26313D] bg-[#0F141B] px-3 text-xs font-bold text-[#F4F7F5]">
+          <div className="flex shrink-0 items-center justify-end gap-2">
+            <span className="inline-flex h-9 items-center gap-1 rounded-full border border-[#26313D] bg-[#0F141B] px-2.5 text-xs font-bold text-[#F4F7F5]">
               {isViewOnly ? "צופה" : canStopTournament ? "אדמין" : "שחקן"}
               <Shield className="h-3.5 w-3.5 text-[#39FF88]" />
             </span>
@@ -1074,67 +1059,70 @@ export const FPGame = ({
                 <div className="rounded-b-xl border-x border-b border-[#26313D] bg-[#05070A]/70 px-5 py-1 text-center text-xs font-bold text-[#39FF88]">
                   משחק נוכחי
                 </div>
-
-                <Button variant="ghost" size="icon" onClick={onGoHome} className="h-10 w-10 rounded-lg border border-[#26313D] bg-[#05070A]/70 text-[#A4ADB8]">
-                  <Home className="h-5 w-5" />
-                  <span className="sr-only">בית</span>
-                </Button>
+                <span className="h-10 w-10" aria-hidden="true" />
               </div>
 
-              <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-3">
-                <div className="space-y-2">
-                  <PlayerPair players={currentMatch.pairA.players} size="lg" />
+              <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-2">
+                <div className="min-w-0 space-y-2">
+                  <PlayerPair players={currentMatch.pairA.players} size="sm" />
                   <TeamVisual club={selectedClubA} size="lg" selected={activeStep === "teamA"} />
                 </div>
 
-                <div className="flex h-full min-w-[4.5rem] flex-col items-center justify-center gap-3 pt-11">
-                  <span className="font-display text-4xl font-black text-[#39FF88] drop-shadow-[0_0_12px_rgba(57,255,136,0.45)]">VS</span>
-                  <div className="rounded-xl border border-[#39FF88]/40 bg-[#05070A]/85 px-4 py-3 text-center shadow-[0_0_24px_rgba(57,255,136,0.18)]">
-                    <div className="font-mono text-3xl font-black tabular-nums text-[#F4F7F5]" dir="ltr">
-                      {scoreA === "" ? "0" : scoreA} : {scoreB === "" ? "0" : scoreB}
-                    </div>
-                  </div>
+                <div className="flex min-w-[4.15rem] flex-col items-center gap-2 pt-10">
+                  <span className="font-display text-3xl font-black text-[#39FF88] drop-shadow-[0_0_12px_rgba(57,255,136,0.45)]">VS</span>
                 </div>
 
-                <div className="space-y-2">
-                  <PlayerPair players={currentMatch.pairB.players} size="lg" />
+                <div className="min-w-0 space-y-2">
+                  <PlayerPair players={currentMatch.pairB.players} size="sm" />
                   <TeamVisual club={selectedClubB} size="lg" selected={activeStep === "teamB"} />
                 </div>
               </div>
 
-              <div
-                ref={scoreRef}
-                className={`mt-4 grid items-center gap-2 ${
-                  isViewOnly ? "grid-cols-1 justify-items-center" : "grid-cols-[auto_1fr_auto]"
-                }`}
-              >
-                {!isViewOnly && (
-                  <ScoreStepper
-                    label={pairName(currentMatch.pairA)}
-                    value={scoreA}
-                    onChange={setScoreA}
-                    disabled={!canSubmitNewScore}
-                    className="justify-start"
-                  />
-                )}
-                <div className="flex flex-col items-center rounded-lg border border-[#26313D] bg-[#05070A]/70 px-3 py-2">
-                  <span className="text-xs font-bold text-[#F4F7F5]">יושב בחוץ</span>
-                  <PlayerAvatar player={currentMatch.sittingOut} size="sm" />
-                  <span className="mt-1 max-w-20 truncate text-[11px] text-[#A4ADB8]">{currentMatch.sittingOut.name}</span>
+              <div ref={scoreRef} className="mt-3 rounded-xl border border-[#26313D] bg-[#05070A]/78 p-2.5">
+                <div className="text-center">
+                  <div className="whitespace-nowrap font-mono text-4xl font-black tabular-nums text-[#F4F7F5]" dir="ltr">
+                    {scoreA === "" ? "0" : scoreA} : {scoreB === "" ? "0" : scoreB}
+                  </div>
                 </div>
+
                 {!isViewOnly && (
-                  <ScoreStepper
-                    label={pairName(currentMatch.pairB)}
-                    value={scoreB}
-                    onChange={setScoreB}
-                    disabled={!canSubmitNewScore}
-                    className="justify-end"
-                  />
+                  <div className="mt-3 grid grid-cols-2 gap-2" dir="rtl">
+                    <div className="rounded-lg border border-[#26313D]/70 bg-[#151C26]/55 p-2">
+                      <p className="mb-1 text-center text-[10px] font-bold leading-tight text-[#A4ADB8]" dir="auto">
+                        {selectedClubA?.name ?? pairName(currentMatch.pairA)}
+                      </p>
+                      <ScoreStepper
+                        label={pairName(currentMatch.pairA)}
+                        value={scoreA}
+                        onChange={setScoreA}
+                        disabled={!canSubmitNewScore}
+                        className="justify-center"
+                      />
+                    </div>
+                    <div className="rounded-lg border border-[#26313D]/70 bg-[#151C26]/55 p-2">
+                      <p className="mb-1 text-center text-[10px] font-bold leading-tight text-[#A4ADB8]" dir="auto">
+                        {selectedClubB?.name ?? pairName(currentMatch.pairB)}
+                      </p>
+                      <ScoreStepper
+                        label={pairName(currentMatch.pairB)}
+                        value={scoreB}
+                        onChange={setScoreB}
+                        disabled={!canSubmitNewScore}
+                        className="justify-center"
+                      />
+                    </div>
+                  </div>
                 )}
+
+                <div className="mt-2 flex items-center justify-center gap-2 rounded-lg border border-[#26313D]/80 bg-[#151C26]/70 px-3 py-1.5">
+                  <span className="text-xs font-bold text-[#A4ADB8]">יושב בחוץ:</span>
+                  <PlayerAvatar player={currentMatch.sittingOut} size="xs" />
+                  <span className="min-w-0 truncate text-xs font-semibold text-[#F4F7F5]">{currentMatch.sittingOut.name}</span>
+                </div>
               </div>
 
               {!isViewOnly && (
-                <div className="mt-4 grid grid-cols-[1fr_auto] gap-2">
+                <div className="mt-3 grid grid-cols-[1fr_auto] gap-2">
                   <Button
                     variant="gaming"
                     className="h-12 rounded-lg bg-[#39FF88] text-base font-black text-[#05070A] shadow-[0_0_22px_rgba(57,255,136,0.35)] hover:bg-[#39FF88]/90"
@@ -1147,12 +1135,12 @@ export const FPGame = ({
                   <Button
                     type="button"
                     variant="outline"
-                    className="h-12 rounded-lg border-[#26313D] bg-[#151C26] px-4 text-[#F4F7F5]"
+                    className="h-12 rounded-lg border-[#26313D] bg-[#151C26] px-3 text-[#F4F7F5]"
                     onClick={() => setActiveStep(activeStep === "teamA" ? "teamB" : "teamA")}
                     disabled={!canSubmitNewScore}
                   >
                     <Shirt className="h-5 w-5" />
-                    קבוצות
+                    {bothTeamsSelected ? "החלפת קבוצות" : "בחירת קבוצות"}
                   </Button>
                 </div>
               )}
@@ -1167,61 +1155,92 @@ export const FPGame = ({
             </section>
           )}
 
-          <section className="grid grid-cols-3 gap-2">
-            <CompactSummaryCard icon={<Trophy className="h-5 w-5" />} title="מובילים">
-              {leader ? (
-                <div className="space-y-1">
-                  <PlayerPair players={leader.pair.players} size="sm" showNames={false} />
-                  <p className="truncate text-xs font-bold text-[#F4F7F5]">{pairName(leader.pair)}</p>
-                  <p className="font-mono text-xl font-black tabular-nums text-[#39FF88]">{leader.points} נק׳</p>
-                </div>
-              ) : (
-                <p className="text-xs text-[#A4ADB8]">אין נתונים</p>
-              )}
-            </CompactSummaryCard>
-
-            <CompactSummaryCard icon={<CircleDot className="h-5 w-5" />} title="הבא">
-              {nextMatch ? (
-                <div className="space-y-1 text-xs text-[#A4ADB8]">
-                  <div className="flex items-center justify-center gap-1">
-                    <PlayerPair players={nextMatch.pairA.players} size="sm" showNames={false} />
-                    <span className="font-bold text-[#F4F7F5]">VS</span>
-                    <PlayerPair players={nextMatch.pairB.players} size="sm" showNames={false} />
-                  </div>
-                  <p className="truncate">בחוץ: {nextMatch.sittingOut.name}</p>
-                </div>
-              ) : (
-                <p className="text-xs text-[#A4ADB8]">אין משחק הבא</p>
-              )}
-            </CompactSummaryCard>
-
-            <CompactSummaryCard icon={<Layers className="h-5 w-5" />} title="נשארו">
-              <div className="space-y-1">
-                {currentEvening.teamBanks.slice(0, 3).map((bank) => {
-                  const pair = currentEvening.pairs.find((p) => p.id === bank.pairId);
-                  const remaining = Math.max(0, bank.clubs.length - bank.usedClubIds.length);
-                  return (
-                    <div key={bank.pairId} className="grid grid-cols-[1fr_auto] items-center gap-2 text-[10px]">
-                      <span className="truncate text-[#A4ADB8]">{pair ? pairName(pair) : "זוג"}</span>
-                      <span className="font-mono text-[#F4F7F5]">{remaining}/{bank.clubs.length}</span>
-                    </div>
-                  );
-                })}
+          <section className="space-y-2">
+            <article className="rounded-lg border border-[#26313D] bg-[#0F141B] p-3">
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <h3 className="flex items-center gap-2 text-sm font-black text-[#F4F7F5]">
+                  <CircleDot className="h-5 w-5 text-[#39FF88]" />
+                  המשחק הבא
+                </h3>
+                {nextMatch && (
+                  <span className="text-xs font-semibold text-[#A4ADB8]">
+                    משחק {nextMatch.globalIndex + 1}
+                  </span>
+                )}
               </div>
-            </CompactSummaryCard>
+              {nextMatch ? (
+                <div className="space-y-2">
+                  <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-lg bg-[#151C26]/65 px-2 py-1.5">
+                    <PlayerPair players={nextMatch.pairA.players} size="sm" layout="inline" />
+                    <span className="font-mono text-xs font-black text-[#39FF88]">VS</span>
+                  </div>
+                  <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-lg bg-[#151C26]/65 px-2 py-1.5">
+                    <PlayerPair players={nextMatch.pairB.players} size="sm" layout="inline" />
+                    <span className="rounded-full border border-[#26313D] px-2 py-0.5 text-[10px] font-bold text-[#A4ADB8]">
+                      טרם שוחק
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-center gap-2 pt-1 text-xs text-[#A4ADB8]">
+                    <span>בחוץ:</span>
+                    <PlayerAvatar player={nextMatch.sittingOut} size="xs" />
+                    <span className="font-semibold text-[#F4F7F5]">{nextMatch.sittingOut.name}</span>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-center text-xs text-[#A4ADB8]">אין משחק הבא</p>
+              )}
+            </article>
+
+            <div className="grid grid-cols-2 gap-2">
+              <CompactSummaryCard icon={<Trophy className="h-5 w-5" />} title="מובילים" className="min-h-[6.25rem]">
+                {completedMatches.length > 0 && leader ? (
+                  <div className="space-y-1">
+                    <PlayerPair players={leader.pair.players} size="sm" layout="inline" />
+                    <p className="font-mono text-2xl font-black tabular-nums text-[#39FF88]">{leader.points} נק׳</p>
+                  </div>
+                ) : (
+                  <p className="text-xs leading-relaxed text-[#A4ADB8]">הדירוג יתעדכן אחרי המשחק הראשון</p>
+                )}
+              </CompactSummaryCard>
+
+              <CompactSummaryCard icon={<Layers className="h-5 w-5" />} title="קבוצות" className="min-h-[6.25rem]">
+                <div className="space-y-1">
+                  {currentEvening.teamBanks.slice(0, 2).map((bank) => {
+                    const pair = currentEvening.pairs.find((p) => p.id === bank.pairId);
+                    const remaining = Math.max(0, bank.clubs.length - bank.usedClubIds.length);
+                    const total = bank.clubs.length || 1;
+                    return (
+                      <div key={bank.pairId} className="space-y-1 text-[10px]">
+                        <div className="grid grid-cols-[1fr_auto] items-center gap-2">
+                          <span className="min-w-0 text-[#A4ADB8] leading-tight">{pair ? pairName(pair) : "זוג"}</span>
+                          <span className="font-mono text-[#F4F7F5]">{remaining}/{bank.clubs.length}</span>
+                        </div>
+                        <div className="h-1.5 overflow-hidden rounded-full bg-[#26313D]">
+                          <div
+                            className="h-full rounded-full bg-[#39FF88]"
+                            style={{ width: `${Math.max(0, Math.min(100, (remaining / total) * 100))}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <p className="text-[10px] font-semibold text-[#39FF88]">{totalRemainingClubs} זמינות</p>
+                </div>
+              </CompactSummaryCard>
+            </div>
           </section>
 
-          <section className="space-y-2">
-            <div className="flex items-center justify-between">
-              <h2 className="flex items-center gap-2 text-lg font-black text-[#F4F7F5]">
-                <Clock3 className="h-5 w-5 text-[#39FF88]" />
-                תוצאות אחרונות
-              </h2>
-              <button type="button" className="text-xs font-bold text-[#39FF88]" onClick={() => scrollToSection("fp-results")}>
-                הצג הכל
-              </button>
-            </div>
-            {recentMatches.length > 0 ? (
+          {recentMatches.length > 0 && (
+            <section className="space-y-2">
+              <div className="flex items-center justify-between">
+                <h2 className="flex items-center gap-2 text-base font-black text-[#F4F7F5]">
+                  <Clock3 className="h-5 w-5 text-[#39FF88]" />
+                  תוצאה אחרונה
+                </h2>
+                <button type="button" className="text-xs font-bold text-[#39FF88]" onClick={() => scrollToSection("fp-results")}>
+                  הצג הכל
+                </button>
+              </div>
               <div className="space-y-2">
                 {recentMatches.map((match) => (
                   <RecentResultCard key={match.id}>
@@ -1258,12 +1277,8 @@ export const FPGame = ({
                   </RecentResultCard>
                 ))}
               </div>
-            ) : (
-              <RecentResultCard>
-                <p className="text-center text-sm text-[#A4ADB8]">עדיין אין תוצאות</p>
-              </RecentResultCard>
-            )}
-          </section>
+            </section>
+          )}
 
           <section className="space-y-2">
             <CollapsibleSection
@@ -1314,107 +1329,74 @@ export const FPGame = ({
               </CollapsibleSection>
             </div>
 
-            <CollapsibleSection title="טבלת זוגות" preview={standingsPreview} icon={<Trophy className="h-5 w-5" />}>
-              <div className="overflow-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="text-right text-xs">#</TableHead>
-                      <TableHead className="text-right text-xs">זוג</TableHead>
-                      <TableHead className="text-center text-xs">מש׳</TableHead>
-                      <TableHead className="text-center text-xs">נ</TableHead>
-                      <TableHead className="text-center text-xs">ת</TableHead>
-                      <TableHead className="text-center text-xs">ה</TableHead>
-                      <TableHead className="text-center text-xs">הפ</TableHead>
-                      <TableHead className="text-center text-xs font-bold">נק׳</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+            <div id="fp-standings">
+              <CollapsibleSection title="דירוגים" preview={standingsPreview} icon={<Trophy className="h-5 w-5" />}>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-black text-[#F4F7F5]">זוגות</h3>
                     {pairStats.map((s, idx) => (
-                      <TableRow key={s.pair.id} className="cursor-pointer hover:bg-[#151C26]" onClick={() => openPairDetails(s.pair.id)}>
-                        <TableCell className="text-xs">{idx + 1}</TableCell>
-                        <TableCell className="text-xs font-medium whitespace-nowrap">
-                          <div className="flex items-center gap-2">
-                            <PlayerPair players={s.pair.players} size="sm" showNames={false} />
-                            {pairName(s.pair)}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-center text-xs">{s.played}</TableCell>
-                        <TableCell className="text-center text-xs">{s.wins}</TableCell>
-                        <TableCell className="text-center text-xs">{s.draws}</TableCell>
-                        <TableCell className="text-center text-xs">{s.losses}</TableCell>
-                        <TableCell className="text-center text-xs">{s.goalDiff > 0 ? "+" : ""}{s.goalDiff}</TableCell>
-                        <TableCell className="text-center text-xs font-bold text-[#39FF88]">{s.points}</TableCell>
-                      </TableRow>
+                      <button
+                        key={s.pair.id}
+                        type="button"
+                        className="grid w-full grid-cols-[auto_1fr_auto] items-center gap-3 rounded-lg border border-[#26313D] bg-[#151C26] p-2 text-right"
+                        onClick={() => openPairDetails(s.pair.id)}
+                      >
+                        <span className="font-mono text-sm font-black text-[#6F7A86]">{idx + 1}</span>
+                        <PlayerPair players={s.pair.players} size="sm" layout="inline" />
+                        <div className="text-left">
+                          <p className="font-mono text-xl font-black tabular-nums text-[#39FF88]">{s.points}</p>
+                          <p className="text-[10px] text-[#A4ADB8]">{s.wins}נ {s.draws}ת {s.losses}ה</p>
+                        </div>
+                      </button>
                     ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </CollapsibleSection>
+                  </div>
 
-            <CollapsibleSection
-              title="טבלת שחקנים"
-              preview={leadingPlayer ? `${leadingPlayer.player.name} · ${leadingPlayer.points} נק׳` : "אין דירוג"}
-              icon={<Users className="h-5 w-5" />}
-            >
-              <div className="overflow-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="text-right text-xs">#</TableHead>
-                      <TableHead className="text-right text-xs">שחקן</TableHead>
-                      <TableHead className="text-center text-xs">מש׳</TableHead>
-                      <TableHead className="text-center text-xs">נ</TableHead>
-                      <TableHead className="text-center text-xs">ת</TableHead>
-                      <TableHead className="text-center text-xs">ה</TableHead>
-                      <TableHead className="text-center text-xs">הפ</TableHead>
-                      <TableHead className="text-center text-xs font-bold">נק׳</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-black text-[#F4F7F5]">שחקנים</h3>
                     {playerStats.map((s, idx) => (
-                      <TableRow key={s.player.id} className="cursor-pointer hover:bg-[#151C26]" onClick={() => openPlayerDetails(s.player.id)}>
-                        <TableCell className="text-xs">{idx + 1}</TableCell>
-                        <TableCell className="text-xs font-medium">
-                          <div className="flex items-center gap-2">
-                            <PlayerAvatar player={s.player} size="sm" />
-                            {s.player.name}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-center text-xs">{s.played}</TableCell>
-                        <TableCell className="text-center text-xs">{s.wins}</TableCell>
-                        <TableCell className="text-center text-xs">{s.draws}</TableCell>
-                        <TableCell className="text-center text-xs">{s.losses}</TableCell>
-                        <TableCell className="text-center text-xs">{s.goalDiff > 0 ? "+" : ""}{s.goalDiff}</TableCell>
-                        <TableCell className="text-center text-xs font-bold text-[#39FF88]">{s.points}</TableCell>
-                      </TableRow>
+                      <button
+                        key={s.player.id}
+                        type="button"
+                        className="grid w-full grid-cols-[auto_1fr_auto] items-center gap-3 rounded-lg border border-[#26313D] bg-[#151C26] p-2 text-right"
+                        onClick={() => openPlayerDetails(s.player.id)}
+                      >
+                        <span className="font-mono text-sm font-black text-[#6F7A86]">{idx + 1}</span>
+                        <div className="flex min-w-0 items-center gap-2">
+                          <PlayerAvatar player={s.player} size="sm" />
+                          <span className="min-w-0 truncate text-sm font-bold text-[#F4F7F5]">{s.player.name}</span>
+                        </div>
+                        <div className="text-left">
+                          <p className="font-mono text-xl font-black tabular-nums text-[#39FF88]">{s.points}</p>
+                          <p className="text-[10px] text-[#A4ADB8]">{s.wins}נ {s.draws}ת {s.losses}ה</p>
+                        </div>
+                      </button>
                     ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </CollapsibleSection>
+                  </div>
+                </div>
+              </CollapsibleSection>
+            </div>
 
             <div id="fp-results">
-              <CollapsibleSection
-                title="תוצאות וסטטיסטיקות"
-                preview={completedMatches.length ? `${completedMatches.length} תוצאות` : "אין עדיין"}
-                icon={<BarChart3 className="h-5 w-5" />}
-              >
-                <div className="space-y-3">
-                  {completedMatches.length > 0 && (
+              {completedMatches.length > 0 && (
+                <CollapsibleSection
+                  title="תוצאות ונתונים"
+                  preview={`${completedMatches.length} תוצאות`}
+                  icon={<BarChart3 className="h-5 w-5" />}
+                >
+                  <div className="space-y-3">
                     <div className="space-y-2">
                       {[...completedMatches].reverse().map((match) => renderMatchRow(match))}
                     </div>
-                  )}
-                  <FPInsightsTab
-                    evening={currentEvening}
-                    shareCode={spectatorContext?.shareCode}
-                    initialPlayerId={spectatorContext?.selectedPlayerId ?? null}
-                    onSwitchPlayer={spectatorContext?.onSwitchPlayer}
-                    isCompleted={currentEvening.completed}
-                  />
-                </div>
-              </CollapsibleSection>
+                    <FPInsightsTab
+                      evening={currentEvening}
+                      shareCode={spectatorContext?.shareCode}
+                      initialPlayerId={spectatorContext?.selectedPlayerId ?? null}
+                      onSwitchPlayer={spectatorContext?.onSwitchPlayer}
+                      isCompleted={currentEvening.completed}
+                    />
+                  </div>
+                </CollapsibleSection>
+              )}
             </div>
           </section>
         </main>
@@ -1425,8 +1407,7 @@ export const FPGame = ({
           { label: "קבוצה", icon: <Users className="h-5 w-5" />, onClick: onGoHome },
           { label: "שיתוף", icon: <Link className="h-5 w-5" />, onClick: handleShare, disabled: shareLoading || isViewOnly },
           { label: "טורניר", icon: <CircleDot className="h-7 w-7" />, onClick: () => scrollToSection("top"), active: true },
-          { label: "דירוגים", icon: <BarChart3 className="h-5 w-5" />, onClick: () => scrollToSection("fp-results") },
-          { label: "הגדרות", icon: <Settings className="h-5 w-5" />, onClick: () => scrollToSection("fp-schedule") },
+          { label: "דירוגים", icon: <BarChart3 className="h-5 w-5" />, onClick: () => scrollToSection("fp-standings") },
         ]}
       />
 

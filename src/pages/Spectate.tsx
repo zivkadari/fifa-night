@@ -585,19 +585,19 @@ function PersonalizedSpectateView({
     const nextClub = nextMatch ? (nextInA ? nextMatch.clubA : nextMatch.clubB) : undefined;
 
     return (
-      <Card className={`bg-gradient-card p-4 shadow-card ${isMyMatch(currentMatch) ? 'border-neon-green/50 ring-1 ring-neon-green/20' : 'border-neon-green/30'}`}>
-        <p className="text-[10px] text-muted-foreground text-center mb-1">
+      <Card className={`bg-gradient-card p-3 shadow-card ${isMyMatch(currentMatch) ? 'border-neon-green/50 ring-1 ring-neon-green/20' : 'border-neon-green/30'}`}>
+        <p className="text-[10px] text-muted-foreground text-center mb-2">
           משחק נוכחי • סיבוב {currentMatch.roundIndex + 1} • משחק {currentMatch.matchIndex + 1}
         </p>
-        <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-2 text-center">
-          <div className={playerInFPPair(selectedPlayerId, currentMatch.pairA) ? 'text-neon-green' : 'text-foreground'}>
-            <PlayerPair players={currentMatch.pairA.players} size="md" />
-            <TeamVisual club={currentMatch.clubA} size="md" className="mt-2" />
+        <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-2 text-center">
+          <div className={`min-w-0 space-y-2 ${playerInFPPair(selectedPlayerId, currentMatch.pairA) ? 'text-neon-green' : 'text-foreground'}`}>
+            <PlayerPair players={currentMatch.pairA.players} size="sm" />
+            <TeamVisual club={currentMatch.clubA} size="md" />
           </div>
-          <div className="pt-12 font-display text-3xl font-black text-neon-green">VS</div>
-          <div className={playerInFPPair(selectedPlayerId, currentMatch.pairB) ? 'text-neon-green' : 'text-foreground'}>
-            <PlayerPair players={currentMatch.pairB.players} size="md" />
-            <TeamVisual club={currentMatch.clubB} size="md" className="mt-2" />
+          <div className="pt-14 font-display text-3xl font-black text-neon-green">VS</div>
+          <div className={`min-w-0 space-y-2 ${playerInFPPair(selectedPlayerId, currentMatch.pairB) ? 'text-neon-green' : 'text-foreground'}`}>
+            <PlayerPair players={currentMatch.pairB.players} size="sm" />
+            <TeamVisual club={currentMatch.clubB} size="md" />
           </div>
         </div>
 
@@ -607,12 +607,13 @@ function PersonalizedSpectateView({
           </div>
         )}
 
-        <div className="text-center mt-2">
+        <div className="mt-3 flex justify-center">
           <Badge
             variant="outline"
-            className={`text-[10px] ${currentMatch.sittingOut.id === selectedPlayerId ? 'border-neon-green/30 text-neon-green' : 'border-muted-foreground/30 text-muted-foreground'}`}
+            className={`max-w-full gap-1.5 truncate text-[11px] ${currentMatch.sittingOut.id === selectedPlayerId ? 'border-neon-green/30 text-neon-green' : 'border-muted-foreground/30 text-muted-foreground'}`}
           >
-            🪑 יושב בחוץ: {currentMatch.sittingOut.name}
+            <PlayerAvatar player={currentMatch.sittingOut} size="xs" />
+            יושב בחוץ: {currentMatch.sittingOut.name}
           </Badge>
         </div>
 
