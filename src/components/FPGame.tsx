@@ -28,7 +28,7 @@ import {
 } from "lucide-react";
 import FPInsightsTab from "@/components/FPInsightsTab";
 
-import { FPEvening, FPTeamBank, FPMatch, FPPair } from "@/types/fivePlayerTypes";
+import { FPEvening, FPTeamBank, FPMatch } from "@/types/fivePlayerTypes";
 import { Club } from "@/types/tournament";
 import { StarRating } from "@/components/StarRating";
 import { calculatePairStats, calculatePlayerStats } from "@/services/fivePlayerEngine";
@@ -178,29 +178,6 @@ export const FPGame = ({
       setActiveStep('teamA');
     }
   }, [currentMatchKey]);
-
-  const withAvatar = useCallback(
-    <T extends { id: string; name: string }>(player: T): T => player,
-    []
-  );
-
-  const withAvatarPair = useCallback(
-    <T extends FPPair>(pair: T): T => ({
-      ...pair,
-      players: pair.players.map(withAvatar) as T["players"],
-    }),
-    [withAvatar]
-  );
-
-  const displayCurrentMatch = useMemo(() => {
-    if (!currentMatch) return null;
-    return {
-      ...currentMatch,
-      pairA: withAvatarPair(currentMatch.pairA),
-      pairB: withAvatarPair(currentMatch.pairB),
-      sittingOut: withAvatar(currentMatch.sittingOut),
-    };
-  }, [currentMatch, withAvatar, withAvatarPair]);
 
   const handleSelectClubA = useCallback((club: Club) => {
     if (!canSubmitNewScore) return;
@@ -418,7 +395,7 @@ export const FPGame = ({
     }
   }, [currentEvening, shareCode, toast, doShare, shareUrl]);
 
-  if (!currentMatch || !displayCurrentMatch) return null;
+  if (!currentMatch) return null;
 
   const roundNum = currentMatch.roundIndex + 1;
   const matchInRound = currentMatch.matchIndex + 1;
@@ -1023,7 +1000,7 @@ export const FPGame = ({
               {isViewOnly ? "צופה" : canStopTournament ? "אדמין" : "שחקן"}
               <Shield className="h-3.5 w-3.5 text-[#39FF88]" />
             </span>
-            <PlayerAvatar player={withAvatar(currentMatch.pairA.players[0])} size="md" />
+            <PlayerAvatar player={currentMatch.pairA.players[0]} size="md" />
           </div>
         </header>
 
@@ -1087,7 +1064,7 @@ export const FPGame = ({
 
               <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-2">
                 <div className="min-w-0 space-y-2">
-                  <PlayerPair players={displayCurrentMatch.pairA.players} size="sm" />
+                  <PlayerPair players={currentMatch.pairA.players} size="sm" />
                   <TeamVisual club={selectedClubA} size="lg" selected={activeStep === "teamA"} />
                 </div>
 
@@ -1096,7 +1073,7 @@ export const FPGame = ({
                 </div>
 
                 <div className="min-w-0 space-y-2">
-                  <PlayerPair players={displayCurrentMatch.pairB.players} size="sm" />
+                  <PlayerPair players={currentMatch.pairB.players} size="sm" />
                   <TeamVisual club={selectedClubB} size="lg" selected={activeStep === "teamB"} />
                 </div>
               </div>
@@ -1139,8 +1116,8 @@ export const FPGame = ({
 
                 <div className="mt-2 flex items-center justify-center gap-2 rounded-lg border border-[#26313D]/80 bg-[#151C26]/70 px-3 py-1.5">
                   <span className="text-xs font-bold text-[#A4ADB8]">יושב בחוץ:</span>
-                  <PlayerAvatar player={displayCurrentMatch.sittingOut} size="xs" />
-                  <span className="min-w-0 truncate text-xs font-semibold text-[#F4F7F5]">{displayCurrentMatch.sittingOut.name}</span>
+                  <PlayerAvatar player={currentMatch.sittingOut} size="xs" />
+                  <span className="min-w-0 truncate text-xs font-semibold text-[#F4F7F5]">{currentMatch.sittingOut.name}</span>
                 </div>
               </div>
 
@@ -1194,18 +1171,18 @@ export const FPGame = ({
               {nextMatch ? (
                 <div className="space-y-2">
                   <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-lg bg-[#151C26]/65 px-2 py-1.5">
-                    <PlayerPair players={withAvatarPair(nextMatch.pairA).players} size="sm" layout="inline" />
+                    <PlayerPair players={nextMatch.pairA.players} size="sm" layout="inline" />
                     <span className="font-mono text-xs font-black text-[#39FF88]">VS</span>
                   </div>
                   <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-lg bg-[#151C26]/65 px-2 py-1.5">
-                    <PlayerPair players={withAvatarPair(nextMatch.pairB).players} size="sm" layout="inline" />
+                    <PlayerPair players={nextMatch.pairB.players} size="sm" layout="inline" />
                     <span className="rounded-full border border-[#26313D] px-2 py-0.5 text-[10px] font-bold text-[#A4ADB8]">
                       טרם שוחק
                     </span>
                   </div>
                   <div className="flex items-center justify-center gap-2 pt-1 text-xs text-[#A4ADB8]">
                     <span>בחוץ:</span>
-                    <PlayerAvatar player={withAvatar(nextMatch.sittingOut)} size="xs" />
+                    <PlayerAvatar player={nextMatch.sittingOut} size="xs" />
                     <span className="font-semibold text-[#F4F7F5]">{nextMatch.sittingOut.name}</span>
                   </div>
                 </div>
@@ -1218,7 +1195,7 @@ export const FPGame = ({
               <CompactSummaryCard icon={<Trophy className="h-5 w-5" />} title="מובילים" className="min-h-[6.25rem]">
                 {completedMatches.length > 0 && leader ? (
                   <div className="space-y-1">
-                    <PlayerPair players={withAvatarPair(leader.pair).players} size="sm" layout="inline" />
+                    <PlayerPair players={leader.pair.players} size="sm" layout="inline" />
                     <p className="font-mono text-2xl font-black tabular-nums text-[#39FF88]">{leader.points} נק׳</p>
                   </div>
                 ) : (
@@ -1272,7 +1249,7 @@ export const FPGame = ({
                         <div>משחק {match.globalIndex + 1}</div>
                       </div>
                       <div className="flex items-center justify-end gap-1">
-                        <PlayerPair players={withAvatarPair(match.pairA).players} size="sm" showNames={false} />
+                        <PlayerPair players={match.pairA.players} size="sm" showNames={false} />
                         <TeamBadgeOrFlag club={match.clubA} size="sm" />
                       </div>
                       <div className="font-mono text-2xl font-black tabular-nums text-[#F4F7F5]" dir="ltr">
@@ -1280,7 +1257,7 @@ export const FPGame = ({
                       </div>
                       <div className="flex items-center justify-start gap-1">
                         <TeamBadgeOrFlag club={match.clubB} size="sm" />
-                        <PlayerPair players={withAvatarPair(match.pairB).players} size="sm" showNames={false} />
+                        <PlayerPair players={match.pairB.players} size="sm" showNames={false} />
                       </div>
                       {canEditExistingResults && (
                         <button
@@ -1317,7 +1294,7 @@ export const FPGame = ({
                     <div key={bank.pairId} className="rounded-lg border border-[#26313D] bg-[#151C26] p-2">
                       <div className="mb-2 flex items-center justify-between">
                         <span className="text-xs font-bold text-[#F4F7F5]">{pairName(pair)}</span>
-                        <PlayerPair players={withAvatarPair(pair).players} size="sm" showNames={false} />
+                        <PlayerPair players={pair.players} size="sm" showNames={false} />
                       </div>
                       <div className="grid grid-cols-3 gap-2">
                         {sortClubsByStarsDesc(bank.clubs).map((club) => (
@@ -1365,7 +1342,7 @@ export const FPGame = ({
                         onClick={() => openPairDetails(s.pair.id)}
                       >
                         <span className="font-mono text-sm font-black text-[#6F7A86]">{idx + 1}</span>
-                        <PlayerPair players={withAvatarPair(s.pair).players} size="sm" layout="inline" />
+                        <PlayerPair players={s.pair.players} size="sm" layout="inline" />
                         <div className="text-left">
                           <p className="font-mono text-xl font-black tabular-nums text-[#39FF88]">{s.points}</p>
                           <p className="text-[10px] text-[#A4ADB8]">{s.wins}נ {s.draws}ת {s.losses}ה</p>
@@ -1385,7 +1362,7 @@ export const FPGame = ({
                       >
                         <span className="font-mono text-sm font-black text-[#6F7A86]">{idx + 1}</span>
                         <div className="flex min-w-0 items-center gap-2">
-                          <PlayerAvatar player={withAvatar(s.player)} size="sm" />
+                          <PlayerAvatar player={s.player} size="sm" />
                           <span className="min-w-0 truncate text-sm font-bold text-[#F4F7F5]">{s.player.name}</span>
                         </div>
                         <div className="text-left">

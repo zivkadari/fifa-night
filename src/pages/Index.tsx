@@ -1896,7 +1896,6 @@ const handleGoHome = () => {
             <FPBankOverview
               evening={fpEvening}
               allClubs={clubsWithOverrides}
-              teamId={fpTeamId}
               onBack={() => window.history.back()}
               onContinue={() => goTo('fp-game')}
               onUpdateEvening={(ev) => {

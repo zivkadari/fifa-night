@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import {
   DndContext,
   closestCenter,
@@ -41,7 +41,6 @@ interface FPBankOverviewProps {
   onContinue: () => void;
   onBack: () => void;
   onUpdateEvening: (evening: FPEvening) => void;
-  teamId?: string | null;
 }
 
 interface SortableMatchRowProps {
@@ -109,23 +108,10 @@ const SortableMatchRow = ({ match, index, pairName }: SortableMatchRowProps) => 
   );
 };
 
-export const FPBankOverview = ({ evening, allClubs, onContinue, onBack, onUpdateEvening, teamId }: FPBankOverviewProps) => {
+export const FPBankOverview = ({ evening, allClubs, onContinue, onBack, onUpdateEvening }: FPBankOverviewProps) => {
   const { toast } = useToast();
   const [copiedPairId, setCopiedPairId] = useState<string | null>(null);
   const [copiedAll, setCopiedAll] = useState(false);
-
-  const withAvatar = useCallback(
-    <T extends { id: string; name: string }>(player: T): T => player,
-    []
-  );
-
-  const withAvatarPair = useCallback(
-    (pair: FPPair): FPPair => ({
-      ...pair,
-      players: pair.players.map(withAvatar) as FPPair["players"],
-    }),
-    [withAvatar]
-  );
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -595,7 +581,7 @@ export const FPBankOverview = ({ evening, allClubs, onContinue, onBack, onUpdate
                   <div>
                     <span className="text-sm font-semibold text-foreground">{pairName(pair)}</span>
                     <div className="mt-1">
-                      <PlayerPair players={withAvatarPair(pair).players} size="sm" showNames={false} />
+                      <PlayerPair players={pair.players} size="sm" showNames={false} />
                     </div>
                   </div>
                 </div>
