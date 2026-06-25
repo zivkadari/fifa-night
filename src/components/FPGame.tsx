@@ -25,6 +25,7 @@ import {
   CircleDot,
   Shirt,
   Clock3,
+  UserRound,
 } from "lucide-react";
 import FPInsightsTab from "@/components/FPInsightsTab";
 
@@ -85,6 +86,7 @@ interface FPGameProps {
   canEditExistingResults?: boolean;
   canReorderSchedule?: boolean;
   isViewOnly?: boolean;
+  tournamentRole?: TournamentRole;
   spectatorContext?: {
     shareCode?: string;
     teamId?: string | null;
@@ -97,6 +99,7 @@ interface FPGameProps {
 type MatchStep = 'teamA' | 'teamB' | 'score';
 type ScoreMode = 'quick' | 'winner' | 'manual';
 type WinnerChoice = 'A' | 'draw' | 'B' | null;
+type TournamentRole = "manager" | "player" | "viewer";
 
 const QUICK_SCORES = [0, 1, 2, 3, 4, 5];
 
@@ -118,6 +121,7 @@ export const FPGame = ({
   canEditExistingResults = true,
   canReorderSchedule = true,
   isViewOnly = false,
+  tournamentRole,
   spectatorContext,
 }: FPGameProps) => {
 
@@ -407,152 +411,73 @@ export const FPGame = ({
 
   const canSubmit = canSubmitNewScore && selectedClubA && selectedClubB && scoreA !== '' && scoreB !== '';
   const bothTeamsSelected = !!selectedClubA && !!selectedClubB;
+  const displayRole: TournamentRole = tournamentRole ?? (isViewOnly ? "viewer" : canStopTournament ? "manager" : "player");
+  const roleLabel =
+    displayRole === "manager"
+      ? "מנהל הקבוצה"
+      : displayRole === "viewer"
+        ? "צופה"
+        : "שחקן";
 
   const pairName = (pair: { players: [{ name: string }, { name: string }] }) =>
     `${pair.players[0].name} & ${pair.players[1].name}`;
 
   const renderStars = (stars: number) => <StarRating stars={stars} size="xs" />;
 
-  const currentStepNum = activeStep === 'teamA' ? 1 : activeStep === 'teamB' ? 2 : 3;
+  const openTeamSelector = (step: MatchStep) => {
+    if (isViewOnly || !canSubmitNewScore) return;
+    if (step === "teamB" && !selectedClubA) {
+      setActiveStep("teamA");
+      return;
+    }
+    setActiveStep(step);
+  };
 
-  const renderStepIndicator = () => (
-    <div className="flex items-center justify-center gap-2 mb-3">
-      {(['teamA', 'teamB', 'score'] as MatchStep[]).map((step, i) => {
-        const isActive = activeStep === step;
-        const isDone = step === 'teamA' ? !!selectedClubA
-          : step === 'teamB' ? !!selectedClubB
-          : (scoreA !== '' && scoreB !== '');
-        const labels = ['קבוצה א׳', 'קבוצה ב׳', 'תוצאה'];
-        return (
-          <div key={step} className="flex items-center gap-1">
-            {i > 0 && <div className={`w-6 h-0.5 ${isDone || isActive ? 'bg-neon-green/60' : 'bg-border/40'}`} />}
-            <button
-              onClick={() => {
-                if (step === 'teamB' && !selectedClubA) return;
-                if (step === 'score' && !bothTeamsSelected) return;
-                setActiveStep(step);
-              }}
-              className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium transition-all ${
-                isActive
-                  ? 'bg-neon-green/20 text-neon-green border border-neon-green/40'
-                  : isDone
-                    ? 'bg-neon-green/10 text-neon-green/70 border border-neon-green/20'
-                    : 'bg-gaming-surface/50 text-muted-foreground border border-border/30'
-              }`}
-            >
-              {isDone && !isActive ? <Check className="h-3 w-3" /> : <span>{i + 1}</span>}
-              <span>{labels[i]}</span>
-            </button>
-          </div>
-        );
-      })}
-    </div>
-  );
-
-  const renderTeamBank = (
+  const renderInlineTeamSelector = (
     bank: FPTeamBank,
     selected: Club | null,
-    onSelect: (c: Club) => void,
-    label: string,
-    step: MatchStep,
-  ) => {
-    const isActive = activeStep === step;
-    const isCompleted = !!selected;
-    const isLocked = !canSubmitNewScore || (step === 'teamB' && !selectedClubA);
+    onSelect: (club: Club) => void,
+    label: string
+  ) => (
+    <div className="mt-3 rounded-xl border border-[#26313D] bg-[#05070A]/72 p-2.5">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <span className="text-xs font-black text-[#F4F7F5]">{label}</span>
+        <span className="text-[10px] font-semibold text-[#39FF88]">
+          {selected ? selected.name : "בחרו נבחרת"}
+        </span>
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        {sortClubsByStarsDesc(bank.clubs).map((club) => {
+          const isSelected = selected?.id === club.id;
+          const isUsed = bank.usedClubIds.includes(club.id) && !isSelected;
+          const isDisabled = isUsed || !canSubmitNewScore;
 
-    return (
-      <Card className={`border p-3 transition-all duration-200 ${
-        isActive
-          ? 'bg-gradient-card border-neon-green/40 shadow-card shadow-neon-green/5'
-          : isCompleted
-            ? 'bg-gradient-card border-neon-green/20 shadow-card'
-            : 'bg-gaming-surface/30 border-border/30 opacity-60'
-      }`}>
-        <div
-          className="flex items-center justify-between cursor-pointer"
-          onClick={() => {
-            if (isLocked) return;
-            setActiveStep(step);
-          }}
-        >
-          <span className={`text-sm font-semibold ${isActive ? 'text-neon-green' : 'text-foreground'}`}>
-            {label}
-          </span>
-          <div className="flex items-center gap-2">
-            {selected && (
-              <Badge className="bg-neon-green/20 text-neon-green border-neon-green/30 text-xs">
-                {selected.name} {renderStars(selected.stars)}
-              </Badge>
-            )}
-            {!isLocked && (
-              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isActive ? 'rotate-180' : ''}`} />
-            )}
-          </div>
-        </div>
-
-        {isActive && (
-          <div className="space-y-1 mt-2">
-            {sortClubsByStarsDesc(bank.clubs).map(club => {
-              const isSelected = selected?.id === club.id;
-            
-              // אם הקבוצה כבר ב-usedClubIds אבל היא הבחירה הנוכחית,
-              // עדיין נציג אותה כבחירה ירוקה ולא כ"שוחק".
-              const isUsed = bank.usedClubIds.includes(club.id) && !isSelected;
-              const isDisabled = isUsed || !canSubmitNewScore;
-            
-              return (
-                <div
-                  key={club.id}
-                  className={`flex items-center justify-between p-2.5 rounded-lg text-sm border transition-all ${
-                    isSelected
-                      ? 'border-neon-green bg-neon-green/15 scale-[1.01]'
-                      : isDisabled
-                        ? 'border-border/20 bg-gaming-surface/20 opacity-40 cursor-not-allowed'
-                        : 'border-border/40 bg-gaming-surface/80 cursor-pointer hover:border-neon-green/50 hover:bg-gaming-surface active:scale-[0.98]'
-                  }`}
-                  onClick={() => {
-                    if (isDisabled) return;
-                    onSelect(club);
-                  }}
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    {isUsed && (
-                      <span className="text-[10px] text-muted-foreground/60 bg-muted/20 px-1.5 py-0.5 rounded shrink-0">
-                        שוחק
-                      </span>
-                    )}
-            
-                    {isSelected && (
-                      <span className="text-[10px] text-neon-green bg-neon-green/10 px-1.5 py-0.5 rounded shrink-0">
-                        נבחרה
-                      </span>
-                    )}
-            
-                    <span
-                      className={`truncate ${
-                        isUsed
-                          ? 'line-through text-muted-foreground/40'
-                          : isSelected
-                            ? 'text-neon-green font-semibold'
-                            : 'text-foreground'
-                      }`}
-                    >
-                      {club.name}
-                    </span>
-                  </div>
-            
-                  <div className="flex items-center gap-2 shrink-0">
-                    {renderStars(club.stars)}
-                    {isSelected && <Check className="h-3.5 w-3.5 text-neon-green" />}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </Card>
-    );
-  };
+          return (
+            <button
+              key={club.id}
+              type="button"
+              className={`min-h-[5.75rem] rounded-lg border bg-[#151C26]/72 p-2 text-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#39FF88] ${
+                isSelected
+                  ? "border-[#39FF88] shadow-[0_0_18px_rgba(57,255,136,0.24)]"
+                  : isDisabled
+                    ? "border-[#26313D]/60 opacity-40"
+                    : "border-[#26313D] active:scale-[0.98]"
+              }`}
+              onClick={() => {
+                if (isDisabled) return;
+                onSelect(club);
+              }}
+              disabled={isDisabled}
+              aria-pressed={isSelected}
+            >
+              <TeamVisual club={club} size="sm" selected={isSelected} />
+              {isUsed && <span className="mt-1 block text-[10px] text-[#A4ADB8]">שוחק</span>}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
 
   const renderQuickScoreChips = (side: 'A' | 'B', value: string, onChange: (v: string) => void) => {
     const isManual = manualScoreSide === side;
@@ -955,8 +880,6 @@ export const FPGame = ({
     (sum, bank) => sum + Math.max(0, bank.clubs.length - bank.usedClubIds.length),
     0
   );
-  const visibleTeamSelectors = !isViewOnly && (!bothTeamsSelected || activeStep !== "score");
-
   const scrollToSection = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
@@ -997,10 +920,9 @@ export const FPGame = ({
 
           <div className="flex shrink-0 items-center justify-end gap-2">
             <span className="inline-flex h-9 items-center gap-1 rounded-full border border-[#26313D] bg-[#0F141B] px-2.5 text-xs font-bold text-[#F4F7F5]">
-              {isViewOnly ? "צופה" : canStopTournament ? "אדמין" : "שחקן"}
+              {roleLabel}
               <Shield className="h-3.5 w-3.5 text-[#39FF88]" />
             </span>
-            <PlayerAvatar player={currentMatch.pairA.players[0]} size="md" />
           </div>
         </header>
 
@@ -1065,7 +987,15 @@ export const FPGame = ({
               <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-2">
                 <div className="min-w-0 space-y-2">
                   <PlayerPair players={currentMatch.pairA.players} size="sm" />
-                  <TeamVisual club={selectedClubA} size="lg" selected={activeStep === "teamA"} />
+                  <button
+                    type="button"
+                    className="w-full rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#39FF88]"
+                    onClick={() => openTeamSelector("teamA")}
+                    disabled={isViewOnly || !canSubmitNewScore}
+                    aria-label="בחירת נבחרת לצד ימין"
+                  >
+                    <TeamVisual club={selectedClubA} size="lg" selected={activeStep === "teamA"} />
+                  </button>
                 </div>
 
                 <div className="flex min-w-[4.15rem] flex-col items-center gap-2 pt-10">
@@ -1074,9 +1004,23 @@ export const FPGame = ({
 
                 <div className="min-w-0 space-y-2">
                   <PlayerPair players={currentMatch.pairB.players} size="sm" />
-                  <TeamVisual club={selectedClubB} size="lg" selected={activeStep === "teamB"} />
+                  <button
+                    type="button"
+                    className="w-full rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#39FF88]"
+                    onClick={() => openTeamSelector("teamB")}
+                    disabled={isViewOnly || !canSubmitNewScore}
+                    aria-label="בחירת נבחרת לצד שמאל"
+                  >
+                    <TeamVisual club={selectedClubB} size="lg" selected={activeStep === "teamB"} />
+                  </button>
                 </div>
               </div>
+
+              {!isViewOnly && activeStep === "teamA" &&
+                renderInlineTeamSelector(bankA, selectedClubA, handleSelectClubA, `בחירת נבחרת · ${pairName(currentMatch.pairA)}`)}
+
+              {!isViewOnly && activeStep === "teamB" &&
+                renderInlineTeamSelector(bankB, selectedClubB, handleSelectClubB, `בחירת נבחרת · ${pairName(currentMatch.pairB)}`)}
 
               <div ref={scoreRef} className="mt-3 rounded-xl border border-[#26313D] bg-[#05070A]/78 p-2.5">
                 <div className="text-center">
@@ -1136,24 +1080,20 @@ export const FPGame = ({
                     type="button"
                     variant="outline"
                     className="h-12 rounded-lg border-[#26313D] bg-[#151C26] px-3 text-[#F4F7F5]"
-                    onClick={() => setActiveStep(activeStep === "teamA" ? "teamB" : "teamA")}
+                    onClick={() => {
+                      if (!selectedClubA) openTeamSelector("teamA");
+                      else if (!selectedClubB) openTeamSelector("teamB");
+                      else openTeamSelector(activeStep === "teamA" ? "teamB" : "teamA");
+                    }}
                     disabled={!canSubmitNewScore}
                   >
                     <Shirt className="h-5 w-5" />
-                    {bothTeamsSelected ? "החלפת קבוצות" : "בחירת קבוצות"}
+                    בחירת נבחרות
                   </Button>
                 </div>
               )}
             </div>
           </section>
-
-          {visibleTeamSelectors && (
-            <section className="space-y-2">
-              {renderStepIndicator()}
-              {renderTeamBank(bankA, selectedClubA, handleSelectClubA, `בנק ${pairName(currentMatch.pairA)}`, "teamA")}
-              {renderTeamBank(bankB, selectedClubB, handleSelectClubB, `בנק ${pairName(currentMatch.pairB)}`, "teamB")}
-            </section>
-          )}
 
           <section className="space-y-2">
             <article className="rounded-lg border border-[#26313D] bg-[#0F141B] p-3">
@@ -1170,20 +1110,19 @@ export const FPGame = ({
               </div>
               {nextMatch ? (
                 <div className="space-y-2">
-                  <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-lg bg-[#151C26]/65 px-2 py-1.5">
+                  <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 rounded-lg bg-[#151C26]/65 px-2 py-2">
                     <PlayerPair players={nextMatch.pairA.players} size="sm" layout="inline" />
                     <span className="font-mono text-xs font-black text-[#39FF88]">VS</span>
-                  </div>
-                  <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-lg bg-[#151C26]/65 px-2 py-1.5">
                     <PlayerPair players={nextMatch.pairB.players} size="sm" layout="inline" />
+                  </div>
+                  <div className="flex items-center justify-center gap-2 pt-1 text-xs text-[#A4ADB8]" dir="rtl">
+                    <UserRound className="h-3.5 w-3.5" aria-hidden="true" />
+                    <span>יושב בחוץ:</span>
+                    <PlayerAvatar player={nextMatch.sittingOut} size="xs" />
+                    <span className="min-w-0 truncate font-semibold text-[#F4F7F5]">{nextMatch.sittingOut.name}</span>
                     <span className="rounded-full border border-[#26313D] px-2 py-0.5 text-[10px] font-bold text-[#A4ADB8]">
                       טרם שוחק
                     </span>
-                  </div>
-                  <div className="flex items-center justify-center gap-2 pt-1 text-xs text-[#A4ADB8]">
-                    <span>בחוץ:</span>
-                    <PlayerAvatar player={nextMatch.sittingOut} size="xs" />
-                    <span className="font-semibold text-[#F4F7F5]">{nextMatch.sittingOut.name}</span>
                   </div>
                 </div>
               ) : (

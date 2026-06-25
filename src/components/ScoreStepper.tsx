@@ -21,7 +21,7 @@ export const ScoreStepper = ({ label, value, onChange, disabled, className }: Sc
   const increment = () => onChange(String(numericValue + 1));
 
   return (
-    <div className={cn("flex items-center gap-2", className)}>
+    <div className={cn("flex items-center gap-2", className)} dir="ltr">
       <Button
         type="button"
         variant="outline"
@@ -48,4 +48,3 @@ export const ScoreStepper = ({ label, value, onChange, disabled, className }: Sc
     </div>
   );
 };
-

@@ -38,9 +38,26 @@ interface FPSetupProps {
   teamPlayers?: Player[];
   teamId?: string | null;
   teamName?: string | null;
+  isStarting?: boolean;
+  hasActiveTournament?: boolean;
+  activeTournamentLabel?: string | null;
+  activeTournamentIsSameMode?: boolean;
+  onOpenActiveTournament?: () => void;
 }
 
-export const FPSetup = ({ onBack, onStart, savedPlayers, teamPlayers, teamId, teamName }: FPSetupProps) => {
+export const FPSetup = ({
+  onBack,
+  onStart,
+  savedPlayers,
+  teamPlayers,
+  teamId,
+  teamName,
+  isStarting = false,
+  hasActiveTournament = false,
+  activeTournamentLabel,
+  activeTournamentIsSameMode = false,
+  onOpenActiveTournament,
+}: FPSetupProps) => {
   const { toast } = useToast();
   const hasTeamPlayers = teamPlayers && teamPlayers.length === 5;
   const [players, setPlayers] = useState<Player[]>(
@@ -90,6 +107,8 @@ export const FPSetup = ({ onBack, onStart, savedPlayers, teamPlayers, teamId, te
   };
 
   const handleStart = () => {
+    if (isStarting) return;
+
     if (!allFilled) {
       toast({ title: "יש למלא את כל השמות", variant: "destructive" });
       return;
@@ -472,15 +491,34 @@ export const FPSetup = ({ onBack, onStart, savedPlayers, teamPlayers, teamId, te
             </div>
           </Card>
 
+          {hasActiveTournament && !activeTournamentIsSameMode && (
+            <Card className="border-neon-green/30 bg-neon-green/10 p-4 text-center">
+              <p className="text-sm font-black text-foreground">לקבוצה יש טורניר פעיל</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {activeTournamentLabel
+                  ? `כבר פתוח ${activeTournamentLabel} לקבוצה הזו.`
+                  : "כבר פתוח טורניר לקבוצה הזו."}
+              </p>
+            </Card>
+          )}
+
           <Button
             variant="gaming"
             size="lg"
             className="w-full"
-            onClick={handleStart}
-            disabled={!allFilled || hasDuplicates}
+            onClick={
+              hasActiveTournament && !activeTournamentIsSameMode && onOpenActiveTournament
+                ? onOpenActiveTournament
+                : handleStart
+            }
+            disabled={isStarting || (!hasActiveTournament && (!allFilled || hasDuplicates))}
           >
             <Play className="h-5 w-5" />
-            התחל ליגה
+            {isStarting
+              ? "פותח..."
+              : hasActiveTournament
+                ? "חזרה לטורניר הפעיל"
+                : "התחל ליגה"}
           </Button>
         </div>
       </div>

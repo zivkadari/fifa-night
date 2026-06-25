@@ -40,6 +40,9 @@ import { FPTeamSelection } from "@/components/FPTeamSelection";
 
 type AppState = 'home' | 'setup' | 'tournament-type' | 'singles-setup' | 'singles-clubs' | 'singles-schedule' | 'game' | 'summary' | 'history' | 'teams' | 'find-team' | 'join' | 'pairs-mode-selection' | 'tier-question-flow' | 'fp-team-selection' | 'fp-setup' | 'fp-bank-overview' | 'fp-game' | 'fp-summary';
 type TeamEveningEditReason = "owner_admin" | "playing" | "view_only" | null;
+type TournamentHeaderRole = "manager" | "player" | "viewer";
+type ActiveTournamentFlow = "five-player-doubles" | "singles" | "pairs" | "unknown";
+type ActiveTeamEveningEntry = Awaited<ReturnType<typeof RemoteStorageService.listActiveEveningsForMyTeams>>[number];
 type MatchScoreSubmission = {
   roundIndex: number | null;
   matchIndex: number;
@@ -169,6 +172,29 @@ const hasCompletedGamesAnyMode = (evening: any): boolean => {
   return false;
 };
 
+const isUnfinishedActiveEveningEntry = (entry: ActiveTeamEveningEntry) => {
+  const evening = entry.evening as any;
+  return Boolean(evening && evening.completed !== true && evening.cancelled !== true);
+};
+
+const getActiveTournamentFlow = (evening: unknown): ActiveTournamentFlow => {
+  const data = evening as any;
+  if (data?.mode === "five-player-doubles") return "five-player-doubles";
+  if (data?.type === "singles" || Array.isArray(data?.gameSequence)) return "singles";
+  if (data?.type === "pairs" || Array.isArray(data?.rounds)) return "pairs";
+  return "unknown";
+};
+
+const getActiveTournamentFlowLabel = (flow: ActiveTournamentFlow) => {
+  if (flow === "five-player-doubles") return "ליגת 5 שחקנים";
+  if (flow === "singles") return "טורניר יחידים";
+  if (flow === "pairs") return "טורניר זוגות";
+  return "טורניר פעיל";
+};
+
+const tournamentRoleFromEditReason = (reason: TeamEveningEditReason): TournamentHeaderRole =>
+  reason === "owner_admin" ? "manager" : reason === "view_only" ? "viewer" : "player";
+
 const Index = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -197,9 +223,11 @@ const Index = () => {
   const [showFpDeadlock, setShowFpDeadlock] = useState(false);
   const [teamPlayersForFP, setTeamPlayersForFP] = useState<Player[] | null>(null);
   const [fpSelectedTeamName, setFpSelectedTeamName] = useState<string | null>(null);
+  const [fpStartLoading, setFpStartLoading] = useState(false);
   const [activeTeamEvenings, setActiveTeamEvenings] = useState<Awaited<ReturnType<typeof RemoteStorageService.listActiveEveningsForMyTeams>>>([]);
   const [routeTeamId, setRouteTeamId] = useState<string | null>(null);
   const usesFullMobileShell = appState === "fp-game" || appState === "fp-bank-overview";
+  const fpStartInFlightRef = useRef(false);
 
    // Navigation helper that also pushes into browser history so Back goes to previous screen
   function goTo(next: AppState) {
@@ -509,6 +537,7 @@ useEffect(() => {
     const shouldRefreshLive =
       appState === "home" ||
       appState === "game" ||
+      appState === "fp-setup" ||
       appState === "fp-game";
   
     if (!shouldRefreshLive) return;
@@ -589,9 +618,19 @@ useEffect(() => {
   }, [isAuthed, appState, currentEvening?.id, fpEvening?.id]);
 
   const handleOpenTeamEvening = (entry: typeof activeTeamEvenings[number]) => {
+    const flow = getActiveTournamentFlow(entry.evening);
+
+    if (flow === "unknown") {
+      toast({
+        title: "לקבוצה יש טורניר פעיל",
+        description: "לא ניתן לזהות את סוג הטורניר. חזור למסך הקבוצה ופתח אותו מרשימת הטורנירים הפעילים.",
+      });
+      goTo("home");
+      return;
+    }
+
     if (entry.can_edit) {
-      const isFP = Array.isArray((entry.evening as any)?.schedule);
-      if (isFP) {
+      if (flow === "five-player-doubles") {
         const evening = entry.evening as unknown as FPEvening;
         setFPEveningState(evening);
         setFpTeamId(entry.team_id);
@@ -619,6 +658,38 @@ useEffect(() => {
         });
       }
     }
+  };
+
+  const findActiveTournamentForTeam = async (
+    teamId: string | null,
+    flow?: ActiveTournamentFlow
+  ): Promise<ActiveTeamEveningEntry | null> => {
+    if (!teamId) return null;
+
+    let list = activeTeamEvenings;
+    if (RemoteStorageService.isEnabled()) {
+      try {
+        list = await RemoteStorageService.listActiveEveningsForMyTeams();
+        setActiveTeamEvenings(list);
+      } catch (error: any) {
+        console.warn("Failed to refresh active tournaments before start:", error?.message || error);
+      }
+    }
+
+    return list.find(
+      (entry) =>
+        entry.team_id === teamId &&
+        isUnfinishedActiveEveningEntry(entry) &&
+        (!flow || getActiveTournamentFlow(entry.evening) === flow)
+    ) ?? null;
+  };
+
+  const openActiveTournamentForTeam = async (teamId: string | null): Promise<boolean> => {
+    const activeEntry = await findActiveTournamentForTeam(teamId);
+    if (!activeEntry) return false;
+
+    handleOpenTeamEvening(activeEntry);
+    return true;
   };
 
   useEffect(() => {
@@ -1354,6 +1425,12 @@ const handleGoHome = () => {
     return activeTeamEvenings.find((entry) => entry.evening_id === eveningId)?.reason ?? currentTeamEditReason;
   };
 
+  const getTournamentHeaderRoleForEvening = (eveningId?: string | null): TournamentHeaderRole => {
+    if (!eveningId) return tournamentRoleFromEditReason(currentTeamEditReason);
+    const entry = activeTeamEvenings.find((item) => item.evening_id === eveningId);
+    return tournamentRoleFromEditReason(entry?.reason ?? currentTeamEditReason);
+  };
+
   const renderCurrentState = () => {
     switch (appState) {
       case 'home': {
@@ -1815,81 +1892,130 @@ const handleGoHome = () => {
             />
           );
         
-        case 'fp-setup':
+        case 'fp-setup': {
+          const activeTournamentForSetupTeam = fpTeamId
+            ? activeTeamEvenings.find(
+                (entry) =>
+                  entry.team_id === fpTeamId &&
+                  isUnfinishedActiveEveningEntry(entry)
+              )
+            : null;
+          const activeTournamentFlowForSetupTeam = activeTournamentForSetupTeam
+            ? getActiveTournamentFlow(activeTournamentForSetupTeam.evening)
+            : null;
+
           return (
             <FPSetup
               teamPlayers={teamPlayersForFP ?? undefined}
               teamId={fpTeamId}
               teamName={fpSelectedTeamName}
+              isStarting={fpStartLoading}
+              hasActiveTournament={Boolean(activeTournamentForSetupTeam)}
+              activeTournamentLabel={
+                activeTournamentFlowForSetupTeam
+                  ? getActiveTournamentFlowLabel(activeTournamentFlowForSetupTeam)
+                  : null
+              }
+              activeTournamentIsSameMode={activeTournamentFlowForSetupTeam === "five-player-doubles"}
+              onOpenActiveTournament={() => {
+                if (activeTournamentForSetupTeam) {
+                  handleOpenTeamEvening(activeTournamentForSetupTeam);
+                }
+              }}
               onBack={() => window.history.back()}
               onStart={async (players, matchCount, setupOptions) => {
-                // Try strict (max 2 appearances)
-                const result = createFPEvening(players, clubsWithOverrides, 2, matchCount, {
-                  teamSelectionMode: setupOptions?.teamSelectionMode,
-                  worldCupComposition: setupOptions?.worldCupComposition,
-                });
-                if (typeof result === 'string') {
-                  if (setupOptions?.teamSelectionMode === 'world-cup-26') {
+                if (fpStartInFlightRef.current) return;
+
+                fpStartInFlightRef.current = true;
+                setFpStartLoading(true);
+
+                try {
+                  let teamId: string | null = fpTeamId || null;
+
+                  if (teamId && await openActiveTournamentForTeam(teamId)) {
+                    return;
+                  }
+
+                  // Try strict (max 2 appearances)
+                  const result = createFPEvening(players, clubsWithOverrides, 2, matchCount, {
+                    teamSelectionMode: setupOptions?.teamSelectionMode,
+                    worldCupComposition: setupOptions?.worldCupComposition,
+                  });
+                  if (typeof result === 'string') {
+                    if (setupOptions?.teamSelectionMode === 'world-cup-26') {
+                      toast({
+                        title: result,
+                        variant: "destructive",
+                      });
+                      return;
+                    }
+                    // Strict failed – show deadlock dialog
+                    setFpDeadlockPlayers(players);
+                    setShowFpDeadlock(true);
+                    return;
+                  }
+
+                  // Five-player selected team must always win — do NOT fall back to contextTeamId,
+                  // which is the globally selected team from TeamContext and may differ from the FP team.
+                  if (!teamId && RemoteStorageService.isEnabled()) {
+                    try {
+                      teamId = await RemoteStorageService.ensureTeamForPlayers(players, 5);
+                    } catch {}
+                  }
+                  if (!teamId) {
                     toast({
-                      title: result,
+                      title: "צריך לבחור או ליצור קבוצה",
+                      description: "מוד 5 חייב להיות משויך לקבוצה אמיתית.",
                       variant: "destructive",
                     });
                     return;
                   }
-                  // Strict failed – show deadlock dialog
-                  setFpDeadlockPlayers(players);
-                  setShowFpDeadlock(true);
-                  return;
-                }
-                setFPEveningState(result);
-                setCurrentTeamEditReason("owner_admin");
-                StorageService.saveFPActive(result);
-                // Five-player selected team must always win — do NOT fall back to contextTeamId,
-                // which is the globally selected team from TeamContext and may differ from the FP team.
-                let teamId: string | null = fpTeamId || null;
-                if (!teamId && RemoteStorageService.isEnabled()) {
-                  try {
-                    teamId = await RemoteStorageService.ensureTeamForPlayers(players, 5);
-                  } catch {}
-                }
-                if (!teamId) {
-                  toast({
-                    title: "צריך לבחור או ליצור קבוצה",
-                    description: "מוד 5 חייב להיות משויך לקבוצה אמיתית.",
-                    variant: "destructive",
-                  });
-                  return;
-                }
-                
-                setFpTeamId(teamId);
-                
-                // Create via RPC (enforces one active evening per team)
-                // IMPORTANT: wait for this before moving on, otherwise Home / other users may not see the active tournament.
-                try {
-                  await RemoteStorageService.createTeamEvening(result as any, teamId);
-                
-                  if (teamId) {
-                    try {
-                      const updatedActive = await RemoteStorageService.listActiveEveningsForMyTeams();
-                      setActiveTeamEvenings(updatedActive);
-                    } catch (refreshError: any) {
-                      console.warn("Failed to refresh active team evenings:", refreshError?.message || refreshError);
-                    }
+
+                  if (await openActiveTournamentForTeam(teamId)) {
+                    return;
                   }
-                } catch (error: any) {
-                  console.error("Failed to create FP team evening:", error?.message || error);
-                  toast({
-                    title: "שגיאה ביצירת טורניר פעיל",
-                    description: error?.message || "לא ניתן היה לשמור את הטורניר כפעיל בקבוצה.",
-                    variant: "destructive",
-                  });
-                  return;
+
+                  // Create via RPC (enforces one active evening per team)
+                  // IMPORTANT: wait for this before moving on, otherwise Home / other users may not see the active tournament.
+                  try {
+                    await RemoteStorageService.createTeamEvening(result as any, teamId);
+
+                    setFPEveningState(result);
+                    setCurrentTeamEditReason("owner_admin");
+                    StorageService.saveFPActive(result);
+                    setFpTeamId(teamId);
+
+                    if (teamId) {
+                      try {
+                        const updatedActive = await RemoteStorageService.listActiveEveningsForMyTeams();
+                        setActiveTeamEvenings(updatedActive);
+                      } catch (refreshError: any) {
+                        console.warn("Failed to refresh active team evenings:", refreshError?.message || refreshError);
+                      }
+                    }
+                  } catch (error: any) {
+                    const raw = error?.message || String(error || "");
+                    if (raw.includes("team already has an active evening") && await openActiveTournamentForTeam(teamId)) {
+                      return;
+                    }
+                    console.error("Failed to create FP team evening:", error?.message || error);
+                    toast({
+                      title: "שגיאה ביצירת טורניר פעיל",
+                      description: error?.message || "לא ניתן היה לשמור את הטורניר כפעיל בקבוצה.",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+
+                  goTo('fp-bank-overview');
+                } finally {
+                  fpStartInFlightRef.current = false;
+                  setFpStartLoading(false);
                 }
-                
-                goTo('fp-bank-overview');
               }}
             />
           );
+        }
         
         case 'fp-bank-overview':
           return fpEvening ? (
@@ -1926,6 +2052,7 @@ const handleGoHome = () => {
               canEditExistingResults={currentTeamEditReason === "owner_admin"}
               canReorderSchedule={currentTeamEditReason === "owner_admin"}
               isViewOnly={currentTeamEditReason === "view_only"}
+              tournamentRole={getTournamentHeaderRoleForEvening(fpEvening.id)}
               spectatorContext={{ teamId: fpTeamId }}
 
               onUpdateEvening={(ev) => {

@@ -1,5 +1,6 @@
 import { Club } from '@/types/tournament';
 import { supabase } from '@/integrations/supabase/client';
+import { reportNationalFlagCoverage } from '@/lib/teamVisuals';
 
 // Club overrides cache
 let clubOverridesCache: Record<string, number> | null = null;
@@ -325,6 +326,10 @@ export const FIFA_CLUBS: Club[] = [
   { id: 'liverpool-xi', name: 'Liverpool XI', stars: 5, league: 'Prime', isPrime: true },
   { id: 'premier-league-xi', name: 'Premier League XI', stars: 5, league: 'Prime', isPrime: true },
 ];
+
+if (import.meta.env.DEV) {
+  reportNationalFlagCoverage(FIFA_CLUBS);
+}
 
 // Load overrides from database
 export async function loadClubOverrides(): Promise<Record<string, number>> {
