@@ -18,13 +18,12 @@ import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Copy, Check, Play, Edit2, ArrowLeftRight, X, AlertCircle, GripVertical, Layers } from "lucide-react";
+import { ArrowLeft, Copy, Check, Play, Edit2, ArrowLeftRight, X, AlertCircle, GripVertical, UserRound, ChevronDown, CalendarDays } from "lucide-react";
 import { FPEvening, FPTeamBank, FPPair } from "@/types/fivePlayerTypes";
 import { Club } from "@/types/tournament";
 import { StarRating, starText } from "@/components/StarRating";
 import { PlayerPair } from "@/components/PlayerPair";
 import { TeamVisual } from "@/components/TeamVisual";
-import { SoccerNightBottomNav } from "@/components/soccer-night-ui";
 import { useToast } from "@/hooks/use-toast";
 import { sortClubsByStarsDesc } from "@/lib/sortClubs";
 import {
@@ -99,9 +98,10 @@ const SortableMatchRow = ({ match, index, pairName }: SortableMatchRowProps) => 
 
         <Badge
           variant="outline"
-          className="text-[10px] px-1.5 py-0 mt-1 border-muted-foreground/30 text-muted-foreground"
+          className="gap-1 text-[10px] px-1.5 py-0 mt-1 border-muted-foreground/30 text-muted-foreground"
         >
-          🪑 {match.sittingOut.name}
+          <UserRound className="h-3 w-3" aria-hidden="true" />
+          {match.sittingOut.name}
         </Badge>
       </div>
     </div>
@@ -110,8 +110,8 @@ const SortableMatchRow = ({ match, index, pairName }: SortableMatchRowProps) => 
 
 export const FPBankOverview = ({ evening, allClubs, onContinue, onBack, onUpdateEvening }: FPBankOverviewProps) => {
   const { toast } = useToast();
-  const [copiedPairId, setCopiedPairId] = useState<string | null>(null);
   const [copiedAll, setCopiedAll] = useState(false);
+  const [openSection, setOpenSection] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -210,7 +210,7 @@ export const FPBankOverview = ({ evening, allClubs, onContinue, onBack, onUpdate
   const formatMatchOrder = () => {
     return firstCycle.map((m, i) => {
       const sitting = m.sittingOut.name;
-      return `${i + 1}. ${pairName(m.pairA)} vs ${pairName(m.pairB)}  🪑 ${sitting}`;
+      return `${i + 1}. ${pairName(m.pairA)} vs ${pairName(m.pairB)}  יושב בחוץ: ${sitting}`;
     }).join('\n');
   };
 
@@ -231,16 +231,6 @@ export const FPBankOverview = ({ evening, allClubs, onContinue, onBack, onUpdate
       return formatPairBank(pair, bank);
     });
     return `🏆 *5 Player League*\n${evening.players.map(p => p.name).join(', ')}\n\n${matchOrder}\n\n${sections.join('\n\n')}`;
-  };
-
-  const handleCopyPair = async (pair: FPPair, bank: FPTeamBank) => {
-    try {
-      await navigator.clipboard.writeText(formatPairBank(pair, bank));
-      setCopiedPairId(pair.id);
-      setTimeout(() => setCopiedPairId(null), 1500);
-    } catch {
-      toast({ title: "שגיאה בהעתקה", variant: "destructive" });
-    }
   };
 
   const handleCopyAll = async () => {
@@ -501,71 +491,57 @@ export const FPBankOverview = ({ evening, allClubs, onContinue, onBack, onUpdate
   const editingPair = editingPairId ? evening.pairs.find(p => p.id === editingPairId) : null;
 
   return (
-    <div id="bank-top" className="min-h-[100dvh] bg-gaming-bg px-4 pb-[calc(6.25rem+env(safe-area-inset-bottom))] pt-3 sm:px-3" dir="rtl">
+    <div id="bank-top" className="min-h-[100dvh] bg-gaming-bg px-4 pb-[calc(5.75rem+env(safe-area-inset-bottom))] pt-3 sm:px-3" dir="rtl">
       <div className="mx-auto w-full space-y-3 sm:max-w-md">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={onBack}>
-              <ArrowLeft className="h-5 w-5 rotate-180" />
-            </Button>
-            <div>
-              <h1 className="text-lg font-bold text-foreground">בנקים - סקירה</h1>
-              <p className="text-xs text-muted-foreground">
-                {evening.players.map(p => p.name).join(', ')}
-              </p>
-            </div>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="border-neon-green/30"
-            onClick={handleCopyAll}
-          >
-            {copiedAll ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-            {copiedAll ? 'הועתק!' : 'העתק הכל'}
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" onClick={onBack}>
+            <ArrowLeft className="h-5 w-5 rotate-180" />
           </Button>
-        </div>
-
-        {/* Match order template */}
-        <Card className="bg-gradient-card border-border/40 p-3 shadow-card">
-          <div className="mb-2">
-            <h2 className="text-sm font-semibold text-foreground">
-              📋 סדר משחקים
-            </h2>
-            <p className="text-[11px] text-muted-foreground mt-1">
-              החזק וגרור משחק כדי לשנות את הסדר לפני תחילת הליגה
+          <div className="min-w-0">
+            <h1 className="text-lg font-bold text-foreground">סקירת בנקים</h1>
+            <p className="truncate text-xs text-muted-foreground">
+              {evening.players.map(p => p.name).join(', ')}
             </p>
           </div>
-        
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleScheduleDragEnd}
+        </div>
+
+        <Card className="overflow-hidden border-border/40 bg-gradient-card shadow-card">
+          <button
+            type="button"
+            className="flex min-h-14 w-full items-center justify-between gap-3 px-3 py-2 text-right"
+            onClick={() => setOpenSection(openSection === "schedule" ? null : "schedule")}
           >
-            <SortableContext
-              items={firstCycle.map(match => match.id)}
-              strategy={verticalListSortingStrategy}
-            >
-              <div className="space-y-1.5">
-                {firstCycle.map((match, index) => (
-                  <SortableMatchRow
-                    key={match.id}
-                    match={match}
-                    index={index}
-                    pairName={pairName}
-                  />
-                ))}
-              </div>
-            </SortableContext>
-          </DndContext>
+            <span className="flex min-w-0 items-center gap-2">
+              <CalendarDays className="h-4 w-4 shrink-0 text-neon-green" />
+              <span className="font-semibold text-foreground">סדר משחקים</span>
+            </span>
+            <span className="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
+              {evening.schedule.length} משחקים
+              <ChevronDown className={`h-4 w-4 transition-transform ${openSection === "schedule" ? "rotate-180" : ""}`} />
+            </span>
+          </button>
+          {openSection === "schedule" && (
+            <div className="border-t border-border/40 p-3">
+              <p className="mb-2 text-[11px] text-muted-foreground">
+                החזק וגרור משחק כדי לשנות את הסדר לפני תחילת הליגה
+              </p>
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleScheduleDragEnd}>
+                <SortableContext items={firstCycle.map(match => match.id)} strategy={verticalListSortingStrategy}>
+                  <div className="space-y-1.5">
+                    {firstCycle.map((match, index) => (
+                      <SortableMatchRow key={match.id} match={match} index={index} pairName={pairName} />
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
+            </div>
+          )}
         </Card>
 
-        {/* Pair banks */}
-        {evening.pairs.map((pair, idx) => {
+        {evening.pairs.map((pair) => {
           const bank = evening.teamBanks.find(b => b.pairId === pair.id);
           if (!bank) return null;
-          const isCopied = copiedPairId === pair.id;
+          const isOpen = openSection === pair.id;
           const sortedClubs = bank.clubs
             .map((club, originalIdx) => ({ club, originalIdx }))
             .sort((a, b) => {
@@ -574,71 +550,55 @@ export const FPBankOverview = ({ evening, allClubs, onContinue, onBack, onUpdate
             });
 
           return (
-            <Card key={pair.id} className="bg-gradient-card border-border/40 p-3 shadow-card">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground font-mono w-5">{idx + 1}.</span>
-                  <div>
-                    <span className="text-sm font-semibold text-foreground">{pairName(pair)}</span>
-                    <div className="mt-1">
-                      <PlayerPair players={pair.players} size="sm" showNames={false} />
-                    </div>
-                  </div>
+            <Card key={pair.id} className="overflow-hidden border-border/40 bg-gradient-card shadow-card">
+              <button
+                type="button"
+                className="grid min-h-16 w-full grid-cols-[auto_1fr_auto] items-center gap-3 px-3 py-2 text-right"
+                onClick={() => setOpenSection(isOpen ? null : pair.id)}
+              >
+                <PlayerPair players={pair.players} size="sm" showNames={false} />
+                <span className="min-w-0">
+                  <span className="block break-words text-sm font-semibold leading-tight text-foreground">{pairName(pair)}</span>
+                  <span className="mt-1 block font-mono text-xs text-neon-green">{bank.clubs.length}/{bank.clubs.length} קבוצות</span>
+                </span>
+                <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
+              </button>
+              {isOpen && (
+                <div className="grid grid-cols-3 gap-2 border-t border-border/40 p-3">
+                  {sortedClubs.map(({ club, originalIdx }) => (
+                    <button
+                      key={`${club.id}-${originalIdx}`}
+                      type="button"
+                      className="rounded-lg border border-border/30 bg-gaming-surface/60 p-2 text-center transition-colors hover:border-neon-green/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon-green"
+                      onClick={() => openEdit(pair.id, originalIdx)}
+                      aria-label={`עריכת ${club.name}`}
+                    >
+                      <TeamVisual club={club} size="sm" />
+                    </button>
+                  ))}
                 </div>
-                <button
-                  onClick={() => handleCopyPair(pair, bank)}
-                  className="p-1.5 rounded-md hover:bg-gaming-surface/80 transition-colors"
-                >
-                  {isCopied ? (
-                    <Check className="h-3.5 w-3.5 text-neon-green" />
-                  ) : (
-                    <Copy className="h-3.5 w-3.5 text-muted-foreground" />
-                  )}
-                </button>
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                {sortedClubs.map(({ club, originalIdx }) => (
-                  <div
-                    key={`${club.id}-${originalIdx}`}
-                    className="group relative rounded-lg border border-border/30 bg-gaming-surface/60 p-2"
-                  >
-                    <TeamVisual club={club} size="sm" />
-                    <div className="absolute left-1 top-1 flex items-center gap-1">
-                      <button
-                        onClick={() => openEdit(pair.id, originalIdx)}
-                        className="rounded bg-gaming-bg/80 p-1 opacity-70 transition-colors hover:bg-accent/50 group-hover:opacity-100"
-                        title="שנה קבוצה"
-                      >
-                        <Edit2 className="h-3 w-3 text-muted-foreground" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              )}
             </Card>
           );
         })}
-
-        {/* Continue button */}
-        <Button
-          variant="gaming"
-          size="lg"
-          className="w-full"
-          onClick={onContinue}
-        >
-          <Play className="h-5 w-5" />
-          התחל משחקים
-        </Button>
       </div>
 
-      <SoccerNightBottomNav
-        items={[
-          { label: "חזרה", icon: <ArrowLeft className="h-5 w-5 rotate-180" />, onClick: onBack },
-          { label: "העתק", icon: copiedAll ? <Check className="h-5 w-5" /> : <Copy className="h-5 w-5" />, onClick: handleCopyAll },
-          { label: "בנקים", icon: <Layers className="h-7 w-7" />, onClick: () => document.getElementById("bank-top")?.scrollIntoView({ behavior: "smooth" }), active: true },
-          { label: "התחל", icon: <Play className="h-5 w-5" />, onClick: onContinue },
-        ]}
-      />
+      <footer className="fixed inset-x-0 bottom-0 z-40 border-t border-border/50 bg-gaming-bg/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur supports-[backdrop-filter]:bg-gaming-bg/88">
+        <div className="mx-auto grid w-full grid-cols-[1fr_minmax(9rem,1.35fr)_1fr] items-center gap-2 sm:max-w-md" dir="rtl">
+          <Button variant="outline" className="h-12 border-border/50 bg-gaming-surface/70" onClick={onBack}>
+            <ArrowLeft className="h-4 w-4 rotate-180" />
+            חזרה
+          </Button>
+          <Button variant="gaming" className="h-12 rounded-xl text-base font-black shadow-[0_0_22px_rgba(57,255,136,0.32)]" onClick={onContinue}>
+            <Play className="h-5 w-5" />
+            התחל טורניר
+          </Button>
+          <Button variant="outline" className="h-12 border-neon-green/30 bg-gaming-surface/70" onClick={handleCopyAll}>
+            {copiedAll ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+            העתק הכל
+          </Button>
+        </div>
+      </footer>
 
       {/* Edit Dialog */}
       <Dialog open={!!editingPairId} onOpenChange={(open) => { if (!open) closeEdit(); }}>

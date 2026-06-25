@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PersonalStats } from "@/services/spectatorPersonalStats";
-import { User, TrendingUp, Zap, Target, Trophy, Users, Swords } from "lucide-react";
+import { User, TrendingUp, Zap, Target, Trophy, Users, Swords, UserRound } from "lucide-react";
 
 interface PersonalSummaryCardProps {
   personal: PersonalStats;
@@ -132,7 +132,8 @@ export default function PersonalSummaryCard({ personal, onSwitchPlayer, isComple
       {isSittingOutNow && !isPlayingNow && (
         <div className="space-y-1">
           <Badge variant="outline" className="border-muted-foreground/30 text-muted-foreground text-[11px]">
-            🪑 יושב בחוץ במשחק הנוכחי
+            <UserRound className="h-3 w-3 ml-1" />
+            יושב בחוץ במשחק הנוכחי
           </Badge>
           {nextPartner && nextOpponents && (
             <div className="text-[11px] text-muted-foreground">

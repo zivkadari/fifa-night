@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Trophy, Users, Eye, Loader2, AlertCircle, ChevronDown, ChevronUp, ArrowLeft, Home } from "lucide-react";
+import { Trophy, Users, Eye, Loader2, AlertCircle, ChevronDown, ChevronUp, ArrowLeft, Home, UserRound } from "lucide-react";
 import {
   Drawer,
   DrawerContent,
@@ -461,8 +461,9 @@ function PersonalizedSpectateView({
           {pairName(m.pairB)}
         </span>
       </div>
-      <span className="text-muted-foreground text-[10px] mr-2">
-        {m.sittingOut.id === selectedPlayerId ? '🪑 אתה' : `🪑 ${m.sittingOut.name}`}
+      <span className="mr-2 inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+        <UserRound className="h-3 w-3" aria-hidden="true" />
+        {m.sittingOut.id === selectedPlayerId ? 'אתה' : m.sittingOut.name}
       </span>
     </div>
   );
